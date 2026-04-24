@@ -1,7 +1,7 @@
 ---
 name: aegro-monitoramento-pragas
 description: Acompanhar aplicacoes de defensivos, consumo e eficacia no controle fitossanitario
-version: 0.4.0
+version: 0.5.0
 ---
 
 # Monitoramento de Pragas e Defensivos

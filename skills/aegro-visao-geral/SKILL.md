@@ -1,7 +1,7 @@
 ---
 name: aegro-visao-geral
 description: Panorama rapido da fazenda - safras, saldos, pendencias e alertas
-version: 0.4.0
+version: 0.5.0
 ---
 
 # Visao Geral da Fazenda

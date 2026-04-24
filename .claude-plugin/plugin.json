@@ -1,7 +1,7 @@
 {
   "name": "aegro-skills",
   "description": "12 AI skills for Aegro agricultural management — farm overview, crop closing, financial entries, stock reconciliation, pest monitoring, profitability analysis, and more. Requires aegro CLI (pip install aegro).",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": {
     "name": "Aegro Engineering"
   },
