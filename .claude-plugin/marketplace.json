@@ -3,7 +3,7 @@
     {
       "name": "aegro-skills",
       "description": "12 AI skills for Aegro agricultural management",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "path": "."
     }
   ]

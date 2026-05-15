@@ -1,7 +1,7 @@
 ---
 name: aegro-reconciliacao-estoque
 description: Identificar e explicar divergencias entre estoque fisico, atividades e financeiro
-version: 0.5.0
+version: 0.5.1
 ---
 
 # Reconciliacao de Estoque
