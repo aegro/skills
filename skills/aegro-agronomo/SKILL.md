@@ -140,6 +140,8 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
 - `activities get-plan <PLAN_KEY>` → plano pela chave do **plano**
+- `activities create-plan` cria **planejamento**, nao realizacao. A API publica permite
+  consultar realizacoes, mas nao expoe endpoint para criar realizacao.
 
 ```bash
 aegro activities list --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
@@ -150,9 +152,10 @@ aegro activities realizations --crop-key crop::68dd6719e90f726622b7f549 --start-
 aegro activities create-plan \
   --crop-key crop::68dd6719e90f726622b7f549 \
   --type SOWING --start-date 2026-01-15 \
-  --crop-glebe-key cropglebe::68dd6730e90f726622b7f555 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
   --observations "Plantio soja TMG 2381" \
-  --inputs '[{"elementKey":"element::abc123","quantity":{"magnitude":50,"unit":"KG/HA"}}]'
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
+  --dry-run
 ```
 
 ### 4.5 Romaneios de Colheita (`aegro harvest-logs`)
@@ -171,14 +174,14 @@ aegro activities create-plan \
 # Romaneio automatico
 aegro harvest-logs create \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
-  --crop-glebe cropglebe::68dd6730e90f726622b7f555 \
+  --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
   --gross-weight 32000 --tare-weight 12000
 
 # Romaneio manual completo
 aegro harvest-logs create \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
-  --crop-glebe cropglebe::68dd6730e90f726622b7f555 \
-  --crop-glebe cropglebe::68dd6730e90f726622b7f556 \
+  --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
+  --crop-glebe cropGlebe::68dd6730e90f726622b7f556 \
   --calculation-mode MANUAL --seed-key element::seed123 \
   --gross-weight 32000 --tare-weight 12000 --net-weight 20000 \
   --discounted-weight 19400 --product-weight 19400 \
@@ -232,7 +235,7 @@ aegro elements create-seed --name "TMG 2381 IPRO" --type SOYBEAN --unit KG --man
 
 ### Formato de Chaves
 ```
-crop::68dd6719e90f726622b7f549       cropglebe::68dd6730e90f726622b7f555
+crop::68dd6719e90f726622b7f549       cropGlebe::68dd6730e90f726622b7f555
 glebe::68dd6725e90f726622b7f550      activity::68e1a3b2f4c8901234567890
 element::68e2c5d6e7890abcdef12345    harvestlog::68e2b4c5d6789012345abcde
 weatherstation::ws001
@@ -252,10 +255,15 @@ O parametro `--inputs` recebe string JSON com array de objetos:
 
 ```json
 [
-  {"elementKey": "element::abc123", "quantity": {"magnitude": 2.5, "unit": "L/HA"}},
-  {"elementKey": "element::def456", "quantity": {"magnitude": 150, "unit": "ML/HA"}}
+  {"elementKey": "element::abc123", "amount": {"magnitude": 2.5, "unit": "L/HA"}},
+  {"elementKey": "element::def456", "amount": {"magnitude": 150, "unit": "ML/HA"}}
 ]
 ```
+
+Use `elementKey` + `amount`. Nao use `productKey` (campo de compras) nem
+`quantity` em atividades. Rode `--dry-run` antes e, apos executar, confira os
+insumos persistidos com `aegro activities plan <ACTIVITY_KEY>` ou
+`aegro activities get-plan <PLAN_KEY>`.
 
 Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 
