@@ -2,11 +2,15 @@
 
 12 AI skills for [Aegro](https://aegro.com.br) agricultural management.
 
+This repository is the canonical source for public Aegro CLI skills. The
+`aegro` PyPI package embeds a generated snapshot of this `skills/` directory so
+`aegro skills install` works offline and without reading GitHub at runtime.
+
 ## Install
 
 ```
-/plugin marketplace add pmdusso/aegro-skills
-/plugin install aegro-skills@pmdusso-aegro-skills
+/plugin marketplace add aegro/skills-cli
+/plugin install aegro-skills@aegro-skills-cli
 ```
 
 Or use the Aegro CLI directly:

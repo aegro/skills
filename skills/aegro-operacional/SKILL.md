@@ -293,7 +293,10 @@ activities create-plan (planeja aplicacao com insumos)
 aegro activities create-plan \
   --crop-key "crop::68dd6719e90f726622b7f549" \
   --type APPLICATION \
-  --description "Aplicacao herbicida pre-emergente"
+  --start-date "2026-03-15" \
+  --observations "Aplicacao herbicida pre-emergente" \
+  --inputs '[{"elementKey": "element::5a9c2d3e4f5b6a78", "amount": {"magnitude": 2.5, "unit": "L/HA"}}]' \
+  --dry-run
 
 # 2. Verificar realizacoes (apos execucao no campo)
 aegro activities realizations --crop-key "crop::68dd6719e90f726622b7f549"
