@@ -9,8 +9,8 @@ This repository is the canonical source for public Aegro CLI skills. The
 ## Install
 
 ```
-/plugin marketplace add aegro/skills-cli
-/plugin install aegro-skills@aegro-skills-cli
+/plugin marketplace add aegro/skills
+/plugin install aegro-skills@aegro-skills
 ```
 
 Or use the Aegro CLI directly:
