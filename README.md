@@ -15,7 +15,8 @@ e.g. `aegro-agronomo`, `aegro-financeiro`, `aegro-estoquista`. Naming
 convention: `aegro-<domain>`.
 
 Skills used by the **Aegro internal team** (engineering, R&D, product) for
-day-to-day work live in a separate, private repository and are not published
+day-to-day work live in the separate, private repository
+[`aegro/workspace`](https://github.com/aegro/workspace) and are not published
 here. If you are an Aegro employee looking for those, ask internally — they
 are not installed from this marketplace.
 
