@@ -8,22 +8,23 @@ This repository is the canonical source for public Aegro CLI skills. The
 
 ## Is this the right repo?
 
-This is the **public, customer-facing** Aegro skills marketplace. The skills
-here help **end users of the Aegro product** (agronomists, stock managers,
-finance teams on farms) with domain workflows inside the product — e.g.
-`aegro-agronomo`, `aegro-financeiro`, `aegro-estoquista`. Naming convention:
-`aegro-<domain>`.
+This is the **public** Aegro skills marketplace. The skills here are for
+**Aegro customers and the Services team** (CS, sales, support — anyone who
+works with customers) and cover domain workflows inside the Aegro product —
+e.g. `aegro-agronomo`, `aegro-financeiro`, `aegro-estoquista`. Naming
+convention: `aegro-<domain>`.
 
-If you are looking for **internal Aegro skills** — the ones that help Aegro
-employees with day-to-day engineering and product work (PR review, ticket
-automation, PRD scaffolding, backend/frontend helpers, etc.) — those live in
-the private monorepo [`aegro/workspace`](https://github.com/aegro/workspace)
-under `tools/plugins/`. Naming convention there: `aeg-<area>-<action>` (e.g.
+If you are looking for **internal Aegro skills** — the ones used by the
+internal team (engineering, R&D, product) for day-to-day work like PR review,
+ticket automation, PRD scaffolding, backend/frontend helpers, etc. — those
+live in the private monorepo
+[`aegro/workspace`](https://github.com/aegro/workspace) under
+`tools/plugins/`. Naming convention there: `aeg-<area>-<action>` (e.g.
 `aeg-pr-babysit`, `aeg-backend-review`, `aeg-frontend-ticket`).
 
 | | Public (this repo) | Internal (`aegro/workspace`) |
 |---|---|---|
-| Audience | Aegro **customers** using the product | Aegro **employees** (R&D, eng, product) |
+| Audience | Aegro **customers** and the **Services team** | Aegro **internal team** (eng, R&D, product) |
 | Visibility | Public | Private |
 | Naming | `aegro-<domain>` | `aeg-<area>-<action>` |
 | Install | `/plugin marketplace add aegro/skills` | `/plugin marketplace add aegro/workspace` |
