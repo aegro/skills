@@ -14,23 +14,10 @@ works with customers) and cover domain workflows inside the Aegro product —
 e.g. `aegro-agronomo`, `aegro-financeiro`, `aegro-estoquista`. Naming
 convention: `aegro-<domain>`.
 
-If you are looking for **internal Aegro skills** — the ones used by the
-internal team (engineering, R&D, product) for day-to-day work like PR review,
-ticket automation, PRD scaffolding, backend/frontend helpers, etc. — those
-live in the private monorepo
-[`aegro/workspace`](https://github.com/aegro/workspace) under
-`tools/plugins/`. Naming convention there: `aeg-<area>-<action>` (e.g.
-`aeg-pr-babysit`, `aeg-backend-review`, `aeg-frontend-ticket`).
-
-| | Public (this repo) | Internal (`aegro/workspace`) |
-|---|---|---|
-| Audience | Aegro **customers** and the **Services team** | Aegro **internal team** (eng, R&D, product) |
-| Visibility | Public | Private |
-| Naming | `aegro-<domain>` | `aeg-<area>-<action>` |
-| Install | `/plugin marketplace add aegro/skills` | `/plugin marketplace add aegro/workspace` |
-
-The consolidation of internal tooling into `aegro/workspace` is described in
-[aegro/docs#89](https://github.com/aegro/docs/discussions/89).
+Skills used by the **Aegro internal team** (engineering, R&D, product) for
+day-to-day work live in a separate, private repository and are not published
+here. If you are an Aegro employee looking for those, ask internally — they
+are not installed from this marketplace.
 
 ## Install
 
