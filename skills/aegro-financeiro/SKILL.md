@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.5.1
+version: 0.6.0
 ---
 
 # Aegro Financeiro
@@ -101,6 +101,8 @@ Relacionamentos-chave:
 | `update-installment`   | PUT      | `<key>` (arg), `--bill-key`, `--bank-account-key`, `--number`, `--due-date`, `--amount` | `--currency`, `--status`, `--realized-date`, `--realized-amount`, `--realized-currency` |
 | `delete-installment`   | DELETE   | `<key>` (argumento)                                        | (nenhum)                                                                             |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
+| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--farm-key`, `--entry-date`, `--currency`, `--env`, `--complete`, `--dry-run` |
+| `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
 **Exemplos reais:**
 
@@ -124,6 +126,65 @@ aegro financial realize --key installment::aaa --key installment::bbb
 
 # Excluir parcela pendente
 aegro financial delete-installment installment::ghi789
+```
+
+### 4.1.1 Insercao inteligente de contas (create-bill / create-bills)
+
+`create-bill` resolve **nomes em chaves**, infere contexto e diz o que falta de
+forma estruturada -- em vez de exigir que voce conheca `company::`,
+`financialCategory::` e `farmKey`. Use nomes; deixe o CLI resolver.
+
+O que o comando faz por voce:
+- **Resolve por nome**: `--company "Fornecedor X"`, `--category "Insumos"`,
+  `--bank-account "Conta BB"` viram chaves. As variantes exatas
+  (`--company-key`, `--financial-category-key`, `--bank-account-key`) seguem
+  validas para scripts.
+- **Infere contexto**: `--farm-key` vem da credencial (omita); `--entry-date`
+  vira hoje em America/Sao_Paulo se omitida.
+- **Pergunta so o que falta**: sem TTY, campos faltantes/ambiguos saem como um
+  envelope `needs_input` (status, resolved, inferred, missing, ambiguous, preview)
+  e **nada e executado**. Resolva os pontos e reinvoque. Use `--complete` para
+  forcar esse modo (resolve+infere+reporta, sem executar).
+- **Preview com nomes**: `--dry-run` mostra o payload resolvido com nomes (nao
+  chaves) para conferencia antes de executar.
+
+Campos do lancamento: `--cash-flow` e `REVENUE|EXPENSE`; `--payment-method` e
+`PROMPT|INSTALLMENT|NO_PAYMENT|UNKNOWN`; `--category` deve ser uma categoria
+ANALYTIC (ver regra 1). Parcelamento detalhado vai em `--installments` (JSON).
+
+```bash
+# Conta a pagar resolvendo nomes; fazenda e data inferidas
+aegro financial create-bill --description "Adubo NPK" --total-amount 1500 \
+  --cash-flow EXPENSE --payment-method PROMPT \
+  --category "Insumos" --company "Fornecedor X"
+
+# Modo headless: so resolve/infere e diz o que falta (nao executa)
+aegro financial create-bill --description "Adubo" --total-amount 1500 \
+  --cash-flow EXPENSE --payment-method PROMPT --complete
+```
+
+**Lancamento em massa (`create-bills`)** -- a tabela de conferencia. Recebe um
+arquivo JSON com uma lista de lancamentos *name-based* (mesmos campos) e devolve
+uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
+
+```bash
+# Tabela de conferencia (nao executa)
+aegro financial create-bills --batch contas.json --env staging --complete
+
+# Lancar em staging; depois conferir na UI e promover trocando --env
+aegro financial create-bills --batch contas.json --env staging
+aegro financial create-bills --batch contas.json --env prod
+```
+
+Exemplo de `contas.json`:
+
+```json
+[
+  {"description": "Adubo NPK", "totalAmount": 1500, "cashFlow": "EXPENSE",
+   "paymentMethod": "PROMPT", "category": "Insumos", "company": "Fornecedor X"},
+  {"description": "Venda soja", "totalAmount": 90000, "cashFlow": "REVENUE",
+   "paymentMethod": "INSTALLMENT", "category": "Venda de Graos", "company": "Cerealista Y"}
+]
 ```
 
 ### 4.2 fin-categories (categorias financeiras)
@@ -265,6 +326,16 @@ O parametro `--items` recebe uma string JSON (nao e flag repetivel). Exemplo:
 ### Filtros usam POST (nao GET)
 
 Todos os endpoints de listagem (`installments`, `fin-categories list`, `bank-accounts list`, `companies list`, `purchase-orders list`) usam POST com body JSON, nao GET com query params.
+
+### Ambiente: prod vs staging (multi-env)
+
+`--env prod|staging` (ou `AEGRO_ENV`) seleciona base URL e credenciais por
+ambiente -- cada ambiente tem credenciais proprias (`aegro auth login --env staging`).
+`staging` (`app.staging.aegro.io`) e homologacao, **uso interno**: lance ali,
+confira, e so entao promova para `prod`. As chaves diferem entre ambientes, por
+isso o batch de `create-bills` e *name-based* e re-resolvido por ambiente -- a
+promocao staging->prod e rodar o mesmo arquivo trocando `--env`. Nao sugira
+staging a clientes.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.5.1
+version: 0.6.0
 ---
 
 # Lancamento Financeiro
@@ -24,6 +24,26 @@ correto. Foco na sequencia de decisoes, nao na sintaxe dos comandos.
 
 Para detalhes dos comandos e regras de negocio:
 - `/aegro-financeiro` -- parcelas, categorias, contas bancarias, empresas, bills
+
+## Caminho Rapido: create-bill inteligente
+
+Para lancar uma conta nova, **prefira `aegro financial create-bill`** -- ele
+resolve nomes em chaves, infere fazenda e data, e **pergunta so o que falta**.
+Voce nao precisa pre-buscar `company::`/`financialCategory::`/`farmKey`: passe os
+nomes.
+
+- Conta unica: `create-bill --description ... --total-amount ... --cash-flow
+  EXPENSE|REVENUE --payment-method ... --category "<nome>" --company "<nome>"`.
+- **Em massa**: monte um JSON name-based e use `create-bills --batch <arquivo>`,
+  que devolve uma **tabela de conferencia** por linha (status + nomes resolvidos).
+- **Priorize o acerto**: rode com `--complete` (ou `--dry-run`) primeiro para
+  conferir o que foi resolvido/inferido e o que falta, **antes** de executar.
+- **Staging-first** (uso interno): lance com `--env staging`, confira na UI, e
+  promova com `--env prod` rodando o mesmo arquivo. Nao sugira staging a clientes.
+
+Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). O fluxo manual
+de parcelas abaixo (`create-installment`) continua valido para ajustes finos de
+parcelamento em lancamentos existentes.
 
 ## Fluxo de Decisao
 
