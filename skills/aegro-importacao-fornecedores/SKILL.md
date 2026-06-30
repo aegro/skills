@@ -60,17 +60,19 @@ Importacao em prod mexe em dados **reais** do cliente e **nao tem delete em
 lote** — um cadastro errado e trabalhoso de desfazer. Por isso, **nunca importe
 direto em prod**. Siga sempre esta ordem:
 
-1. **Importe primeiro em staging** (`AEGRO_ENV=staging`), numa fazenda de teste.
+1. **Importe primeiro em staging** (`--env staging`), numa fazenda de teste.
    Rode o fluxo completo (passos 1 a 6) contra staging.
 2. **Verifique manualmente uma amostra** depois da carga — nao confie so no
-   "criado com sucesso". Confira via `aegro companies get <key>` ou
-   `aegro companies list`. Cubra cada caso: CNPJ (com endereco) e CPF.
+   "criado com sucesso". Confira via `aegro companies get <key> --env staging`
+   ou `aegro companies list --env staging`. Cubra cada caso: CNPJ (com
+   endereco) e CPF.
 3. **So depois de o staging conferir**, repita a mesma importacao em prod
-   (ambiente default, sem `AEGRO_ENV`), apos confirmacao explicita do usuario.
+   (`--env prod`), apos confirmacao explicita do usuario.
 
-> Os comandos `companies create`/`get` nao expoem `--env`; o alvo e controlado
-> pela variavel **`AEGRO_ENV`** (`staging` para homologacao; ausente = prod) e a
-> fazenda ativa por **`AEGRO_ACTIVE_FARM`**.
+> Os comandos `companies` (`create`/`get`/`list`/`update`) expoem `--env`
+> (`staging` para homologacao; `prod` para producao; default `prod`) — passe-o
+> explicitamente em cada comando. A fazenda ativa e controlada por
+> **`AEGRO_ACTIVE_FARM`**.
 
 ## Fluxo de Importacao
 
@@ -120,11 +122,11 @@ digitos)** em duas frentes:
 - **contra empresas ja cadastradas** no ambiente
 
 ```bash
-# Indexar empresas existentes (paginar ate cobrir todas)
-aegro companies list --fiscal-number-type CNPJ --output json
-aegro companies list --fiscal-number-type CPF --output json
+# Indexar empresas existentes (paginar ate cobrir todas; troque --env conforme o alvo)
+aegro companies list --env staging --fiscal-number-type CNPJ --output json
+aegro companies list --env staging --fiscal-number-type CPF --output json
 # ou conferir um caso especifico:
-aegro companies list --search-text "<nome>"
+aegro companies list --env staging --search-text "<nome>"
 ```
 
 Compare tambem por nome normalizado (ignorando acento/maiusculas). **Quando
@@ -160,15 +162,16 @@ aegro companies create \
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. Faca retry em erros 5xx/timeout; nao faca retry em 4xx.
 
-**Alvo:** em staging use `AEGRO_ENV=staging AEGRO_ACTIVE_FARM="<fazenda de teste>"`;
-em prod omita `AEGRO_ENV` e use a fazenda real. Os mesmos comandos valem para os
-dois ambientes.
+**Alvo:** passe `--env staging` no primeiro passe e `--env prod` so na
+replicacao final (ver "Ordem Obrigatoria de Ambientes"), com
+`AEGRO_ACTIVE_FARM` apontando para a fazenda de teste em staging e a real em
+prod. Os mesmos comandos valem para os dois ambientes; muda so o `--env`.
 
 ### 6b. Verificar (obrigatorio apos o passe em staging)
 
 ```bash
-aegro companies get <key> --output table
-aegro companies list --fiscal-number-type CNPJ --output table
+aegro companies get <key> --env staging --output table
+aegro companies list --env staging --fiscal-number-type CNPJ --output table
 ```
 
 Confira uma amostra que cubra CNPJ enriquecido, CPF e sem documento. So avance
@@ -191,7 +194,7 @@ Apresente:
 | Documento com tamanho inesperado (nem 11 nem 14) | Marcar erro, nao criar |
 | Documento vazio | **Nao cadastra** (API retorna 422); pular e registrar |
 | Duplicata por documento ou nome | **Parar e perguntar**; default: nao duplicar |
-| Erro 4 (validacao) do CLI | Conferir flags; nao faz retry |
+| Erro 4xx (validacao) do CLI | Conferir flags; nao faz retry |
 | Falha na consulta a Receita | Cadastrar com dados da planilha; marcar "nao enriquecido" |
 
 ## Limitacoes

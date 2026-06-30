@@ -153,7 +153,7 @@ aegro assets list --env staging --type VEHICLE --output json
 # ou: aegro assets list --env staging --search "<nome>"  para conferir um nome especifico
 ```
 
-Compare nomes de forma tolerante (ignorando acento/maiusculas). Ative o usuario
+Compare nomes de forma tolerante (ignorando acento/maiusculas). Alerte o usuario
 sobre cada nome ja existente e nao recrie.
 
 ### 5. Criar em lote
