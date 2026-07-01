@@ -269,7 +269,18 @@ aegro companies create --name "CoopAgri" --type PROVIDER --type CLIENT \
 |--------------------|----------|------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | `get <key>`        | GET      | `key` (argumento)                                          | `--output`                                                                        |
 | `list`             | POST     | (nenhum)                                                   | `--company-key`, `--search-text`, `--start-date`, `--end-date`, `--delivery-status`, `--page` |
-| `create`           | POST     | `--company-key`, `--order-date`, `--gross-amount`, `--items` | `--currency` (default BRL), `--expected-delivery-date`, `--description`, `--discount-amount`, `--company-order-code` |
+| `create`           | POST     | `--company` (nome) ou `--company-key`, `--order-date`, `--gross-amount`, `--items` | `--currency` (default BRL), `--currency-exchange-rate`, `--tag` (repetivel), `--category`, `--expected-delivery-date`, `--description`, `--discount-amount`, `--company-order-code`, `--env`, `--complete` |
+| `create-batch`     | POST     | `--from-file <arquivo.json>`                               | `--throttle`, `--env`, `--complete`                                               |
+
+O item de `--items` usa **`elementKey`** (exato) ou **`product`** (nome, o CLI
+resolve) — `productKey` NAO existe e e rejeitado. Campos obrigatorios do item:
+`quantity`, `quantityDelivered`, `measuringUnit`, `unitAmount`, `totalAmount`.
+
+**CRITICO — moeda estrangeira (USD):** a API armazena os valores como recebidos
+e o app **divide pela cotacao** na exibicao. Envie
+`grossAmount`/`unitAmount`/`totalAmount` **JA CONVERTIDOS para BRL**
+(`valor USD x cotacao`), com `--currency USD` + `--currency-exchange-rate
+<cotacao>`. Enviar USD bruto corrompe a exibicao (US$ 4,85 vira US$ 0,94).
 
 **Exemplos reais:**
 
@@ -277,12 +288,19 @@ aegro companies create --name "CoopAgri" --type PROVIDER --type CLIENT \
 # Listar ordens de compra de um fornecedor
 aegro purchase-orders list --company-key company::abc123
 
-# Criar ordem de compra (--items e JSON string)
-aegro purchase-orders create --company-key company::abc123 \
+# Criar ordem em BRL, resolvendo empresa e produto por nome
+aegro purchase-orders create --company "AgroSul" \
   --order-date 2026-03-15 --gross-amount 15000 \
-  --items '[{"productKey":"element::xyz","quantity":500}]' \
-  --description "Compra de defensivos safra 25/26" \
-  --expected-delivery-date 2026-04-01
+  --items '[{"product":"Glifosato","quantity":500,"quantityDelivered":0,"measuringUnit":"L","unitAmount":30,"totalAmount":15000}]' \
+  --description "Compra de defensivos safra 25/26"
+
+# Criar ordem em USD (valores convertidos: US$ 4,85 x 5,1395 = 24.9266 BRL)
+aegro purchase-orders create --company "Corteva" --order-date 2026-06-23 \
+  --gross-amount 9472.10 --currency USD --currency-exchange-rate 5.1395 \
+  --items '[{"product":"Joint Oil","quantity":380,"quantityDelivered":0,"measuringUnit":"L","unitAmount":24.9266,"totalAmount":9472.10}]'
+
+# Lote com tabela de conferencia (staging primeiro, depois --env prod)
+aegro purchase-orders create-batch --from-file pedidos.json --env staging --complete
 ```
 
 ---
