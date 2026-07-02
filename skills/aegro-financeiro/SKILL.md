@@ -84,10 +84,12 @@ Relacionamentos-chave:
    (`cropProrateGroup`, rateio pre-definido com percentuais, ex.:
    "Administrativo" 50% milho / 50% soja). Via API publica: a direta existe
    (`financialApportion: {"type": "CROP_PRORATE", "cropKeys": [...]}`; tambem
-   ASSET_PRORATE/STOCK_INPUTS/STOCK_HARVEST/APPORTION_LATER); a salva e
-   **somente-leitura** (`crop-prorate/filter` e GET) — nao da para aplica-la num
-   lancamento nem criar grupos via API. NAO use `cropProrateGroupKey` na raiz do
-   bill: e aceito e ignorado em silencio.
+   ASSET_PRORATE/STOCK_INPUTS/STOCK_HARVEST/APPORTION_LATER). Com **multiplas
+   safras**, a divisao e automatica e **proporcional a area de cada safra** —
+   nao ha como definir percentuais na direta; percentuais so existem na salva.
+   A salva e **somente-leitura** (`crop-prorate/filter` e GET) — nao da para
+   aplica-la num lancamento nem criar grupos via API. NAO use
+   `cropProrateGroupKey` na raiz do bill: e aceito e ignorado em silencio.
 
 7. **Tipos de empresa sao repetiveis**: Uma empresa pode ser simultaneamente PROVIDER, CLIENT e TRANSPORTER. Use `--type PROVIDER --type CLIENT`.
 
