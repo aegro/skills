@@ -330,6 +330,17 @@ pratica: **envie sempre `currencyCode`**; se receber 400, confira o formato.
 Ordem de compra e diferente: `currencyCode` e `grossAmount` sao campos na RAIZ
 do body (numeros simples nos itens), nao objetos aninhados.
 
+### CRITICO: bill em moeda estrangeira NAO e suportado via API
+
+Validado em staging (02/07/2026): em `POST /bills`, `currencyCode: USD` e
+**coagido silenciosamente para BRL**, e `currencyConversion`/
+`currencyConversionQuoteType` sao **aceitos e ignorados** na escrita — o
+lancamento sai errado sem nenhum erro. O CLI **bloqueia** `--currency != BRL`
+em create-bill/create-bills com orientacao. Alternativas: lancar o valor JA
+CONVERTIDO em BRL (registrando moeda/cotacao na descricao) ou lancar pelo app.
+**Pedidos de compra em moeda estrangeira SAO suportados**: valores convertidos
+para BRL + `--currency USD --currency-exchange-rate <cotacao>` (ver 4.5).
+
 ### Parcelas: sem CRUD avulso na API
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
