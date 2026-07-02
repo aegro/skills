@@ -62,18 +62,32 @@ Relacionamentos-chave:
 
 1. **SYNTHETIC vs ANALYTIC**: Categorias SYNTHETIC servem apenas para agrupar. Somente categorias ANALYTIC podem receber lancamentos financeiros. Nao tente associar lancamentos a categorias SYNTHETIC.
 
-2. **create-installment requer bill_key existente**: Antes de criar uma parcela, o lancamento (bill) ja deve existir. Valide com `aegro financial bill <key>`.
+2. **NAO existe CRUD avulso de parcela na API publica** (auditoria do Swagger,
+   02/07/2026): os unicos endpoints de installments sao `filter`, `realizeList`
+   e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
+   sao pagas via `realize`. Para corrigir parcela/valor, use
+   `financial update-bill` (PATCH) ou o app.
 
-3. **Formato de valor -- PARCELA vs CONTA BANCARIA**:
-   - Parcela (installment): `{"amount": X, "currency": "BRL"}`
-   - Conta bancaria (bank-account): `{"currencyCode": "BRL", "amount": X}`
-   - SAO FORMATOS DIFERENTES. Trocar gera erro 400.
+3. **Formato de valor monetario**: a spec atual unificou em
+   `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
+   parcelas e contas bancarias. Historicamente parcela aceitava
+   `{"amount": X, "currency": "BRL"}` (legado) — em caso de erro 400, use o
+   formato com `currencyCode`.
 
-4. **update-installment e PUT total**: O endpoint de atualizacao e PUT (nao PATCH). Todos os campos obrigatorios devem ser enviados: `key`, `billKey`, `bankAccountKey`, `number`, `dueDate`, `amount`. Omitir qualquer um causa erro.
+4. **update-bill e PATCH (JSON Merge Patch)**: envie apenas os campos a alterar.
+   Nao existe update de parcela avulsa (ver regra 2).
 
-5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`.
+5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API — correcao apenas pelo app.
 
-6. **Parcela PAID nao pode ser excluida**: Tentar `delete-installment` em parcela com status PAID retorna HTTP 405 (Method Not Allowed). Primeiro altere o status para NOT_PAID via update-installment, depois exclua.
+6. **Apropriacao de custo (financialApportion)**: ha DOIS tipos no produto —
+   **direta** (lancamento aponta para 1+ safras) e **salva**
+   (`cropProrateGroup`, rateio pre-definido com percentuais, ex.:
+   "Administrativo" 50% milho / 50% soja). Via API publica: a direta existe
+   (`financialApportion: {"type": "CROP_PRORATE", "cropKeys": [...]}`; tambem
+   ASSET_PRORATE/STOCK_INPUTS/STOCK_HARVEST/APPORTION_LATER); a salva e
+   **somente-leitura** (`crop-prorate/filter` e GET) — nao da para aplica-la num
+   lancamento nem criar grupos via API. NAO use `cropProrateGroupKey` na raiz do
+   bill: e aceito e ignorado em silencio.
 
 7. **Tipos de empresa sao repetiveis**: Uma empresa pode ser simultaneamente PROVIDER, CLIENT e TRANSPORTER. Use `--type PROVIDER --type CLIENT`.
 
@@ -97,10 +111,12 @@ Relacionamentos-chave:
 | `bill <key>`           | GET      | `bill_key` (argumento)                                     | `--output`                                                                           |
 | `installment <key>`    | GET      | `installment_key` (argumento)                              | `--output`                                                                           |
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
-| `create-installment`   | POST     | `--bill-key`, `--bank-account-key`, `--due-date`, `--amount` | `--currency` (default BRL)                                                          |
-| `update-installment`   | PUT      | `<key>` (arg), `--bill-key`, `--bank-account-key`, `--number`, `--due-date`, `--amount` | `--currency`, `--status`, `--realized-date`, `--realized-amount`, `--realized-currency` |
-| `delete-installment`   | DELETE   | `<key>` (argumento)                                        | (nenhum)                                                                             |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
+| `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--dry-run`, `--execute`                                                             |
+
+> NAO existem `create-installment`/`update-installment`/`delete-installment` —
+> nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
+> `installments`) e sao pagas via `realize`.
 | `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--farm-key`, `--entry-date`, `--currency`, `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
@@ -111,21 +127,16 @@ Relacionamentos-chave:
 aegro financial installments --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-03-01 --due-date-end 2026-04-01
 
-# Criar parcela de R$ 1.500 para lancamento existente
-aegro financial create-installment --bill-key bill::abc123 \
-  --bank-account-key bankAccount::def456 --due-date 2026-04-15 --amount 1500.00
+# Criar lancamento JA parcelado (parcelas nascem no create-bill)
+aegro financial create-bill --description "Adubo" --total-amount 3000 \
+  --cash-flow EXPENSE --payment-method INSTALLMENT --category "Insumos" \
+  --installments '[{"number":1,"dueDate":"2026-04-15","amount":{"currencyCode":"BRL","amount":1500}},{"number":2,"dueDate":"2026-05-15","amount":{"currencyCode":"BRL","amount":1500}}]'
 
-# Atualizar parcela (PUT total - todos os campos obrigatorios)
-aegro financial update-installment installment::ghi789 \
-  --bill-key bill::abc123 --bank-account-key bankAccount::def456 \
-  --number 1 --due-date 2026-04-15 --amount 2000.00 \
-  --status PAID --realized-date 2026-04-10
+# Corrigir um lancamento existente (PATCH: so os campos a alterar)
+aegro financial update-bill bill::abc123 --body '{"description":"Texto novo"}'
 
 # Realizar (pagar) multiplas parcelas em lote
 aegro financial realize --key installment::aaa --key installment::bbb
-
-# Excluir parcela pendente
-aegro financial delete-installment installment::ghi789
 ```
 
 ### 4.1.1 Insercao inteligente de contas (create-bill / create-bills)
@@ -307,29 +318,22 @@ aegro purchase-orders create-batch --from-file pedidos.json --env staging --comp
 
 ## 5. Gotchas de API
 
-### CRITICO: Formatos de valor monetario diferentes
+### Formato de valor monetario: use {"currencyCode", "amount"}
 
-O Aegro usa dois formatos distintos de valor monetario dependendo do recurso:
+A spec atual (Swagger 02/07/2026) unificou o objeto monetario em
+`MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` — bills, parcelas,
+contas bancarias e entradas de estoque. Historicamente a parcela aceitava
+`{"amount": X, "currency": "BRL"}` (legado, ainda pode funcionar). Regra
+pratica: **envie sempre `currencyCode`**; se receber 400, confira o formato.
+Ordem de compra e diferente: `currencyCode` e `grossAmount` sao campos na RAIZ
+do body (numeros simples nos itens), nao objetos aninhados.
 
-```
-Parcela (installment):    {"amount": 1500.00, "currency": "BRL"}
-                          campo "currency" (sem prefixo)
+### Parcelas: sem CRUD avulso na API
 
-Conta bancaria:           {"currencyCode": "BRL", "amount": 10000.00}
-                          campo "currencyCode" (com prefixo Code)
-
-Entrada de estoque:       {"amount": 500.00, "currencyCode": "BRL"}
-                          campo "currencyCode" (com prefixo Code)
-
-Ordem de compra body:     campo "currencyCode" no body raiz (nao aninhado)
-```
-
-Usar o formato errado resulta em erro HTTP 400.
-
-### update-installment e PUT total
-
-Nao e PATCH. Todos os campos obrigatorios devem ser enviados, inclusive os que nao mudaram:
-`key`, `billKey`, `bankAccountKey`, `number`, `dueDate`, `amount`.
+Nao existem endpoints de criar/atualizar/excluir parcela individual (so
+`filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
+(campo `installments`); correcoes via `update-bill` (PATCH) ou pelo app.
+Nao ha "unrealize" (desfazer pagamento).
 
 ### fin-categories create exige todos os 6 campos
 
@@ -414,13 +418,22 @@ aegro financial realize --key installment::aaa --key installment::bbb --key inst
 
 ## 7. Anti-padroes
 
-1. **Nao crie parcela sem verificar que o bill existe.** Sempre execute `aegro financial bill <key>` antes de `create-installment`. Se o bill nao existir, a API retorna 404.
+1. **Nao invente comandos de parcela.** `create-installment`,
+   `update-installment` e `delete-installment` NAO existem (nem no CLI nem na
+   API). Parcelas nascem no `create-bill` (campo `installments`); pagamento via
+   `realize`; correcao via `update-bill` (PATCH) ou pelo app.
 
-2. **Nao tente excluir parcela PAID.** Retorna HTTP 405. Primeiro atualize o status para NOT_PAID com `update-installment`, depois exclua.
+2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize. Realize e
+   irreversivel pela API — confirme antes de executar; correcao so pelo app.
 
-3. **Nao misture formatos de moeda.** Parcela usa `{"amount": X, "currency": "BRL"}`. Conta bancaria usa `{"currencyCode": "BRL", "amount": X}`. Verifique o formato correto antes de montar o body.
+3. **Nao misture formatos de moeda.** Envie `{"currencyCode": "BRL", "amount": X}`
+   (MoneyPublicResource unificado na spec atual). Em ordem de compra,
+   `currencyCode`/`grossAmount` sao campos na raiz do body.
 
-4. **Nao use PATCH mental no update-installment.** E PUT total. Envie TODOS os campos obrigatorios, mesmo os que nao mudaram. Busque a parcela atual com `aegro financial installment <key>` e reenviie os campos.
+4. **Nao use `cropProrateGroupKey` na raiz do bill.** E aceito e IGNORADO em
+   silencio. Apropriacao direta = `financialApportion` (type CROP_PRORATE +
+   cropKeys); apropriacao salva (grupo com percentuais) nao pode ser aplicada
+   via API — so leitura.
 
 5. **Nao associe lancamentos a categorias SYNTHETIC.** Somente ANALYTIC recebe lancamentos. Verifique o tipo com `aegro fin-categories get <key>`.
 
@@ -428,4 +441,4 @@ aegro financial realize --key installment::aaa --key installment::bbb --key inst
 
 7. **Verifique saldo antes de sugerir realize.** O realize nao valida saldo bancario. Confirme com o usuario que ha saldo suficiente na conta antes de marcar parcelas como pagas.
 
-8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas.
+8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
