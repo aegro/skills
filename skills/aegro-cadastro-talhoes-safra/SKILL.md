@@ -38,7 +38,7 @@ com escopo por fazenda).
 |---|---|---|
 | Criar talhao | `POST /pub/v1/glebes` | `{ name, area:{magnitude,unit}, tag?, group?, polygon? }` |
 | Previa do KML (parse, **nao persiste**) | `POST /pub/v1/glebes/kml/preview` | multipart `file=<arquivo.kml>` |
-| Criar safra (vinculando talhoes) | `POST /pub/v1/crops` | `{ type, name?, startDate?, endDate?, glebeKeys?[] }` |
+| Criar safra (vinculando talhoes) | `POST /pub/v1/crops` | `{ type, startDate, endDate, name?, glebeKeys?[] }` |
 
 O `kml/preview` devolve uma **lista no formato do corpo de `POST /pub/v1/glebes`**
 (name, area, polygon) — ou seja, os talhoes ja prontos para registrar. Nao ha
@@ -62,8 +62,8 @@ Fazenda (tenho a farmKey)
 2. CONFERIR os talhoes criados (nomes, areas, total) via GET
         |
 3. Criar a SAFRA
-   |  escolher o tipo (CropType), o periodo e vincular os talhoes
-   |  nome default "Tipo AA/BB" (ex.: "Soja 25/26"); periodo default 1 ano
+   |  escolher o tipo (CropType), informar inicio e fim, e vincular os talhoes
+   |  nome default "Tipo AA/BB" (ex.: "Soja 25/26"); datas (inicio/fim) obrigatorias
         |
 4. CONFERIR a safra e os vinculos (glebeKeys) via GET
 ```
@@ -112,8 +112,9 @@ corrija/recadastre antes de seguir.
   `"Tipo AA/BB"` a partir do tipo e dos anos de inicio/fim (ex.: `SOY` +
   2025->2026 = **"Soja 25/26"**; mesmo ano = "Soja 25"). Informe `name` so
   quando quiser um nome fora do padrao.
-- **`startDate`** / **`endDate`** (opcionais, ISO `yyyy-MM-dd`) — se omitidos,
-  `startDate` = hoje e `endDate` = `startDate` + **1 ano** (padrao Aegro).
+- **`startDate`** / **`endDate`** (**obrigatorios**, ISO `yyyy-MM-dd`) — o
+  periodo da safra (inicio e fim). Nao ha default nem inferencia: se faltar,
+  retorna **422**. (Convencao Aegro de ~1 ano fica a criterio de quem chama.)
 - **`glebeKeys`** — a lista de `id`s dos talhoes (do passo 2) a **vincular** a
   safra.
 
