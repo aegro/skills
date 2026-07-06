@@ -1,6 +1,6 @@
 ---
 name: aegro-cadastro-safra
-description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), pela API publica /pub/v1
+description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), usando a CLI aegro
 version: 0.1.0
 ---
 
@@ -8,9 +8,8 @@ version: 0.1.0
 
 ## Objetivo
 
-Criar uma **safra** vinculando **talhoes que ja existem** na fazenda. O trabalho
-e feito pela **API publica `/pub/v1`** (contexto de integration agent, com escopo
-por fazenda).
+Criar uma **safra** vinculando **talhoes que ja existem** na fazenda. Todas as
+operacoes sao feitas pela **CLI `aegro`**.
 
 ## A safra REUTILIZA talhoes existentes (nao cria talhoes)
 
@@ -21,7 +20,7 @@ por fazenda).
 > Soja 25/26).
 
 Portanto, **antes de criar a safra**, tenha os talhoes cadastrados e em maos:
-liste-os com `GET /pub/v1/glebes` e use os `id`s deles em `glebeKeys`. Se algum
+liste-os com `aegro glebes list` e use as `key`s deles em `--glebe-key`. Se algum
 talhao ainda nao existe, cadastre-o primeiro em **`/aegro-cadastro-talhoes`**
 (sem duplicar os que ja existem) e so entao crie a safra.
 
@@ -35,41 +34,54 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 
 ## Pre-requisitos
 
-- **Fazenda ja existe** e voce tem a `farmKey`.
-- **Talhoes ja cadastrados** (veja `/aegro-cadastro-talhoes`); tenha os `id`s.
-- Acesso a API com o escopo de escrita `WRITE_CROPS`. A fazenda no header
-  `Aegro-Farm-Key`; a chave no header `Aegro-Public-API-Key`.
+- **CLI `aegro`** configurada e **fazenda ativa** selecionada.
+- **Talhoes ja cadastrados** (veja `/aegro-cadastro-talhoes`); tenha as `key`s.
 
-## A API que a skill usa (`/pub/v1`)
+## Comandos da CLI
 
-| Acao | Endpoint | Corpo |
-|---|---|---|
-| Listar talhoes p/ vincular | `GET /pub/v1/glebes` | — |
-| Criar safra (vinculando talhoes) | `POST /pub/v1/crops` | `{ type, startDate, endDate, name?, glebeKeys?[] }` |
+| Acao | Comando |
+|---|---|
+| Listar talhoes p/ vincular | `aegro glebes list` |
+| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--name <nome>] [--glebe-key <key> ...]` |
+| Ver a safra criada | `aegro crops get <crop_key>` |
+
+Dica: `crops create` aceita `--dry-run` (mostra o que seria enviado, sem gravar)
+e `--execute`.
 
 ## Sequencia de Passos
 
 ### 1. Escolher os talhoes a vincular
 
-`GET /pub/v1/glebes` e selecione os talhoes da safra; guarde os `id`s deles. Use
-os talhoes **existentes** — nao crie novos aqui.
+```bash
+aegro glebes list
+```
+Selecione os talhoes da safra e guarde as `key`s. Use os talhoes **existentes** —
+nao crie novos aqui.
 
 ### 2. Criar a safra
 
-`POST /pub/v1/crops` com:
-- **`type`** (obrigatorio) — o `CropType` (ex.: `SOY`, `CORN`, `WHEAT`, ...).
-- **`startDate`** / **`endDate`** (**obrigatorios**, ISO `yyyy-MM-dd`) — inicio e
-  fim da safra. **Nao ha default nem inferencia**: se faltar, retorna **422**.
-  (A convencao Aegro de ~1 ano fica a criterio de quem chama.)
-- **`name`** (opcional) — se omitido, o backend deriva o **padrao Aegro**
+```bash
+aegro crops create --type SOY \
+  --start-date 2025-10-01 --end-date 2026-03-01 \
+  --glebe-key glebe::aaa --glebe-key glebe::bbb
+```
+- **`--type`** (obrigatorio) — o `CropType` (ex.: `SOY`, `CORN`, `WHEAT`, ...).
+- **`--start-date`** / **`--end-date`** (**obrigatorios**, `YYYY-MM-DD`) — inicio
+  e fim da safra. **Nao ha default nem inferencia**: se faltar, e erro. (A
+  convencao Aegro de ~1 ano fica a criterio de quem chama.)
+- **`--name`** (opcional) — se omitido, o backend deriva o **padrao Aegro**
   `"Tipo AA/BB"` do tipo + anos de inicio/fim (ex.: `SOY` + 2025->2026 =
-  **"Soja 25/26"**; mesmo ano = "Soja 25"). Informe `name` so para um nome fora
+  **"Soja 25/26"**; mesmo ano = "Soja 25"). Informe `--name` so para um nome fora
   do padrao.
-- **`glebeKeys`** — os `id`s dos **talhoes existentes** (passo 1) a **vincular**.
+- **`--glebe-key`** (repetivel) — as `key`s dos **talhoes existentes** (passo 1) a
+  **vincular**.
 
 ### 3. Conferir
 
-`GET /pub/v1/crops` e confirme nome, periodo e os talhoes vinculados.
+```bash
+aegro crops get <crop_key>
+```
+Confirme nome, periodo e os talhoes vinculados.
 
 ## Boas Praticas
 
@@ -77,16 +89,16 @@ os talhoes **existentes** — nao crie novos aqui.
    nao cria talhao.
 2. **Reutilize os mesmos talhoes entre safras** — a cada ano a safra nova
    vincula os talhoes existentes; nao recadastre.
-3. **Datas obrigatorias** — informe inicio e fim; faltando, 422.
-4. **Deixe o nome no padrao** — omita `name` para o "Soja 25/26" automatico,
+3. **Datas obrigatorias** — informe `--start-date` e `--end-date`.
+4. **Deixe o nome no padrao** — omita `--name` para o "Soja 25/26" automatico,
    exceto quando quiser um nome proprio.
-5. **Vincule os talhoes na criacao** (`glebeKeys`) — evita religar depois.
+5. **Vincule os talhoes na criacao** (`--glebe-key`) — evita religar depois.
 
 ## Limitacoes
 
 - A safra **nao cria talhao**; se um talhao faltar, cadastre em
   `/aegro-cadastro-talhoes` antes.
-- `type` deve ser um `CropType` valido.
+- `--type` deve ser um `CropType` valido.
 
 ## Proximos Workflows
 
