@@ -1,7 +1,7 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Lancamento Financeiro
@@ -41,9 +41,10 @@ nomes.
 - **Staging-first** (uso interno): lance com `--env staging`, confira na UI, e
   promova com `--env prod` rodando o mesmo arquivo. Nao sugira staging a clientes.
 
-Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). O fluxo manual
-de parcelas abaixo (`create-installment`) continua valido para ajustes finos de
-parcelamento em lancamentos existentes.
+Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). **Parcelas
+nascem no proprio `create-bill`** (campo `installments`) -- nao existe CRUD
+avulso de parcela na API. Para ajustar um lancamento existente, use
+`financial update-bill` (PATCH) ou o app.
 
 ## Fluxo de Decisao
 
@@ -92,24 +93,32 @@ Se nao encontrar, buscar subcategorias da categoria pai.
 ### 3. Buscar ou identificar empresa
 
 Buscar fornecedor (PROVIDER) para despesas ou cliente (CLIENT) para receitas.
-Se nao encontrar, informar que precisa cadastrar primeiro.
+A busca textual tem falso-negativo conhecido: se nao encontrar, **liste sem
+filtro antes de concluir que nao existe**. Nunca crie a empresa por conta
+propria -- confirme com o usuario (e nao cadastre filial como empresa nova se
+a matriz ja existe; unifique).
 
 ### 4. Selecionar conta bancaria
 
 Listar contas bancarias, identificar a padrao e verificar saldo disponivel.
 
-### 5. Localizar ou criar bill
+### 5. Verificar duplicidade
 
-Se for parcela adicional, buscar a bill existente e verificar status.
-Para nova transacao, identificar a bill correta.
+Antes de criar, filtrar lancamentos existentes da mesma empresa no periodo
+(mesmo valor/vencimento). Nota reenviada ou planilha relancada e causa comum
+de lancamento duplicado -- em caso de suspeita, mostrar os candidatos ao
+usuario antes de prosseguir.
 
-### 6. Criar parcela(s)
+### 6. Criar o lancamento com parcelas
 
-Criar parcelas com bill_key, bank_account_key, vencimento e valor.
+Um unico `create-bill` com o campo `installments` -- as parcelas nascem junto
+com a bill e nao podem ser criadas avulsas depois. Definir vencimento, valor e
+conta bancaria de cada parcela no proprio create.
 
 ### 7. Confirmar lancamento
 
-Buscar parcelas da bill para verificar que tudo foi criado corretamente.
+Buscar parcelas da bill (`financial installments --bill-key ...`) para
+verificar que tudo foi criado corretamente.
 
 ## Fluxos Especificos
 
@@ -131,6 +140,22 @@ Buscar parcelas da bill para verificar que tudo foi criado corretamente.
 
 1. Parcela unica com vencimento = data do pagamento
 2. Pode ser realizada imediatamente apos criacao
+3. **Realize e irreversivel via API** (nao ha "unrealize") -- confirmar com o
+   usuario antes de marcar como paga
+
+### Conta em Moeda Estrangeira (USD)
+
+Bill em moeda estrangeira **nao e suportada via API** (currencyCode e coagido
+para BRL em silencio). Lancar o valor **ja convertido em BRL** e registrar
+moeda e cotacao na descricao -- ou orientar o lancamento pelo app.
+Detalhes em `/aegro-financeiro` (secao 5).
+
+### Custo Apropriado a Safra
+
+Para o lancamento entrar no custo da safra, usar apropriacao direta:
+`--apportion-crop "Safra X"` (repetivel). Com multiplas safras, o rateio e
+automatico e proporcional a area. Rateio com percentuais pre-definidos
+(apropriacao salva) nao pode ser aplicado via API -- so pelo app.
 
 ## Formato de Resposta
 
@@ -164,6 +189,9 @@ Buscar parcelas da bill para verificar que tudo foi criado corretamente.
 3. **Usar conta bancaria correta** -- separa operacional de investimento
 4. **Descrever a transacao** -- facilita auditoria futura
 5. **Conferir parcelamento** -- evita surpresas no fluxo de caixa
+6. **Checar duplicidade antes de lancar** -- nota reenviada gera bill dobrada
+7. **Anexos sao manuais** -- a API nao anexa arquivos ao lancamento; orientar
+   o usuario a anexar o documento pelo app apos o lancamento
 
 ## Proximos Workflows
 
