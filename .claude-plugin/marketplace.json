@@ -1,4 +1,9 @@
 {
+  "name": "aegro-skills",
+  "owner": {
+    "name": "Aegro Engineering",
+    "url": "https://github.com/aegro/skills"
+  },
   "plugins": [
     {
       "name": "aegro-skills",
