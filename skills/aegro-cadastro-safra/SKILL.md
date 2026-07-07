@@ -43,7 +43,7 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 |---|---|
 | Listar safras existentes (evitar duplicar) | `aegro crops list` |
 | Listar talhoes p/ vincular | `aegro glebes list` |
-| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--name <nome>] [--glebe-key <key> ...]` |
+| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...]` |
 | Ver a safra criada | `aegro crops get <crop_key>` |
 
 Dica: `crops create` aceita `--dry-run` (mostra o que seria enviado, sem gravar)
@@ -66,18 +66,17 @@ nao crie novos aqui.
 ### 2. Criar a safra
 
 ```bash
-aegro crops create --type SOY \
+aegro crops create --type SOY --name "Soja 25/26" \
   --start-date 2025-10-01 --end-date 2026-03-01 \
   --glebe-key glebe::aaa --glebe-key glebe::bbb
 ```
 - **`--type`** (obrigatorio) — o `CropType` (ex.: `SOY`, `CORN`, `WHEAT`, ...).
+- **`--name`** (**obrigatorio**) — o nome da safra. Siga a **convencao Aegro
+  "Tipo AA/BB"** (ex.: Soja + 2025->2026 = **"Soja 25/26"**; mesmo ano = "Soja
+  25"). O backend nao deriva nem traduz: o nome que voce passar e o que fica.
 - **`--start-date`** / **`--end-date`** (**obrigatorios**, `YYYY-MM-DD`) — inicio
   e fim da safra. **Nao ha default nem inferencia**: se faltar, e erro. (A
   convencao Aegro de ~1 ano fica a criterio de quem chama.)
-- **`--name`** (opcional) — se omitido, o backend deriva o **padrao Aegro**
-  `"Tipo AA/BB"` do tipo + anos de inicio/fim (ex.: `SOY` + 2025->2026 =
-  **"Soja 25/26"**; mesmo ano = "Soja 25"). Informe `--name` so para um nome fora
-  do padrao.
 - **`--glebe-key`** (repetivel) — as `key`s dos **talhoes existentes** (passo 1) a
   **vincular**.
 
@@ -95,8 +94,8 @@ Confirme nome, periodo e os talhoes vinculados.
 2. **Reutilize os mesmos talhoes entre safras** — a cada ano a safra nova
    vincula os talhoes existentes; nao recadastre.
 3. **Datas obrigatorias** — informe `--start-date` e `--end-date`.
-4. **Deixe o nome no padrao** — omita `--name` para o "Soja 25/26" automatico,
-   exceto quando quiser um nome proprio.
+4. **Nomeie no padrao** — `--name` e obrigatorio; siga a convencao "Soja 25/26"
+   (Tipo AA/BB). O backend nao gera nome automatico.
 5. **Vincule os talhoes na criacao** (`--glebe-key`) — evita religar depois.
 
 ## Limitacoes
