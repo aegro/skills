@@ -41,6 +41,7 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 
 | Acao | Comando |
 |---|---|
+| Listar safras existentes (evitar duplicar) | `aegro crops list` |
 | Listar talhoes p/ vincular | `aegro glebes list` |
 | Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--name <nome>] [--glebe-key <key> ...]` |
 | Ver a safra criada | `aegro crops get <crop_key>` |
@@ -52,8 +53,12 @@ e `--execute`.
 
 ### 1. Escolher os talhoes a vincular
 
+Antes, confira se a safra ja nao existe (evite duplicar): `aegro crops list`.
+Depois liste os talhoes:
+
 ```bash
-aegro glebes list
+aegro crops list        # a safra ja existe? entao nao recrie
+aegro glebes list       # talhoes a vincular
 ```
 Selecione os talhoes da safra e guarde as `key`s. Use os talhoes **existentes** —
 nao crie novos aqui.
