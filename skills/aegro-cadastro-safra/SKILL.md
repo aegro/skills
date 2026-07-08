@@ -43,7 +43,7 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 |---|---|
 | Listar safras existentes (evitar duplicar) | `aegro crops list` |
 | Listar talhoes p/ vincular | `aegro glebes list` |
-| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...]` |
+| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...] [--measuring-unit <un>] [--stock-location-key <key>]` |
 | Ver a safra criada | `aegro crops get <crop_key>` |
 
 Dica: `crops create` aceita `--dry-run` (mostra o que seria enviado, sem gravar)
@@ -79,6 +79,12 @@ aegro crops create --type SOY --name "Soja 25/26" \
   convencao Aegro de ~1 ano fica a criterio de quem chama.)
 - **`--glebe-key`** (repetivel) — as `key`s dos **talhoes existentes** (passo 1) a
   **vincular**.
+- **`--measuring-unit`** (opcional) — unidade de medida da safra (ex.: `"sc 60Kg"`,
+  `"kg"`). **Se omitido, usa a unidade padrao do tipo de cultura** (ex.: SOY →
+  sacas de 60kg).
+- **`--stock-location-key`** (opcional) — local de estoque (ex.:
+  `stockLocation::<id>`). **Se omitido, usa o estoque padrao da fazenda.** Se
+  informar um local que nao e da fazenda, retorna 422.
 
 ### 3. Conferir
 
