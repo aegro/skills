@@ -1,7 +1,7 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Lancamento Financeiro
@@ -66,14 +66,21 @@ PROVIDER             CLIENT
    |                      |
    +---- Definir ----+
          |
-    Quantas parcelas?
-    /              \
-UMA               VARIAS
-(a vista)         (parcelado)
-   |                  |
-Parcela unica     Dividir valor
-venc = hoje       e vencimentos
+    Como sera o pagamento?
+    /        |          \
+JA PAGO    A VENCER    SEM PAGAMENTO
+(a vista)  (1..N parc)  (so custo/DRE)
+   |          |             |
+PROMPT     INSTALLMENT   NO_PAYMENT
+parcela    parcelas em   sem parcela,
+unica JA   --installments sem conta
+PAGA       (NOT_PAID)    bancaria
 ```
+
+Atencao: `PROMPT` marca a parcela como **paga na criacao** (irreversivel via
+API). Conta a vencer — mesmo "a vista" com vencimento futuro — e `INSTALLMENT`
+com 1 parcela. `INSTALLMENT` exige `--installments`; `NO_PAYMENT` nao gera
+parcela nem movimenta caixa.
 
 ## Sequencia de Passos
 
@@ -81,14 +88,28 @@ venc = hoje       e vencimentos
 
 Perguntar ao usuario:
 - Despesa (conta a pagar) ou receita (conta a receber)?
+- **Ja foi pago (a vista) ou esta a vencer?** Define o payment-method: PROMPT
+  (parcela unica ja paga), INSTALLMENT (a vencer, 1..N parcelas) ou NO_PAYMENT
+  (sem movimentacao de caixa).
 - Valor total e quantas parcelas?
 - Data de vencimento (ou primeira parcela)?
+- A conta tem itens (produtos da nota)? Se sim, categorizar POR ITEM (passo 2).
 
-### 2. Buscar categoria financeira
+### 2. Buscar categoria financeira (por item, quando houver itens)
 
 Buscar categorias ANALYTIC do tipo correto (DEBTOR ou CREDITOR).
 A categoria impacta diretamente o DRE -- escolher com cuidado.
 Se nao encontrar, buscar subcategorias da categoria pai.
+
+**Conta com itens**: cada item pode (e deve) ter categoria propria via
+`inputs`. **Puxe a categoria ja cadastrada do item quando existir**:
+`aegro fin-categories subcategories <categoryKey>` lista os elementos
+vinculados a cada categoria candidata (a API nao le na direcao
+elemento->categoria); lancamentos anteriores do mesmo item/fornecedor tambem
+revelam a categoria usada. So use a categoria unica da bill para item sem
+cadastro — confirmando com o usuario. Atencao: com `inputs`, o total da bill
+vira a SOMA dos itens (o total enviado e ignorado). Detalhes em
+`/aegro-financeiro` (regra 12 e secao 4.1.1).
 
 ### 3. Buscar ou identificar empresa
 
@@ -136,12 +157,31 @@ verificar que tudo foi criado corretamente.
 3. Empresa: cliente (CLIENT)
 4. Parcelas conforme contrato de venda
 
-### Pagamento a Vista
+### Pagamento a Vista (ja pago)
 
-1. Parcela unica com vencimento = data do pagamento
-2. Pode ser realizada imediatamente apos criacao
-3. **Realize e irreversivel via API** (nao ha "unrealize") -- confirmar com o
-   usuario antes de marcar como paga
+1. `--payment-method PROMPT`, sem `--installments`: a API gera **parcela unica
+   JA PAGA** automaticamente (vencimento = data do lancamento)
+2. **Isso equivale a um realize, que e irreversivel via API** (nao ha
+   "unrealize") -- confirmar com o usuario que o pagamento de fato ocorreu
+3. Se a conta e "a vista" mas ainda vai ser paga (vencimento futuro), use
+   `INSTALLMENT` com 1 parcela NOT_PAID e realize depois
+
+### Sem Pagamento (so custo/DRE)
+
+1. `--payment-method NO_PAYMENT`: nenhuma parcela e criada e a conta bancaria
+   e descartada -- o lancamento nao afeta o fluxo de caixa
+2. Usar para registrar custo/receita contabil sem movimentacao financeira
+   (ex.: consumo interno, bonificacao); em duvida, confirmar com o usuario
+
+### Conta com Itens (categoria por item)
+
+1. Montar `--inputs` com um item por produto da nota: `elementKey` exato,
+   quantidade, valores e `financialCategory` propria de cada item
+2. Puxar a categoria ja cadastrada de cada item quando existir (passo 2);
+   perguntar so os itens sem categoria
+3. Conferir que a soma dos itens = total da nota -- **a API grava como total a
+   soma dos itens**, ignorando o total enviado (frete/desconto fora dos itens
+   somem em silencio)
 
 ### Conta em Moeda Estrangeira (USD)
 
@@ -192,6 +232,12 @@ automatico e proporcional a area. Rateio com percentuais pre-definidos
 6. **Checar duplicidade antes de lancar** -- nota reenviada gera bill dobrada
 7. **Anexos sao manuais** -- a API nao anexa arquivos ao lancamento; orientar
    o usuario a anexar o documento pelo app apos o lancamento
+8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
+   categoria ja cadastrada de cada item; categoria unica na bill distorce o
+   DRE por categoria
+9. **Campo "Produtor" nao sai via API** -- se o cliente organiza os
+   lancamentos por produtor rural, avisar ANTES de lancar em massa: o campo
+   nao existe na API publica e o ajuste e manual, pelo app, em cada lancamento
 
 ## Proximos Workflows
 
