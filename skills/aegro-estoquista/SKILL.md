@@ -157,7 +157,9 @@ aegro stock transfer --element-key element::abc123 \
 | `create-seed`             | POST     | `--name`, `--type`, `--unit`       | `--manufacturer`, `--observations`         |
 | `create-item`             | POST     | `--name`, `--type`, `--unit`       | `--manufacturer`, `--observations`         |
 | `create-service`          | POST     | `--name`, `--unit`                 | (nenhum)                                   |
-| `set-categories <key>`    | POST     | `element_key` (argumento)          | `--revenue-category-key`, `--expense-category-key` |
+| `get-categories <key>`    | GET      | `element_key` (argumento)          | `--output` (leitura segura; NAO altera nada) |
+| `set-categories <key>`    | PATCH    | `element_key` (argumento)          | `--revenue-category-key`, `--expense-category-key`, `--clear-revenue`, `--clear-expense` (merge parcial) |
+| `financial-categories <type>` | POST | `category_type` (argumento: `expense`\|`revenue`) | `--element-key` (repetivel), `--page`, `--output` |
 
 **Exemplos reais:**
 
@@ -192,6 +194,13 @@ aegro elements create-item --name "Sacaria 60kg" --type GENERAL --unit UN
 aegro elements set-categories element::abc123 \
   --revenue-category-key financialCategory::rev1 \
   --expense-category-key financialCategory::exp1
+
+# Consultar a categoria financeira de despesa dos elementos (todos ou filtrando por elemento)
+aegro elements financial-categories expense
+aegro elements financial-categories expense --element-key element::abc123
+# Categoria de receita de elementos especificos
+aegro elements financial-categories revenue \
+  --element-key element::abc123 --element-key element::def456
 ```
 
 ### 4.3 catalogs (catalogos de referencia)
@@ -234,18 +243,21 @@ Isso e DIFERENTE do formato da parcela financeira (`{"amount": X, "currency": "B
 
 A criacao de sementes via API retorna erro 500 intermitentemente. Este e um bug conhecido da API Aegro. Workaround: criar a semente pela interface web do Aegro e depois consultar via CLI com `aegro elements list --category SEED`.
 
-### set-categories usa formato aninhado
+### Ler e atualizar categorias do elemento (merge parcial, NUNCA destrutivo)
 
-O body de `set-categories` nao e uma lista simples de keys. E um objeto aninhado:
-```json
-{
-  "associations": {
-    "revenueFinancialCategory": {"key": "financialCategory::abc"},
-    "expenseFinancialCategory": {"key": "financialCategory::def"}
-  }
-}
+- **Ler:** use `aegro elements get-categories <key>` (GET, read-only). **Nunca** use `set-categories` so para "ver" o estado — antes era o unico jeito de inspecionar e podia zerar dados sem querer.
+- **Atualizar:** `set-categories` faz **merge parcial (PATCH)** — tocar so a receita NAO apaga a despesa (e vice-versa). Omitir um lado mantem o valor atual. Para limpar um lado explicitamente use `--clear-revenue` / `--clear-expense`.
+- **Confira pelo retorno:** valide o estado gravado pelos VALORES retornados, nao so pelo status.
+- **Regra CREDITOR/DEBTOR:** receita exige categoria ANALYTIC/CREDITOR; despesa exige ANALYTIC/DEBTOR. Violar retorna `422`. Confira o `operationType` da categoria (`aegro fin-categories get <key>`) antes de associar.
+
+```bash
+# Ler antes de mexer
+aegro elements get-categories element::abc123
+# Definir so a despesa (nao mexe na receita)
+aegro elements set-categories element::abc123 --expense-category-key financialCategory::exp1
+# Limpar a receita explicitamente
+aegro elements set-categories element::abc123 --clear-revenue
 ```
-Ambos os campos sao opcionais, mas pelo menos um deve ser fornecido.
 
 ### Transfer usa endpoint generico
 
