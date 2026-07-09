@@ -86,6 +86,12 @@ aegro crops create --type SOY --name "Soja 25/26" \
   `stockLocation::<id>`). **Se omitido, usa o estoque padrao da fazenda.** Se
   informar um local que nao e da fazenda, retorna 422.
 
+> **Descontos de colheita:** a safra **herda automaticamente os descontos padrao**
+> quando voce nao os informa (o servidor resolve, nao a CLI): se ja existe uma
+> safra do mesmo tipo, copia os descontos dela; senao, aplica os descontos padrao
+> daquele tipo de cultura (umidade, impureza, etc.). Nao ha flag pra isso no
+> `crops create` — e feito no serv-core na criacao.
+
 ### 3. Conferir
 
 ```bash
