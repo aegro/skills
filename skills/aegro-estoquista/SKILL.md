@@ -84,9 +84,9 @@ Relacionamentos-chave:
    - Itens: `POST /pub/v1/elements/items` (requer `--type`)
    - Servicos: `POST /pub/v1/elements/services` (sem `--type`, sem `--manufacturer`)
 
-6. **set-categories e ponte entre dominios**: Vincula elemento a categorias financeiras. Formato do body:
+6. **set-categories e ponte entre dominios**: Vincula elemento a categorias financeiras via **PATCH (merge parcial)**. O body e **flat** (nao aninhado): cada campo aceita a key direto; **omitir mantem** o valor atual, **`null` limpa** aquele lado (nunca zera o outro). Use `--clear-revenue`/`--clear-expense` na CLI para limpar.
    ```json
-   {"associations": {"revenueFinancialCategory": {"key": "financialCategory::abc"}, "expenseFinancialCategory": {"key": "financialCategory::def"}}}
+   {"revenueFinancialCategory": "financialCategory::abc", "expenseFinancialCategory": "financialCategory::def"}
    ```
 
 7. **Catalogos sao somente leitura**: Nao e possivel criar, editar ou excluir elementos de catalogo. Use-os como referencia para criar seus proprios elementos.

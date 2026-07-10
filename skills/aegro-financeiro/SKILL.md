@@ -153,12 +153,14 @@ aegro fin-categories create --description "Defensivos Agricolas" --type ANALYTIC
 aegro fin-categories subcategories financialCategory::xyz
 ```
 
-**Categoria financeira dos elementos (define o rateio de custo nos lancamentos):**
+**Categoria financeira dos elementos (define a classificacao de custo nos lancamentos):**
 
-A categoria financeira associada a cada elemento e o que determina o rateio de custo
-dos produtos/insumos nos lancamentos financeiros (bills). Para consultar essa associacao
-por elemento, use `elements financial-categories <type>` (dominio estoque, mas essencial
-no financeiro para conferir/auditar como cada insumo sera classificado no lancamento):
+A categoria financeira associada a cada elemento e o que determina a **classificacao de custo**
+dos produtos/insumos nos lancamentos financeiros (bills) — ou seja, em qual categoria o custo
+daquele insumo cai. (Nao confundir com rateio/apropriacao, que e a distribuicao do custo entre
+safras/talhoes — CROP_PRORATE.) Para consultar essa associacao por elemento, use
+`elements financial-categories <type>` (dominio estoque, mas essencial no financeiro para
+conferir/auditar como cada insumo sera classificado no lancamento):
 
 | Comando                       | Tipo | Parametros obrigatorios                    | Parametros opcionais                          |
 |-------------------------------|------|--------------------------------------------|-----------------------------------------------|
@@ -167,7 +169,7 @@ no financeiro para conferir/auditar como cada insumo sera classificado no lancam
 | `elements set-categories <key>` | PATCH | `element_key` (argumento) | `--revenue-category-key`, `--expense-category-key`, `--clear-revenue`, `--clear-expense` — merge parcial |
 
 ```bash
-# Lista em massa: categoria de despesa de cada elemento (rateio nos lancamentos de despesa)
+# Lista em massa: categoria de despesa de cada elemento (classificacao nos lancamentos de despesa)
 aegro elements financial-categories expense
 
 # Conferir a categoria de despesa de insumos especificos antes de lancar
@@ -180,7 +182,7 @@ aegro elements get-categories element::abc123
 aegro elements set-categories element::abc123 --expense-category-key financialCategory::exp1
 ```
 
-**Regras/armadilhas ao definir o rateio:**
+**Regras/armadilhas ao definir a classificacao:**
 - Receita exige categoria **ANALYTIC/CREDITOR**; despesa exige **ANALYTIC/DEBTOR** (violar = `422`). Confira com `aegro fin-categories get <key>` antes.
 - `set-categories` faz **merge parcial** (PATCH): tocar so um lado nao apaga o outro; para limpar use `--clear-revenue`/`--clear-expense`. **Nunca** use `set-categories` para "ler" — para inspecionar use `get-categories`.
 - Confira o estado gravado pelos **valores retornados**, nao so pelo status HTTP.
