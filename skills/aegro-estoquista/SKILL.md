@@ -85,6 +85,7 @@ Relacionamentos-chave:
    - Servicos: `POST /pub/v1/elements/services` (sem `--type`, sem `--manufacturer`)
 
 6. **set-categories e ponte entre dominios**: Vincula elemento a categorias financeiras via **PATCH (merge parcial)**. O body e **flat** (nao aninhado): cada campo aceita a key direto; **omitir mantem** o valor atual, **`null` limpa** aquele lado (nunca zera o outro). Use `--clear-revenue`/`--clear-expense` na CLI para limpar.
+
    ```json
    {"revenueFinancialCategory": "financialCategory::abc", "expenseFinancialCategory": "financialCategory::def"}
    ```
