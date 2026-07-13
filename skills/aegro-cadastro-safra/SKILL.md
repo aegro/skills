@@ -34,6 +34,8 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 
 ## Pre-requisitos
 
+- **Carregue antes o domain skill `/aegro-agronomo`** (dominio de safras e
+  talhoes) — segue o padrao das skills de workflow do Aegro.
 - **CLI `aegro`** configurada e **fazenda ativa** selecionada.
 - **Talhoes ja cadastrados** (veja `/aegro-cadastro-talhoes`); tenha as `key`s.
 
@@ -62,6 +64,11 @@ aegro glebes list       # talhoes a vincular
 ```
 Selecione os talhoes da safra e guarde as `key`s. Use os talhoes **existentes** —
 nao crie novos aqui.
+
+> **`crops list` e `glebes list` sao paginados (50 por pagina).** Antes de
+> concluir que a safra "nao existe" ou que faltam talhoes, **pagine ate esgotar**
+> (`--page 2`, `--page 3`... ate a pagina vir vazia). Em fazendas maiores, olhar
+> so a pagina 1 gera safra duplicada ou deixa talhoes de fora do vinculo.
 
 ### 2. Criar a safra
 

@@ -41,6 +41,8 @@ reutilize.
 
 ## Pre-requisitos
 
+- **Carregue antes o domain skill `/aegro-agronomo`** (dominio de talhoes e
+  safras) — segue o padrao das skills de workflow do Aegro.
 - **CLI `aegro`** configurada e uma **fazenda ativa** selecionada (a CLI resolve
   a fazenda e a credencial).
 - Saber a **unidade de area da fazenda** (`ha` ou `alq`): as areas informadas
@@ -97,6 +99,16 @@ aegro glebes list
 Esta e a base para **nao duplicar**: veja quais talhoes a fazenda ja tem (nome,
 area, `key`). As `key`s serao usadas depois para vincular a safra.
 
+> **A listagem e paginada (50 talhoes por pagina).** Se a fazenda tiver mais de
+> 50 talhoes, a pagina 1 **nao** mostra todos. Percorra `--page 2`, `--page 3`...
+> **ate a pagina vir vazia** e so entao conclua a comparacao — senao a dedup fura
+> e voce recria talhoes que ja existem:
+>
+> ```bash
+> aegro glebes list --page 1
+> aegro glebes list --page 2   # ... ate a pagina vir vazia
+> ```
+
 ### 2. Cadastrar apenas os talhoes que faltam
 
 **Caminho A — KML. Fluxo: previa -> comparar -> criar so os novos.**
@@ -138,7 +150,8 @@ a safra.
 ## Boas Praticas
 
 1. **Sempre `aegro glebes list` antes de criar** — dedup e a regra #1; talhao
-   existe uma vez e e reutilizado pelas safras.
+   existe uma vez e e reutilizado pelas safras. Em fazendas grandes, **pagine
+   ate esgotar** (`--page 2`, `--page 3`...): a lista traz so 50 por pagina.
 2. **KML antes de manual** quando existe — menos digitacao; mas ainda compare com
    os existentes antes de criar.
 3. **Area na unidade da fazenda** — a CLI nao adivinha `ha` vs `alq` (`--area-unit`).
