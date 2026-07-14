@@ -153,6 +153,40 @@ aegro fin-categories create --description "Defensivos Agricolas" --type ANALYTIC
 aegro fin-categories subcategories financialCategory::xyz
 ```
 
+**Categoria financeira dos elementos (define a classificacao de custo nos lancamentos):**
+
+A categoria financeira associada a cada elemento e o que determina a **classificacao de custo**
+dos produtos/insumos nos lancamentos financeiros (bills) — ou seja, em qual categoria o custo
+daquele insumo cai. (Nao confundir com rateio/apropriacao, que e a distribuicao do custo entre
+safras/talhoes — CROP_PRORATE.) Para consultar essa associacao por elemento, use
+`elements financial-categories <type>` (dominio estoque, mas essencial no financeiro para
+conferir/auditar como cada insumo sera classificado no lancamento):
+
+| Comando                       | Tipo | Parametros obrigatorios                    | Parametros opcionais                          |
+|-------------------------------|------|--------------------------------------------|-----------------------------------------------|
+| `elements financial-categories <type>` | POST | `type` (argumento: `expense`\|`revenue`) | `--element-key` (repetivel), `--page`, `--output` — lista em massa |
+| `elements get-categories <key>` | GET | `element_key` (argumento) | `--output` — leitura segura de UM elemento |
+| `elements set-categories <key>` | PATCH | `element_key` (argumento) | `--revenue-category-key`, `--expense-category-key`, `--clear-revenue`, `--clear-expense` — merge parcial |
+
+```bash
+# Lista em massa: categoria de despesa de cada elemento (classificacao nos lancamentos de despesa)
+aegro elements financial-categories expense
+
+# Conferir a categoria de despesa de insumos especificos antes de lancar
+aegro elements financial-categories expense --element-key element::abc123 --element-key element::def456
+
+# Ler (read-only) a associacao de UM elemento
+aegro elements get-categories element::abc123
+
+# Definir a categoria de despesa de um elemento (merge: nao mexe na receita)
+aegro elements set-categories element::abc123 --expense-category-key financialCategory::exp1
+```
+
+**Regras/armadilhas ao definir a classificacao:**
+- Receita exige categoria **ANALYTIC/CREDITOR**; despesa exige **ANALYTIC/DEBTOR** (violar = `422`). Confira com `aegro fin-categories get <key>` antes.
+- `set-categories` faz **merge parcial** (PATCH): tocar so um lado nao apaga o outro; para limpar use `--clear-revenue`/`--clear-expense`. **Nunca** use `set-categories` para "ler" — para inspecionar use `get-categories`.
+- Confira o estado gravado pelos **valores retornados**, nao so pelo status HTTP.
+
 ### 4.3 bank-accounts (contas bancarias)
 
 | Comando           | Tipo     | Parametros obrigatorios | Parametros opcionais                                                                                                   |
