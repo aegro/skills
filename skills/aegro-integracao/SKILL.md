@@ -30,7 +30,9 @@ usuário quer fazer, e salvando a chave na memória da CLI.
    use `ALL` se o usuário pedir integração total. Use a tabela abaixo.
 3. Descubra os escopos válidos no ambiente: `aegro integration-agents authorizations`.
 4. Crie: `aegro integration-agents create -n "<rótulo>" -a <AUTH> [-a <AUTH> ...]`
-   (ou `--scope read|write|all`), com `--expires YYYY-MM-DD` se fizer sentido.
+   (ou `--scope read|write|all`). **`--expires YYYY-MM-DD` é obrigatória** e
+   deve ser < 1 ano; se omitida a CLI usa 7 dias por padrão (e pergunta em modo
+   interativo). Prefira janelas curtas.
 5. **Confirme** "chave criada e salva na memória" **sem** exibir o segredo.
    NÃO use `--show` nem repita o valor da chave na conversa.
 6. Para auditar/revogar: `aegro integration-agents list` / `... revoke <key> --yes`.
