@@ -39,6 +39,7 @@ aegro skills install
 - `aegro-agronomo`
 - `aegro-analise-rentabilidade`
 - `aegro-cadastro-patrimonio`
+- `aegro-conciliacao-bancaria`
 - `aegro-estoquista`
 - `aegro-fechamento-safra`
 - `aegro-financeiro`
