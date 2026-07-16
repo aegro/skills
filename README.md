@@ -1,6 +1,6 @@
 # Aegro Skills — Claude Code Plugin
 
-16 AI skills for [Aegro](https://aegro.com.br) agricultural management.
+17 AI skills for [Aegro](https://aegro.com.br) agricultural management.
 
 This repository is the canonical source for public Aegro CLI skills. The
 `aegro` PyPI package embeds a generated snapshot of this `skills/` directory so
@@ -41,6 +41,7 @@ aegro skills install
 - `aegro-cadastro-patrimonio`
 - `aegro-cadastro-safra`
 - `aegro-cadastro-talhoes`
+- `aegro-conciliacao-bancaria`
 - `aegro-estoquista`
 - `aegro-fechamento-safra`
 - `aegro-financeiro`

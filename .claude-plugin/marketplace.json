@@ -7,8 +7,8 @@
   "plugins": [
     {
       "name": "aegro-skills",
-      "description": "16 AI skills for Aegro agricultural management",
-      "version": "0.6.0",
+      "description": "17 AI skills for Aegro agricultural management",
+      "version": "0.6.1",
       "path": "."
     }
   ]
