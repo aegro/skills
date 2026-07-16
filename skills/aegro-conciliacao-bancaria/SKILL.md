@@ -47,7 +47,7 @@ obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
 
 ## 2. Fluxo
 
-```
+```text
 1. Selecionar conta        -> aegro farms select / (contexto); pegar a key bankAccount::...
 2. Importar OFX            -> bank-reconciliation import-ofx --execute
 3. Listar entradas PENDING -> bank-reconciliation entries
@@ -93,7 +93,7 @@ Nao jogue todas as bandas de uma vez. Comece **estreito** (alta confianca) e
 | Degrau | Banda (valor / data) | Postura |
 |---|---|---|
 | 🟢 Verde | exato / exata, **1** candidato, fornecedor coerente | lote unico, `confirm` direto |
-| 🟢 Verde-data | **valor exato** / ±3 dias | lote, `confirm` direto (so a data liquidou fora) |
+| 🟢 Verde-data | **valor exato** / ±3 dias | lote, `confirm` direto se o movimento ja existe (so a data liquidou fora); parcela NAO PAGA → `realize`/`settle` antes (§6) |
 | 🟡 Amarelo | ±10% valor / ±3–7 dias | item-a-item; diferenca costuma ser **desconto/juros** → `settle` antes de conciliar |
 | 🟠 Largo | ±10% / ±15 dias | so sob pedido; **alerta de falso-positivo** (afrouxar valor gera par semanticamente errado) |
 | 🔴 Sem match | fora da banda, ou fornecedor diverge | criar lancamento/transferencia (§10), ou em ultimo caso `ignore` |
@@ -189,7 +189,7 @@ Para cada entrada do extrato:
 - **Data:** `[data - diasAtras, data + diasFrente]` — comece **±0**, alargue ate ±15.
 - **Fluxo:** OUTFLOW se `v < 0`, senao INFLOW. **Conta:** a mesma da entrada.
 
-```
+```text
 candidates --account bankAccount::<id> --start-date <d-> --end-date <d+> \
   --min-amount <min> --max-amount <max> --flow <INFLOW|OUTFLOW>
 ```
