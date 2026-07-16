@@ -293,8 +293,9 @@ Exemplo de `contas.json`:
 > vinculados** a categoria — nao subcategorias (direcao categoria->elementos).
 > Para a direcao oposta (a categoria de um elemento), use
 > `aegro elements financial-categories <expense|revenue>` ou
-> `aegro elements get-categories <elementKey>` (ver 4.1.1). Para navegar a
-> hierarquia de categorias, use `list` e o `parentKey`/`code` de cada uma.
+> `aegro elements get-categories <elementKey>` (ver a subsecao "Categoria
+> financeira dos elementos" abaixo). Para navegar a hierarquia de categorias,
+> use `list` e o `parentKey`/`code` de cada uma.
 
 **Exemplos reais:**
 
