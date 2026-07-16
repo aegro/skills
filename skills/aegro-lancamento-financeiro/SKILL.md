@@ -102,14 +102,14 @@ A categoria impacta diretamente o DRE -- escolher com cuidado.
 Se nao encontrar, buscar subcategorias da categoria pai.
 
 **Conta com itens**: cada item pode (e deve) ter categoria propria via
-`inputs`. **Puxe a categoria ja cadastrada do item quando existir**:
-`aegro fin-categories subcategories <categoryKey>` lista os elementos
-vinculados a cada categoria candidata (a API nao le na direcao
-elemento->categoria); lancamentos anteriores do mesmo item/fornecedor tambem
-revelam a categoria usada. So use a categoria unica da bill para item sem
-cadastro — confirmando com o usuario. Atencao: com `inputs`, o total da bill
-vira a SOMA dos itens (o total enviado e ignorado). Detalhes em
-`/aegro-financeiro` (regra 12 e secao 4.1.1).
+`inputs`. **Puxe a categoria ja cadastrada do item quando existir** — a API
+publica le a categoria direto pelo elemento (CLI >= 0.11.0):
+`aegro elements financial-categories expense --element-key <K1> --element-key <K2> ...`
+(ou `revenue`) traz a categoria de cada item numa unica consulta; para um item
+so, `aegro elements get-categories <elementKey>`. So use a categoria unica da
+bill quando o item vier sem categoria definida — confirmando com o usuario.
+Atencao: com `inputs`, o total da bill vira a SOMA dos itens (o total enviado e
+ignorado). Detalhes em `/aegro-financeiro` (regra 12 e secao 4.1.1).
 
 ### 3. Buscar ou identificar empresa
 

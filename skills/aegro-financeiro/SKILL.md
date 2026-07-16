@@ -68,8 +68,8 @@ Relacionamentos-chave:
 
 1. **SYNTHETIC vs ANALYTIC**: Categorias SYNTHETIC servem apenas para agrupar. Somente categorias ANALYTIC podem receber lancamentos financeiros. Nao tente associar lancamentos a categorias SYNTHETIC.
 
-2. **NAO existe CRUD avulso de parcela na API publica** (auditoria do Swagger,
-   02/07/2026): os unicos endpoints de installments sao `filter`, `realizeList`
+2. **NAO existe CRUD avulso de parcela na API publica**: os unicos endpoints
+   de installments sao `filter`, `realizeList`
    e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
    sao pagas via `realize`. Para corrigir parcela/valor, use
    `financial update-bill` (PATCH) ou o app.
@@ -108,7 +108,7 @@ Relacionamentos-chave:
 
 10. **Paginacao padrao**: Todos os endpoints de listagem usam `requiredPageNumber` e `maximumItemsPerPageCount: 50`. Use `--page` para navegar.
 
-11. **Semantica do paymentMethod** (validado no serv-core, 09/07/2026):
+11. **Semantica do paymentMethod**:
     - `PROMPT` (a vista): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
       e marcada como paga na criacao. Como realize e irreversivel via API, **so
@@ -224,16 +224,22 @@ aegro financial create-bill --description "NF 1234 - insumos" \
 CRITICO: com `--inputs`, o total da bill e a **soma dos `amount` dos itens** —
 o `--total-amount` enviado e ignorado. Confira que a soma bate com a nota.
 
-**Puxe a categoria ja cadastrada do item quando existir.** O vinculo
-elemento->categoria e gravado com `elements set-categories`, mas a API so
-permite ler na direcao inversa (categoria -> elementos):
-- `aegro fin-categories subcategories <categoryKey>` lista os **elementos
-  vinculados** aquela categoria (apesar do nome do comando — ver 4.2). Consulte
-  as categorias candidatas e veja em qual o item aparece.
-- Heuristica complementar: lancamentos anteriores do mesmo item/fornecedor
-  (`financial bills --company-key ...`) revelam a categoria usada.
-- So caia na categoria unica da bill quando o item nao tiver categoria
-  cadastrada — e confirme a escolha com o usuario.
+**Puxe a categoria ja cadastrada do item quando existir.** A API publica le a
+categoria **direto pelo elemento** (CLI >= 0.11.0) — nao precisa varrer
+categorias nem inferir de lancamentos antigos:
+- **Varios itens de uma vez (preferido numa nota com N itens):**
+  `aegro elements financial-categories expense --element-key <K1> --element-key <K2> ...`
+  (ou `revenue`) retorna, por elemento, a categoria daquele tipo numa **unica
+  consulta**. Sem `--element-key`, lista todos os elementos da fazenda.
+- **Um item so:** `aegro elements get-categories <elementKey>` (GET read-only)
+  traz as categorias de receita e de despesa daquele elemento.
+- A categoria vem **nula** quando o item nao tem categoria definida para o tipo
+  (ou a definida esta arquivada): so entao caia na categoria unica da bill — e
+  confirme a escolha com o usuario.
+
+> A busca reversa `aegro fin-categories subcategories <categoryKey>` (4.2)
+> responde a pergunta oposta — quais elementos estao numa categoria — e nao e
+> mais necessaria so para descobrir a categoria de um item.
 
 ```bash
 # Compra JA PAGA a vista (PROMPT gera parcela unica paga); nomes resolvidos,
@@ -284,10 +290,11 @@ Exemplo de `contas.json`:
 
 > ATENCAO: apesar do nome, `subcategories` chama
 > `/financial-categories/{key}/filter`, que lista os **ELEMENTOS (itens)
-> vinculados** a categoria — nao subcategorias. E o unico caminho na API para
-> ler o vinculo item<->categoria (a direcao elemento->categoria nao tem
-> endpoint de leitura). Para navegar a hierarquia de categorias, use `list` e
-> o `parentKey`/`code` de cada uma.
+> vinculados** a categoria — nao subcategorias (direcao categoria->elementos).
+> Para a direcao oposta (a categoria de um elemento), use
+> `aegro elements financial-categories <expense|revenue>` ou
+> `aegro elements get-categories <elementKey>` (ver 4.1.1). Para navegar a
+> hierarquia de categorias, use `list` e o `parentKey`/`code` de cada uma.
 
 **Exemplos reais:**
 
@@ -402,7 +409,7 @@ aegro purchase-orders create-batch --from-file pedidos.json --env staging --comp
 
 ### Formato de valor monetario: use {"currencyCode", "amount"}
 
-A spec atual (Swagger 02/07/2026) unificou o objeto monetario em
+A spec atual da API publica unificou o objeto monetario em
 `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` — bills, parcelas,
 contas bancarias e entradas de estoque. Historicamente a parcela aceitava
 `{"amount": X, "currency": "BRL"}` (legado, ainda pode funcionar). Regra
@@ -412,7 +419,7 @@ do body (numeros simples nos itens), nao objetos aninhados.
 
 ### CRITICO: bill em moeda estrangeira NAO e suportado via API
 
-Validado em staging (02/07/2026): em `POST /bills`, `currencyCode: USD` e
+Em `POST /bills`, `currencyCode: USD` e
 **coagido silenciosamente para BRL**, e `currencyConversion`/
 `currencyConversionQuoteType` sao **aceitos e ignorados** na escrita — o
 lancamento sai errado sem nenhum erro. O CLI **bloqueia** `--currency != BRL`
