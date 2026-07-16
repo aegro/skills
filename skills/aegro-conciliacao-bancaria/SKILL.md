@@ -39,9 +39,9 @@ usuario deve conseguir avancar respondendo em uma palavra.
 | Banda | (filtros) | Janela de valor (±%) e data (±dias) para achar candidatos de uma entrada. |
 
 **Resolucao de chave da conta (gotcha):** `accounts --farm-id <idLegado>` devolve o
-`id` cru (ObjectId). Os demais comandos exigem a **key** `bankAccount::<id>` —
+`id` cru (ObjectId). Comandos com `--account` exigem a **key** `bankAccount::<id>` —
 obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
-`bankAccount::`.
+`bankAccount::`. Ja `import-ofx` e `clear-pending` usam o id cru (`--account-id`).
 
 ---
 
@@ -52,7 +52,7 @@ obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
 2. Importar OFX            -> bank-reconciliation import-ofx --execute
 3. Listar entradas PENDING -> bank-reconciliation entries
 4. Casar (matching)        -> bank-reconciliation candidates (banda ±%/±dias) + cruzamento
-5. APRESENTAR + PLACAR      -> tabela lado a lado com fornecedor (§3) + proximo passo
+5. APRESENTAR + PLACAR     -> tabela lado a lado com fornecedor (§3) + proximo passo
 6. Ajustar se preciso      -> financial settle (desconto/juros/data) quando o valor difere (§7)
 7. Conciliar / ignorar     -> confirm --execute / ignore --execute (duplicatas: §8)
 8. Fechar: conferir saldo  -> placar; saldo do periodo == saldo do extrato
@@ -96,7 +96,7 @@ Nao jogue todas as bandas de uma vez. Comece **estreito** (alta confianca) e
 | 🟢 Verde-data | **valor exato** / ±3 dias | lote, `confirm` direto (so a data liquidou fora) |
 | 🟡 Amarelo | ±10% valor / ±3–7 dias | item-a-item; diferenca costuma ser **desconto/juros** → `settle` antes de conciliar |
 | 🟠 Largo | ±10% / ±15 dias | so sob pedido; **alerta de falso-positivo** (afrouxar valor gera par semanticamente errado) |
-| 🔴 Sem match | fora da banda, ou fornecedor diverge | criar lancamento/transferencia (§11), ou em ultimo caso `ignore` |
+| 🔴 Sem match | fora da banda, ou fornecedor diverge | criar lancamento/transferencia (§10), ou em ultimo caso `ignore` |
 
 Observacoes praticas:
 - **Afrouxar data** (mantendo valor exato) e seguro e produtivo. **Afrouxar
@@ -118,7 +118,7 @@ Observacoes praticas:
   fechar junho" > "restam N external movements PENDING".
 - **Comemore fechamentos** e ofereca continuar: "4 conciliadas ✅; sigo pros
   amarelos de junho?".
-- Lote para 🟢; **item-a-item** para 🟡/🟠, PDF (§12) e qualquer coisa com colisao.
+- Lote para 🟢; **item-a-item** para 🟡/🟠, PDF (§11) e qualquer coisa com colisao.
 
 ---
 
@@ -138,7 +138,7 @@ Observacoes praticas:
    e ofereca a alternativa antes. Uso legitimo: entrada que realmente NAO deve
    refletir no Aegro (ex.: **duplicata de OFX**, §8).
 5. **Nem toda entrada/saida e receita/despesa.** Contrapartida em conta do
-   proprio cliente → **transferencia** (§11), nao receita/despesa.
+   proprio cliente → **transferencia** (§10), nao receita/despesa.
 
 ---
 
