@@ -1,7 +1,7 @@
 ---
 name: aegro-conciliacao-bancaria
 description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Aegro Conciliacao Bancaria
@@ -11,13 +11,17 @@ objetivo real da conciliacao e de **saldo**: no fechamento do periodo, o saldo d
 cada conta bancaria no Aegro deve bater com o saldo do extrato do banco. Casar
 lancamento a lancamento e o meio; fechar o saldo e o fim.
 
+Aja como um **copiloto que puxa a conciliacao pra frente**: proponha lotes
+concretos, mostre o progresso, e **sempre termine sugerindo o proximo passo**. O
+usuario deve conseguir avancar respondendo em uma palavra.
+
 > **Requer login OAuth.** A conciliacao usa APIs internas do Aegro. Rode
 > `aegro auth login` e selecione a fazenda (`aegro farms select`). Em modo API
 > key os comandos falham com exit 2.
 >
 > **Fluxo critico (dados financeiros).** O agente **propoe**, o humano **confirma**.
-> Nunca concilie em silencio. Toda escrita suporta `--dry-run` (previa) e so
-> executa com `--execute`.
+> Nunca concilie nem baixe uma parcela em silencio. Toda escrita suporta
+> `--dry-run` (previa) e so executa com `--execute`.
 
 ---
 
@@ -25,188 +29,240 @@ lancamento a lancamento e o meio; fechar o saldo e o fim.
 
 | Termo | CLI | Descricao |
 |---|---|---|
-| Entrada do extrato | `entries` | Movimentacao importada do OFX (a conciliar). Status PENDING/CONFIRMED/IGNORED. |
-| Movimento interno | `candidates` | Lancamento ja refletido na conta (carrega a parcela/installment). E o que se casa com a entrada. |
-| Conciliar | `confirm` | Vincula entrada(s) do extrato a movimento(s) interno(s). |
-| Ignorar | `ignore` | Marca entrada como IGNORADA. **Ultimo recurso** (ver Regras). |
-| Desfazer | `undo` | Reverte uma conciliacao ja registrada. |
-| Realizar/baixar | `financial realize` | Marca parcela como paga (skill `aegro-financeiro`). Cria o movimento interno. |
+| Entrada do extrato | `bank-reconciliation entries` | Movimentacao importada do OFX (a conciliar). Status PENDING/CONFIRMED/IGNORED. O memo geralmente traz **o nome do fornecedor/pessoa** — use como ancora. |
+| Movimento interno | `bank-reconciliation candidates` | Lancamento na conta (carrega a parcela e o **fornecedor** via `bill.company`). E o que se casa com a entrada. |
+| Conciliar | `bank-reconciliation confirm` | Vincula entrada(s) do extrato a movimento(s) interno(s). |
+| Ignorar | `bank-reconciliation ignore` | Marca entrada como IGNORADA. **Ultimo recurso** (§ guardrails). |
+| Desfazer | `bank-reconciliation undo` | Reverte uma conciliacao ja registrada. |
+| Baixar simples | `financial realize` | Baixa a parcela pelo valor/data **agendados** (API publica). Sem desconto/juros/data. |
+| Baixar ajustado | `financial settle` | Baixa UMA parcela com **data + desconto/juros** ajustados, sem alterar a despesa (§7). E o caminho quando o extrato difere do agendado. |
 | Banda | (filtros) | Janela de valor (±%) e data (±dias) para achar candidatos de uma entrada. |
+
+**Resolucao de chave da conta (gotcha):** `accounts --farm-id <idLegado>` devolve o
+`id` cru (ObjectId). Os demais comandos exigem a **key** `bankAccount::<id>` —
+obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
+`bankAccount::`.
 
 ---
 
 ## 2. Fluxo
 
 ```
-1. Selecionar conta        -> aegro farms select / (contexto)
+1. Selecionar conta        -> aegro farms select / (contexto); pegar a key bankAccount::...
 2. Importar OFX            -> bank-reconciliation import-ofx --execute
 3. Listar entradas PENDING -> bank-reconciliation entries
-4. Por entrada: candidatos -> bank-reconciliation candidates (banda ±%/±dias)
-5. Casar e confirmar       -> bank-reconciliation confirm --execute
-6. Fechar: conferir saldo  -> (ver skill de conciliacao macro / saldo do periodo)
+4. Casar (matching)        -> bank-reconciliation candidates (banda ±%/±dias) + cruzamento
+5. APRESENTAR + PLACAR      -> tabela lado a lado com fornecedor (§3) + proximo passo
+6. Ajustar se preciso      -> financial settle (desconto/juros/data) quando o valor difere (§7)
+7. Conciliar / ignorar     -> confirm --execute / ignore --execute (duplicatas: §8)
+8. Fechar: conferir saldo  -> placar; saldo do periodo == saldo do extrato
 ```
 
 ---
 
-## 3. Regras de negocio (guardrails — alerta, nao bloqueio)
+## 3. Como apresentar (isto faz a conversa fluir)
 
-1. **Confirmar exige soma exata.** A soma dos valores dos movimentos internos
-   selecionados deve ser **exatamente igual** ao total das entradas do extrato
-   selecionadas. Valide isso ANTES de `confirm` (o servidor rejeita se diferir).
-2. **Marcar como paga != conciliar (dois atos).** Candidatos so existem para
-   parcelas **ja baixadas**. Se a parcela certa esta **NAO PAGA**, e preciso
-   antes **realiza-la** (baixa) na data do extrato — o que cria o movimento — e
-   so entao conciliar. Avise o usuario que sao **duas** acoes e confirme ambas.
-   Nunca baixe uma parcela em silencio.
-3. **Evitar `ignore`.** Ignorar uma movimentacao **descasa o saldo** Aegro x
-   banco. Sempre alerte ("ignorar vai deixar o saldo do mes divergente do
-   banco") e ofereca a alternativa correta antes. Use `ignore` so quando a
-   movimentacao realmente NAO deve refletir no Aegro.
-4. **Nem toda entrada/saida e receita/despesa.** Quando a contrapartida e outra
-   conta do proprio cliente, o correto e **transferencia** (ver §6), nao
-   lancamento de receita/despesa.
+A forma de mostrar os matches **importa tanto quanto o algoritmo**. Regras:
+
+1. **Tabela lado a lado, sempre.** Nunca despeje chaves cruas nem paragrafos. Use:
+
+   | Data | Extrato (memo) | Lancamento (Aegro) | **Fornecedor** | Δdias | Diferenca | Valor | Conf. |
+   |---|---|---|---|--:|--:|--:|:--:|
+
+2. **Fornecedor e coluna de 1a classe.** O memo do banco quase sempre traz o
+   fornecedor/pessoa; o lado Aegro tem `bill.company`. Compare os dois:
+   - servem para o humano **reconhecer** o lancamento num relance;
+   - **fornecedor divergente** (valor/data batem, mas empresas diferentes) e
+     forte sinal de **falso-positivo** → rebaixe a confianca, nao concilie.
+
+3. **Placar de saldo a cada passo.** Termine mostrando o progresso rumo ao fim
+   (fechar saldo): `N conciliadas · M pendentes · saldo banco R$X × Aegro R$Y ·
+   falta R$Z para fechar <periodo>`. Isso da direcao e incentivo.
+
+4. **Linguagem natural.** Ex.: *"Saida de R$ 1.234,56 em 12/03 (memo 'FORNECEDOR
+   X') → parcela nº2 de 'Compra de insumos', vence 10/03, fornecedor FORNECEDOR X
+   LTDA. Diferenca R$ 0,00. Confirmar?"*
 
 ---
 
-## 4. Referencia de comandos
+## 4. Escada de confianca (caminhe nela com o usuario)
 
-Todos sob `aegro bank-reconciliation`. Leituras nao precisam de `--execute`;
-escritas usam `--dry-run` / `--execute`.
+Nao jogue todas as bandas de uma vez. Comece **estreito** (alta confianca) e
+**alargue sob demanda**, resumindo cada degrau e sugerindo o proximo.
 
-| Comando | Params principais | Tipo |
+| Degrau | Banda (valor / data) | Postura |
 |---|---|---|
-| `import-ofx` | `--account-id <id>` `--file <ofx>` `--execute` | escrita |
-| `entries` | `--account <key>` `[--status PENDING]` `[--start-date --end-date]` | leitura |
-| `candidates` | `--account <key>` `--start-date --end-date` `--min-amount --max-amount` `[--flow INFLOW\|OUTFLOW]` | leitura |
-| `confirm` | `--account <key>` `--external <key>...` `--movement <key>...` `--execute` | escrita |
-| `ignore` | `--account <key>` `--external <key>...` `--execute` | escrita |
-| `undo` | `--account <key>` `--key <reconKey>` `--execute` | escrita |
-| `history` | `--account <key>` `[--start-date --end-date --status]` | leitura |
-| `accounts` | `--farm-id <id>` | leitura |
-| `clear-pending` | `--account-id <id>` `--execute` (destrutivo) | escrita |
+| 🟢 Verde | exato / exata, **1** candidato, fornecedor coerente | lote unico, `confirm` direto |
+| 🟢 Verde-data | **valor exato** / ±3 dias | lote, `confirm` direto (so a data liquidou fora) |
+| 🟡 Amarelo | ±10% valor / ±3–7 dias | item-a-item; diferenca costuma ser **desconto/juros** → `settle` antes de conciliar |
+| 🟠 Largo | ±10% / ±15 dias | so sob pedido; **alerta de falso-positivo** (afrouxar valor gera par semanticamente errado) |
+| 🔴 Sem match | fora da banda, ou fornecedor diverge | criar lancamento/transferencia (§11), ou em ultimo caso `ignore` |
 
-> `--account` usa a `key` da conta; `--account-id`/`--farm-id` usam o id legado
-> (obtidos em `accounts`). Prefira `--dry-run` antes de qualquer `--execute`.
+Observacoes praticas:
+- **Afrouxar data** (mantendo valor exato) e seguro e produtivo. **Afrouxar
+  valor** (±10%) e arriscado: traz falso-positivo e ainda esbarra na regra de
+  **soma exata** do `confirm` — so vale se a diferenca for desconto/juros real.
+- A cada degrau, informe: quantos 🟢, quantos 🟡, quantas **colisoes** (§8), e
+  quantos **so-no-banco** (sem contrapartida — precisam de lancamento, nao de
+  busca).
 
 ---
 
-## 5. Algoritmo de matching (o coracao da skill)
+## 5. Postura de dialogo (motor de proximos passos)
 
-Espelha o comportamento do client-web. Defaults **tunaveis**.
+- **Propor → confirmar.** Apresente um lote concreto e pergunte. O humano decide.
+- **Todo turno termina com 1–3 proximos passos** de maior valor, ex.:
+  *"Posso: (1) conciliar os 3 verdes agora; (2) abrir a proxima banda; (3)
+  resolver as duplicatas que poluem os resultados. Qual?"*
+- **Incentive com progresso**, nao com jargao: "faltam 3 lancamentos e R$ X pra
+  fechar junho" > "restam N external movements PENDING".
+- **Comemore fechamentos** e ofereca continuar: "4 conciliadas ✅; sigo pros
+  amarelos de junho?".
+- Lote para 🟢; **item-a-item** para 🟡/🟠, PDF (§12) e qualquer coisa com colisao.
 
-### 5.1 Banda de candidatos (por entrada)
+---
+
+## 6. Regras de negocio (guardrails — alerta, nao bloqueio)
+
+1. **Confirmar exige soma exata.** A soma dos movimentos internos selecionados
+   deve ser **exatamente igual** ao total das entradas do extrato. Valide ANTES
+   de `confirm` (o servidor rejeita se diferir). Se difere por pouco → e
+   desconto/juros: use `settle` (§7).
+2. **Baixar != conciliar (dois atos).** Se a parcela certa esta **NAO PAGA**,
+   primeiro **baixe** na data do extrato (cria o movimento), depois **concilie**.
+   Avise que sao duas acoes e confirme ambas. Nunca baixe em silencio.
+3. **Fornecedor deve fazer sentido.** Valor+data batendo mas fornecedor/memo
+   divergente = provavel falso-positivo. Nao concilie so por coincidencia
+   numerica.
+4. **Evitar `ignore`.** Ignorar **descasa o saldo** Aegro x banco. Sempre alerte
+   e ofereca a alternativa antes. Uso legitimo: entrada que realmente NAO deve
+   refletir no Aegro (ex.: **duplicata de OFX**, §8).
+5. **Nem toda entrada/saida e receita/despesa.** Contrapartida em conta do
+   proprio cliente → **transferencia** (§11), nao receita/despesa.
+
+---
+
+## 7. Baixa ajustada — desconto / juros / data (`financial settle`)
+
+Quando a parcela esta **NAO PAGA** e o extrato difere do agendado, baixe com
+ajuste **sem alterar a despesa** (o `value` do lancamento e preservado; a
+diferenca entra como desconto ou juros na baixa):
+
+- **Banco < agendado** → **desconto** (`--discount`).
+- **Banco > agendado** → **juros** (`--interest`).
+- Baixe na **data do extrato** (`--date`).
+
+```bash
+# parcela agendada R$ 2.359,24; banco pagou R$ 2.243,88 em 18/06 (desconto R$ 115,36)
+aegro financial settle --key installment::<id> --date 2026-06-18 --discount 115.36 --dry-run
+aegro financial settle --key installment::<id> --date 2026-06-18 --discount 115.36 --execute
+# depois concilie a entrada do extrato com o movimento gerado
+aegro bank-reconciliation confirm --account bankAccount::<id> \
+  --external <ext> --movement <mov> --execute
+```
+
+`settle` faz round-trip na API interna (le a parcela, ajusta baixa, regrava) e
+**nao mexe** em fornecedor, categoria nem valor da despesa. Confirme o preview
+(`--dry-run` mostra valor realizado, desconto/juros e data) antes do `--execute`.
+
+---
+
+## 8. Duplicatas de OFX (caso recorrente)
+
+Duas ou mais entradas do extrato com **mesmo valor+data** (as vezes memos
+parecidos, ou vindas de **importacoes de OFX diferentes**) disputando **1** unico
+movimento interno = **colisao**. So uma pode conciliar.
+
+- **Detecte e avise**: "ha 2 entradas identicas de R$ X em DD/MM apontando para o
+  mesmo lancamento — provavel duplicata na importacao".
+- **Concilie uma** (a que casa com o OFX corrente / memo verdadeiro) e **ignore a
+  outra** (uso legitimo de `ignore`), ou investigue a origem da duplicata.
+- **Nunca auto-confirme** em colisao: apresente e deixe o humano escolher qual.
+- Cheque o **FITID** no OFX para confirmar se e a mesma transacao repetida.
+
+---
+
+## 9. Banda de candidatos — traducao para o CLI
+
 Para cada entrada do extrato:
-- **Valor:** `[|v| * (1 - 0.10), |v| * (1 + 0.10)]` — banda **±10%**.
-- **Data:** `[data - diasAtras, data + diasFrente]` — default **±0 dias**
-  (so a data exata), ajustavel ate **±15 dias** cada lado.
-- **Fluxo:** OUTFLOW se `v < 0`, senao INFLOW.
-- **Conta:** a mesma da entrada.
+- **Valor:** `[|v| * (1 - 0.10), |v| * (1 + 0.10)]` — ±10% (ajustavel).
+- **Data:** `[data - diasAtras, data + diasFrente]` — comece **±0**, alargue ate ±15.
+- **Fluxo:** OUTFLOW se `v < 0`, senao INFLOW. **Conta:** a mesma da entrada.
 
-Traduza a banda em: `candidates --account <key> --start-date <d-> --end-date <d+>
---min-amount <min> --max-amount <max> --flow <INFLOW|OUTFLOW>`.
+```
+candidates --account bankAccount::<id> --start-date <d-> --end-date <d+> \
+  --min-amount <min> --max-amount <max> --flow <INFLOW|OUTFLOW>
+```
 
-### 5.2 Niveis de confianca
-- **Automatico (verde):** existe **exatamente 1** candidato com valor **exato**
-  + data **exata** + fluxo compativel + nao vinculado. Entra num **lote de
-  aprovacao** (nunca confirma sozinho).
-- **Sugerido (amarelo):** dentro da banda mas nao exato, ou multiplos candidatos.
-  Apresente ranqueado; o humano escolhe.
-- **Sem correspondencia (vermelho):** nada na banda. Criar lancamento/
-  transferencia (ver §6) ou, em ultimo caso, `ignore`.
-
-### 5.3 Postura de confirmacao (hibrida)
-- **Lote unico** para os verdes (match exato).
-- **Item-a-item** para amarelos e para qualquer coisa vinda de PDF (§7).
-- Apresente sempre em **linguagem natural** (data / valor / fornecedor /
-  parcela), nunca chaves cruas. Ex.: *"Saida de R$ 1.234,56 em 12/03 (memo
-  'FORNECEDOR X') -> parcela #2 de 'Compra de insumos', vence 10/03,
-  R$ 1.234,56. Diferenca R$ 0,00. Confirmar?"*
-
-### 5.4 Split e agrupamento
-- **Split:** varios movimentos internos para 1 entrada (a soma deve fechar).
-- **Agrupamento:** varias entradas para 1 conjunto de movimentos.
-- Em ambos, **valide soma == total** antes do `confirm`.
+**Split** (varios movimentos → 1 entrada) e **agrupamento** (varias entradas → 1
+conjunto): em ambos, **valide soma == total** antes do `confirm`.
 
 ---
 
-## 6. Casos especiais (usar transferencia, nao receita/despesa)
+## 10. Casos especiais (usar transferencia, nao receita/despesa)
 
 Quando a contrapartida e uma conta do proprio cliente, o certo e transferencia:
 
-- **Pagamento de fatura de cartao de credito:** NAO lance como despesa. Faca uma
+- **Pagamento de fatura de cartao:** NAO lance como despesa. Faca uma
   **transferencia** (`aegro bank-transfers create`) para a conta que simula o
-  cartao e **de baixa em todas as despesas vinculadas aquela fatura**. A saida do
-  extrato = a transferencia; concilie a saida com o movimento da transferencia.
-- **Aplicacao / resgate em conta investimento:** NAO lance resgate como receita
-  (nem aplicacao como despesa). Use **transferencias** conta corrente <->
-  investimento e concilie contra elas.
-- Regra geral: contrapartida em conta do proprio cliente -> **transferencia**.
-
-Esses padroes sao **orientados pelo agente** (alerta + recomendacao); a criacao
-usa os comandos comuns (`bank-transfers`, `financial`), depois concilia pelo
-`confirm` normal.
+  cartao e **baixe as despesas da fatura**. Concilie a saida com a transferencia.
+- **Aplicacao / resgate em conta investimento:** use **transferencias** corrente
+  <-> investimento; concilie contra elas.
+- Regra geral: contrapartida em conta do proprio cliente → **transferencia**.
 
 ---
 
-## 7. Extrato so em PDF (baixa assistida — menor fidelidade)
+## 11. Extrato so em PDF (baixa assistida — menor fidelidade)
 
-Sem OFX nao ha importacao de movimentacoes externas, entao **nao ha registro
-formal de conciliacao bancaria**. Fluxo:
+Sem OFX nao ha movimentacoes externas, entao **nao ha conciliacao registrada**.
 1. Extraia as transacoes do PDF (data, valor, descricao).
-2. Case contra as parcelas com as **mesmas bandas** (§5.1), usando
-   `aegro financial installments` (skill `aegro-financeiro`) para achar candidatas.
-3. Em cada match confirmado, **realize a parcela** na data do extrato:
-   `aegro financial realize ...`.
+2. Case contra parcelas com as mesmas bandas (§9), via `aegro financial
+   installments` (skill `aegro-financeiro`).
+3. Em cada match, **baixe a parcela** na data do extrato (`financial realize` ou
+   `settle` se houver ajuste).
 
-Limitacoes (deixe explicito ao usuario):
-- E **baixa assistida**, nao conciliacao bancaria registrada — o saldo do Aegro
-  reflete a baixa, mas nao ha o vinculo formal extrato<->movimento.
-- Toda entrada de PDF e **amarela/vermelha** por padrao: revise **item-a-item**;
-  extracao de PDF tem menor precisao.
+Limitacoes (explicite): e **baixa assistida**, nao conciliacao com vinculo
+formal; toda entrada de PDF e 🟡/🔴 por padrao (revise item-a-item).
 
 ---
 
-## 8. Exemplos
+## 12. Referencia de comandos
 
-```bash
-# 1) Importar o extrato (previa e depois execucao)
-aegro bank-reconciliation import-ofx --account-id 5f1a --file ./extrato.ofx --dry-run
-aegro bank-reconciliation import-ofx --account-id 5f1a --file ./extrato.ofx --execute
+Conciliacao sob `aegro bank-reconciliation`; baixa sob `aegro financial`.
+Leituras nao precisam de `--execute`; escritas usam `--dry-run` / `--execute`.
 
-# 2) Entradas pendentes
-aegro bank-reconciliation entries --account bankAccount::abc --status PENDING
-
-# 3) Candidatos de uma entrada de -R$ 1.234,56 em 2026-03-12 (banda ±10%, ±0 dia)
-aegro bank-reconciliation candidates --account bankAccount::abc \
-  --start-date 2026-03-12 --end-date 2026-03-12 \
-  --min-amount 1111.10 --max-amount 1358.02 --flow OUTFLOW
-
-# 4) Conferir a previa e conciliar (soma deve fechar)
-aegro bank-reconciliation confirm --account bankAccount::abc \
-  --external ext::1 --movement mov::9 --dry-run
-aegro bank-reconciliation confirm --account bankAccount::abc \
-  --external ext::1 --movement mov::9 --execute
-
-# 5) Desfazer, se preciso
-aegro bank-reconciliation undo --account bankAccount::abc --key recon::7 --execute
-```
+| Comando | Params principais | Tipo |
+|---|---|---|
+| `bank-reconciliation import-ofx` | `--account-id <id>` `--file <ofx>` `--execute` | escrita |
+| `bank-reconciliation entries` | `--account bankAccount::<id>` `[--status PENDING]` `[--start-date --end-date]` | leitura |
+| `bank-reconciliation candidates` | `--account <key>` `--start-date --end-date` `--min-amount --max-amount` `[--flow]` | leitura |
+| `bank-reconciliation confirm` | `--account <key>` `--external <key>...` `--movement <key>...` `--execute` | escrita |
+| `bank-reconciliation ignore` | `--account <key>` `--external <key>...` `--execute` | escrita |
+| `bank-reconciliation undo` | `--account <key>` `--key <reconKey>` `--execute` | escrita |
+| `bank-reconciliation history` | `--account <key>` `[--start-date --end-date --status]` | leitura |
+| `bank-reconciliation accounts` | `--farm-id <idLegado>` (devolve `id` cru → prefixe `bankAccount::`) | leitura |
+| `bank-accounts list` | (contexto) — traz a **key** `bankAccount::...` | leitura |
+| `financial settle` | `--key installment::<id>` `--date` `[--discount\|--interest\|--realized-amount]` `--execute` | escrita |
+| `financial realize` | `--key <inst>...` `--execute` (baixa simples, sem ajuste) | escrita |
+| `bank-reconciliation clear-pending` | `--account-id <id>` `--execute` (destrutivo) | escrita |
 
 ---
 
-## 9. Anti-padroes
+## 13. Anti-padroes
 
 - NAO confirmar sem conferir a **previa** (`--dry-run`) e a **soma** (deve fechar).
-- NAO baixar/realizar uma parcela em silencio ao conciliar — avise que sao duas acoes.
-- NAO usar `ignore` como atalho: descasa o saldo Aegro x banco. So em ultimo caso.
-- NAO lancar pagamento de fatura de cartao como despesa, nem resgate como receita
-  — use **transferencia**.
-- NAO auto-confirmar amarelos (nao-exatos) nem entradas de PDF: sempre item-a-item.
-- NAO prometer "conciliado" no fluxo de PDF — e baixa assistida, sem registro formal.
+- NAO conciliar so por coincidencia de valor+data se o **fornecedor divergir**.
+- NAO baixar/realizar parcela em silencio — avise que sao duas acoes.
+- NAO auto-confirmar 🟡/🟠, PDF ou **colisoes** (duplicatas): sempre item-a-item.
+- NAO usar `ignore` como atalho: descasa o saldo. Uso legitimo = duplicata de OFX / entrada que nao reflete no Aegro.
+- NAO alterar a despesa (`value`) para "fechar a conta": use **desconto/juros** na baixa (`settle`).
+- NAO lancar fatura de cartao como despesa, nem resgate como receita — use **transferencia**.
+- NAO terminar um turno sem um **placar** e um **proximo passo** sugerido.
 
 ---
 
 ## Skills relacionadas
 
-- `aegro-financeiro` — lancamentos, parcelas, contas bancarias, realizar/baixar, transferencias.
+- `aegro-financeiro` — lancamentos, parcelas, contas, baixar/realizar, transferencias.
 - `aegro-lancamento-financeiro` — decidir como registrar contas a pagar/receber.
-- Conciliacao de **saldo por periodo** (macro, multi-conta/mensal) — ver ENTRADA-54.
+- Conciliacao de **saldo por periodo** (macro, multi-conta/mensal): ao fechar o mes, confira o saldo final de cada conta no Aegro contra o extrato.
