@@ -1,9 +1,14 @@
 {
+  "name": "aegro-skills",
+  "owner": {
+    "name": "Aegro Engineering",
+    "url": "https://github.com/aegro/skills"
+  },
   "plugins": [
     {
       "name": "aegro-skills",
-      "description": "14 AI skills for Aegro agricultural management",
-      "version": "0.5.1",
+      "description": "17 AI skills for Aegro agricultural management",
+      "version": "0.6.1",
       "path": "."
     }
   ]
