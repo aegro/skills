@@ -43,10 +43,11 @@ O fluxo e dirigido por 4 comandos da CLI `aegro` (todos aceitam `--env prod|stag
 | Listar | `aegro received-fiscal-documents listar --desde <YYYY-MM-DD> --ate <YYYY-MM-DD> [--tipo NFE] [--status-financeiro NONE] [--texto ...]` | Lista as NFe recebidas (cabecalho): fornecedor, numero, CFOP, valor e **status financeiro** (`NONE`/`SINGLE`/`MULTIPLE`). |
 | Detalhe | `aegro received-fiscal-documents detalhe <accessKey> --desde ... --ate ...` | Traz itens (codigo, descricao, NCM, **CFOP por item**, qtd, valor), totais/descontos, pagamento+parcelas, fornecedor/produtor conciliados e **sugestoes de elemento** por item. |
 | Conciliar | `aegro received-fiscal-documents conciliar <accessKey> --desde ... --ate ... --item <invoiceItemId>=<elementId> ... --execute` | Persiste o mapa **produto-da-nota -> elemento** (por fazenda+fornecedor+item), reutilizado nas proximas notas. |
-| Lancar | `aegro received-fiscal-documents lancar <accessKey> --desde ... --ate ... --category "<nome>"|--financial-category-key <key> --bank-account-key <key> [--dry-run|--execute]` | Monta o lancamento a partir dos itens conciliados e cria via **API publica** (`POST /pub/v1/bills`). Delega valores/forma ao lancamento financeiro. |
+| Preparar | `aegro received-fiscal-documents preparar <accessKey> --desde ... --ate ... [--cash-flow EXPENSE] [--payment-method ...] [--sem-itens]` | **Read-only.** Emite o **payload derivado da NF-e** (`nfeAccessKey`, `receipt`, `companyKey`, `cashFlow`, `paymentMethod`, `inputs`, `installments`) pronto para o `create-bill`. **NAO cria a bill.** |
+| Lancar (delega) | `aegro financial create-bill --nfe-access-key <k> --receipt <n> --company-key <c> --cash-flow <cf> --payment-method <pm> --inputs '<inputs>' --installments '<installments>' --financial-category-key <cat> --bank-account-key <conta> --execute` | O **unico** comando que cria a bill (`POST /pub/v1/bills`). Recebe o payload do `preparar` + **categoria** e **conta** (que a NF-e nao tem). Ver `/aegro-lancamento-financeiro`. |
 
-> O `detalhe`/`lancar` resolvem a `accessKey` -> URL do XML via `listar` na janela `--desde/--ate`
-> (passe `--xml-url` para pular a busca). Toda mutacao exige `--execute` (use `--dry-run` para prever).
+> O `detalhe`/`preparar` resolvem a `accessKey` -> URL do XML via `listar` na janela `--desde/--ate`
+> (passe `--xml-url` para pular a busca). `conciliar` muta (exige `--execute`); `preparar` e read-only.
 
 ## Fluxo de Decisao
 
@@ -61,7 +62,7 @@ listar (janela recente, --status-financeiro NONE = ainda nao lancadas)
         |
 4. CONCILIAR (PADRAO): fornecedor, produtor e PRODUTOS (item -> elemento)
         |
-5. LANCAR: lancar --dry-run (revisar) -> --execute  (delega ao /aegro-lancamento-financeiro)
+5. PREPARAR (payload da NF-e) -> financial create-bill + categoria/conta  (delega ao /aegro-lancamento-financeiro)
 ```
 
 ## Sequencia de Passos
@@ -76,7 +77,7 @@ esse trio define a classificacao. Nao decidir despesa/receita so pelo "parece co
 
 ### 3. Verificar duplicidade
 O proprio `listar`/`detalhe` traz `financialEntryMultiplicity` e `relatedBills`. Se **!= NONE**,
-a nota **ja tem lancamento** — conciliar/arquivar, **nao duplicar**. O `lancar` tambem avisa.
+a nota **ja tem lancamento** — conciliar/arquivar, **nao duplicar**. O `preparar` tambem avisa.
 
 ### 4. Conciliar entidades — **por padrao, sempre**
 
@@ -90,20 +91,22 @@ em nao querer:
 - **Fornecedor / produtor**: vem conciliados por CNPJ->empresa no `detalhe`; se faltar, cadastre/
   associe a empresa (`/aegro-financeiro`).
 
-> **So pule a conciliacao com opt-out explicito do usuario.** Sem conciliar, o `lancar` **nao**
-> lanca silenciosamente: ele pede a conciliacao (recomendado) OU exige a flag **`--sem-itens`**
-> (lanca apenas o total, perdendo o detalhamento por item). Deixe claro ao usuario o que se perde.
+> **So pule a conciliacao com opt-out explicito do usuario.** Sem conciliar, o `preparar` **nao**
+> emite silenciosamente sem os itens: ele pede a conciliacao (recomendado) OU exige a flag
+> **`--sem-itens`** (prepara apenas o total, perdendo o detalhamento por item). Deixe claro o que se perde.
 
 ### 5. Pagamento: lancar ou conciliar
 "Pagamento" nem sempre e uma despesa nova — pode ser a conciliacao de uma despesa **ja cadastrada**.
 Se ja existe conta similar (mesmo fornecedor/valor/periodo/nº nota), concilie; senao, lance.
 
-### 6. Lancar (delega ao financeiro)
-`lancar --dry-run` para revisar o payload; depois `--execute`. Categoria e conta vem por
-`--category`/`--bank-account` (ou chave); o que faltar volta como envelope `needs_input`. Sempre:
-- **`receipt`** = numero da nota (automatico a partir do detalhe).
-- **`nfeAccessKey`** = chave de acesso (automatico).
+### 6. Preparar e delegar ao lancamento (`create-bill`)
+Rode `preparar` para obter o **payload derivado da NF-e** (read-only): `nfeAccessKey`, `receipt`,
+`companyKey`, `cashFlow`, `paymentMethod`, `inputs` (itens conciliados) e `installments`. O que a
+NF-e **nao tem** — **categoria financeira** e **conta bancaria** — voce decide/pergunta e passa ao
+`financial create-bill` (o **unico** que cria a bill). Mapeie 1:1 os campos do payload nas flags do
+`create-bill` e acrescente `--financial-category-key`/`--bank-account-key` (ou `--category`/`--bank-account`).
 - **Itens** conciliados viram `inputs`; servico sem catalogo -> conciliar a um item generico.
+- A criacao, a forma de pagamento e o preenchimento final sao do `/aegro-lancamento-financeiro`.
 
 ## Casos que acionam a pessoa (v1)
 
@@ -116,12 +119,12 @@ Se ja existe conta similar (mesmo fornecedor/valor/periodo/nº nota), concilie; 
 ## Limitacoes / Dependencias
 
 - **Auth**: comandos usam APIs internas -> exigem OAuth first-party (`aegro auth login`).
-- **Lancamento parcelado (bug aberto — [FNC-112]):** `POST /pub/v1/bills` com pagamento **a prazo**
-  retorna 500 e persiste a conta **sem as parcelas** (e sem backlink NFe<->bill — [ENTRADA-84]).
-  Ate o fix: prefira **`--dry-run`** para validar, e trate lancamento parcelado com cautela
-  (a vista/`PROMPT` funciona). Nunca relancar em cima de um 500 (duplica).
-- **Vinculo NFe<->bill ([ENTRADA-84]):** o lancamento pela API publica ainda **nao marca** a NFe
-  como lancada (segue `NONE`). Confirme manualmente para evitar duplicidade.
+- **Lancamento parcelado (bug aberto — [FNC-112]):** ao criar via `create-bill` (`POST /pub/v1/bills`)
+  com pagamento **a prazo**, a API retorna 500 e persiste a conta **sem as parcelas**. Ate o fix,
+  trate lancamento parcelado com cautela (a vista/`PROMPT` funciona) e **nunca recrie em cima de um
+  500** (duplica).
+- **Vinculo NFe<->bill ([ENTRADA-84]):** criar a bill com `nfeAccessKey` **nao marca** a NFe como
+  lancada (segue `NONE`). Confirme manualmente para evitar duplicidade.
 - **Sub-skills de conciliacao** dedicadas: ainda inline (via `conciliar` + `/aegro-financeiro`).
 - **Casos fiscais** (contra-nota, transporte, remessa) acionam a pessoa no v1.
 
