@@ -34,9 +34,10 @@ Para lancar **uma conta manual** sem nota fiscal, va direto para `/aegro-lancame
 - `/aegro-lancamento-financeiro` — sequencia de decisao de a pagar/receber.
 - `/aegro-operacional` — fazenda ativa, autenticacao.
 
-## Comandos (grupo `received-fiscal-documents`)
+## Comandos
 
-O fluxo e dirigido por 4 comandos da CLI `aegro` (todos aceitam `--env prod|staging`):
+O fluxo usa **4 comandos do grupo `received-fiscal-documents`** (listar/detalhe/conciliar/preparar)
+**+ o `financial create-bill`** para criar a bill (todos aceitam `--env prod|staging`):
 
 | Passo | Comando | O que faz |
 |---|---|---|
