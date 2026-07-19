@@ -1,6 +1,6 @@
 ---
 name: aegro-entrada-nota-fiscal
-description: Orquestra a entrada de uma NFe recebida no Aegro pela CLI — lista, abre o detalhe, concilia fornecedor/produtor/produtos (por padrao), verifica duplicidade e delega o lancamento financeiro
+description: Orquestra a entrada de uma NFe recebida no Aegro pela CLI - lista, abre o detalhe, concilia fornecedor/produtor/produtos (por padrao), verifica duplicidade e delega o lancamento financeiro
 version: 0.2.0
 ---
 
@@ -14,7 +14,7 @@ nota e (despesa, receita, remessa, retorno, transporte), **concilia as entidades
 evita duplicidade e delega o lancamento em si.
 
 O **preenchimento do formulario** (categoria, parcelas, rateio) e responsabilidade
-da skill de lancamento (`/aegro-lancamento-financeiro`) — aqui cuidamos da
+da skill de lancamento (`/aegro-lancamento-financeiro`) - aqui cuidamos da
 **decisao e da conciliacao**, nao da sintaxe do bill.
 
 ## Quando Usar
@@ -28,11 +28,11 @@ Para lancar **uma conta manual** sem nota fiscal, va direto para `/aegro-lancame
 
 ## Pre-requisitos
 
-- **Login OAuth**: os comandos usam **APIs internas** do Aegro — exige `aegro auth login`
+- **Login OAuth**: os comandos usam **APIs internas** do Aegro - exige `aegro auth login`
   (nao funciona com API key). Selecione a fazenda (`aegro farms select`) e o ambiente (`--env`).
-- `/aegro-financeiro` — bills, categorias, parcelas, empresas, contas bancarias.
-- `/aegro-lancamento-financeiro` — sequencia de decisao de a pagar/receber.
-- `/aegro-operacional` — fazenda ativa, autenticacao.
+- `/aegro-financeiro` - bills, categorias, parcelas, empresas, contas bancarias.
+- `/aegro-lancamento-financeiro` - sequencia de decisao de a pagar/receber.
+- `/aegro-operacional` - fazenda ativa, autenticacao.
 
 ## Comandos
 
@@ -52,12 +52,12 @@ O fluxo usa **4 comandos do grupo `received-fiscal-documents`** (listar/detalhe/
 
 ## Fluxo de Decisao
 
-```
+```text
 listar (janela recente, --status-financeiro NONE = ainda nao lancadas)
         |
 1. Escolher a nota -> detalhe (papel da fazenda + CFOP + natureza)
         |
-2. DUPLICIDADE: status financeiro != NONE / relatedBills -> ja lancada; NAO duplicar
+2. DUPLICIDADE: financialEntryMultiplicity != NONE  OU  relatedBills preenchido -> ja lancada; NAO duplicar
         |
 3. CLASSIFICAR (despesa / receita / contra-nota / transporte / remessa)
         |
@@ -69,21 +69,25 @@ listar (janela recente, --status-financeiro NONE = ainda nao lancadas)
 ## Sequencia de Passos
 
 ### 1. Listar e escolher a nota
+
 `listar` na janela desejada (ex.: ultimos 30 dias). Para ver so o que falta lancar, filtre
 `--status-financeiro NONE`. Abra o `detalhe` da nota escolhida.
 
 ### 2. Papel da fazenda + natureza fiscal
-Do `detalhe`: **a fazenda emitiu ou recebeu?** Combine com **CFOP** e **natureza da operacao** —
+
+Do `detalhe`: **a fazenda emitiu ou recebeu?** Combine com **CFOP** e **natureza da operacao** -
 esse trio define a classificacao. Nao decidir despesa/receita so pelo "parece compra".
 
 ### 3. Verificar duplicidade
-O proprio `listar`/`detalhe` traz `financialEntryMultiplicity` e `relatedBills`. Se **!= NONE**,
-a nota **ja tem lancamento** — conciliar/arquivar, **nao duplicar**. O `preparar` tambem avisa.
 
-### 4. Conciliar entidades — **por padrao, sempre**
+O `listar`/`detalhe` traz `financialEntryMultiplicity` e `relatedBills`. Considere **ja lancada**
+quando `financialEntryMultiplicity != NONE` **OU** `relatedBills` estiver preenchido (checar os dois,
+nao so o primeiro): entao conciliar/arquivar, **nao duplicar**. O `preparar` tambem avisa (usa o mesmo OR).
+
+### 4. Conciliar entidades - **por padrao, sempre**
 
 Conciliar preserva o **detalhamento por item** (elemento do catalogo, custo, estoque). Este e o
-comportamento padrao do processo — **conduza a conciliacao** salvo se o usuario for **explicito**
+comportamento padrao do processo - **conduza a conciliacao** salvo se o usuario for **explicito**
 em nao querer:
 
 - **Produtos**: para cada item, use a **sugestao** do `detalhe` (quando houver) ou pergunte o
@@ -97,15 +101,18 @@ em nao querer:
 > **`--sem-itens`** (prepara apenas o total, perdendo o detalhamento por item). Deixe claro o que se perde.
 
 ### 5. Pagamento: lancar ou conciliar
-"Pagamento" nem sempre e uma despesa nova — pode ser a conciliacao de uma despesa **ja cadastrada**.
-Se ja existe conta similar (mesmo fornecedor/valor/periodo/nº nota), concilie; senao, lance.
+
+"Pagamento" nem sempre e uma despesa nova - pode ser a conciliacao de uma despesa **ja cadastrada**.
+Se ja existe conta similar (mesmo fornecedor/valor/periodo/n. da nota), concilie; senao, lance.
 
 ### 6. Preparar e delegar ao lancamento (`create-bill`)
+
 Rode `preparar` para obter o **payload derivado da NF-e** (read-only): `nfeAccessKey`, `receipt`,
 `companyKey`, `cashFlow`, `paymentMethod`, `inputs` (itens conciliados) e `installments`. O que a
-NF-e **nao tem** — **categoria financeira** e **conta bancaria** — voce decide/pergunta e passa ao
+NF-e **nao tem** - **categoria financeira** e **conta bancaria** - voce decide/pergunta e passa ao
 `financial create-bill` (o **unico** que cria a bill). Mapeie 1:1 os campos do payload nas flags do
 `create-bill` e acrescente `--financial-category-key`/`--bank-account-key` (ou `--category`/`--bank-account`).
+
 - **Itens** conciliados viram `inputs`; servico sem catalogo -> conciliar a um item generico.
 - A criacao, a forma de pagamento e o preenchimento final sao do `/aegro-lancamento-financeiro`.
 
@@ -120,7 +127,7 @@ NF-e **nao tem** — **categoria financeira** e **conta bancaria** — voce deci
 ## Limitacoes / Dependencias
 
 - **Auth**: comandos usam APIs internas -> exigem OAuth first-party (`aegro auth login`).
-- **Lancamento parcelado (bug aberto — [FNC-112]):** ao criar via `create-bill` (`POST /pub/v1/bills`)
+- **Lancamento parcelado (bug aberto - [FNC-112]):** ao criar via `create-bill` (`POST /pub/v1/bills`)
   com pagamento **a prazo**, a API retorna 500 e persiste a conta **sem as parcelas**. Ate o fix,
   trate lancamento parcelado com cautela (a vista/`PROMPT` funciona) e **nunca recrie em cima de um
   500** (duplica).
