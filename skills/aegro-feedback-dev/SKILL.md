@@ -7,8 +7,8 @@ description: >-
   CLI aegro e relato direto na conversa; deduplica por sintoma, classifica cada
   item (resolvido/mapeado/novo) com dono (CLI, API publica ou skill) e evidencia
   anonimizada, e produz um doc de feedback com encaminhamento. Detecta se quem usa
-  e do time Aegro (abre issue/PR interno) ou cliente (gera relatorio local +
-  orienta o canal de suporte). Use ao fim de uma sessao com erros ("compilar esses
+  e do time Aegro (abre issue/PR interno) ou cliente (monta o feedback no molde do
+  formulario publico para o cliente enviar a um clique). Use ao fim de uma sessao com erros ("compilar esses
   erros pro time de dev", "montar relatorio dos bugs da sessao") ou na rodada
   semanal ("triagem do feedback", "fechar o feedback da semana", "compile field
   feedback", "triage errors for dev"). NAO use para suporte a cliente final, para
@@ -31,9 +31,11 @@ Identifique quem esta compilando pelo **e-mail do usuario** no contexto da sessa
 - **Interno — `@aegro.com.br`** (time de Servicos / dev): fluxo completo — gera o
   doc de triagem em `tool-aegro-cli/docs/feedback/` e **encaminha** para issue no
   `aegro/tool-aegro-cli`, item em `melhorias-api-publica.md` ou PR de skill.
-- **Externo — outro dominio** (cliente): compila o **relatorio estruturado** e o
-  entrega como arquivo local; **nao** abre issue em repositorio interno nem
-  escreve em `docs/` do tool-aegro-cli. Oriente o envio pelo **canal de suporte**.
+- **Externo — outro dominio** (cliente): compila o relatorio **no molde do
+  formulario publico de feedback** (Email + Resumo + Descricao), entrega o
+  conteudo pronto para colar e o link do formulario. **Nao** abre issue em
+  repositorio interno nem escreve em `docs/` do tool-aegro-cli. Ver
+  "Encaminhamento no modo externo (formulario)".
 
 Sem e-mail identificavel, trate como **externo**.
 
@@ -102,7 +104,9 @@ shape/agregado a dado bruto.
 ### 5. Gerar o doc de triagem
 
 No modo interno, salve em `tool-aegro-cli/docs/feedback/AAAA-MM-DD-<tema>.md`. No
-modo externo, gere o mesmo formato como arquivo local (`./feedback-<tema>.md`):
+modo externo, este doc e a fonte dos campos do formulario (secao
+"Encaminhamento no modo externo") — o Resumo de cada item vira o `Resumo:` e o
+corpo vira a `Descricao:`. Formato:
 
 ```markdown
 # Feedback de campo — <tema> (AAAA-MM-DD)
@@ -132,11 +136,45 @@ modo externo, gere o mesmo formato como arquivo local (`./feedback-<tema>.md`):
   `tool-aegro-cli/docs/melhorias-api-publica.md`.
 - **skill** -> PR em `aegro/skills`.
 
-**Modo externo:** entregue o relatorio e oriente enviar pelo canal de suporte —
+**Modo externo:** siga a secao "Encaminhamento no modo externo (formulario)" —
 nao abra issue/PR em repositorio interno.
 
 Feche o loop: itens `resolvido` desde a ultima rodada entram numa secao curta
 "Resolvidos desde a ultima rodada" — quem reporta precisa ver que funciona.
+
+## Encaminhamento no modo externo (formulario)
+
+O cliente **nao tem conta no Jira** e pode nao ter browser automatizado, e o
+formulario e **protegido por reCAPTCHA** — entao a skill **nao envia sozinha**.
+O papel dela e deixar o envio a **um clique**: montar o conteudo exatamente no
+molde do formulario e o cliente cola e clica Enviar (ele resolve o reCAPTCHA, o
+que e trivial para uma pessoa).
+
+**Formulario:**
+`https://aegrodev.atlassian.net/jira/software/form/bf7148ca-5456-4fc7-b5a1-bf6cc7bc49ed`
+(publico, sem login). Campos: **Email** (obrigatorio), **Resumo** (obrigatorio),
+**Descricao** (texto), anexo opcional.
+
+**O que a skill entrega, por item** (um envio por item — o formulario cria uma
+issue por submissao):
+
+- **Email:** pergunte o e-mail do cliente (para retorno). Ele vai como reporter
+  — deixe claro que e o unico dado de contato que sai; nao inclua PII de terceiro.
+- **Resumo:** o sintoma em uma linha, prefixado pelo tipo — `[FR]` para pedido de
+  funcionalidade/falta na CLI, `[Bug]` para erro. Ex.: `[Bug] launch-bill 500 ao
+  parcelar nota da Corteva`.
+- **Descricao:** o corpo estruturado do item (impacto, evidencia com comando +
+  resposta resumida, ambiente, versao do CLI, sugestao) — **anonimizado**
+  (fornecedor -> `fornecedor_x`, CNPJ -> `00.000.000/0001-00`), sem credenciais.
+
+**Como apresentar:** mostre o link e, para cada item, um bloco copiavel com
+`Resumo:` e `Descricao:` prontos. Instrua: abrir o link, colar os dois campos,
+preencher o e-mail, clicar **Enviar** (e passar o reCAPTCHA). Se houver varios
+itens, liste-os e deixe o cliente escolher quais enviar.
+
+> O formulario se chama "Necessidade na CLI" (intake de FR). Bugs tambem cabem —
+> por isso o prefixo `[FR]`/`[Bug]` no Resumo, para a triagem separar depois.
+> **Nao tente automatizar o POST** (o reCAPTCHA existe para barrar isso).
 
 ## Principios
 
