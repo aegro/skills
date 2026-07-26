@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.5.1
+version: 0.6.0
 ---
 
 # Dominio Patrimonial
@@ -28,7 +28,7 @@ Cobre ativos (maquinas, veiculos, silos, benfeitorias, pivos, estacoes meteorolo
 | `MACHINE` | Maquinas agricolas (tratores, colheitadeiras, pulverizadores, plantadeiras) | `assets create-machine` | Horimetro |
 | `VEHICLE` | Veiculos (caminhoes, pickups, utilitarios) | `assets create-vehicle` | Hodometro (km) |
 | `GARNER` | Silos e armazens de graos | `assets create-garner` | Horimetro |
-| `IMMOBILIZED` | Benfeitorias (barracoes, oficinas, casas) | `assets create-immobilized` | Horimetro |
+| `IMMOBILIZED` | Benfeitorias (barracoes, oficinas, casas) | `assets create-immobilized` | — (usa vida util: `--life-span`) |
 | `PIVOT` | Pivos de irrigacao | `assets create-pivot` | Horimetro |
 | `WEATHER_STATION` | Estacoes meteorologicas | `assets create-weather-station` | — |
 
@@ -108,7 +108,7 @@ Cada tipo de patrimonio tem seu endpoint dedicado. **Nao existe** um endpoint ge
 | MACHINE | `assets create-machine` | `--machine-type` (obrig.), `--hourmeter`, `--is-implement` |
 | VEHICLE | `assets create-vehicle` | `--odometer` (km) |
 | GARNER | `assets create-garner` | `--hourmeter` |
-| IMMOBILIZED | `assets create-immobilized` | `--hourmeter` |
+| IMMOBILIZED | `assets create-immobilized` | — (benfeitoria nao tem medidor; use `--life-span`/`--life-span-unit`) |
 | PIVOT | `assets create-pivot` | `--hourmeter` |
 | WEATHER_STATION | `assets create-weather-station` | `--hourmeter` |
 
@@ -174,11 +174,11 @@ Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticam
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro assets get <key>` | Busca patrimonio por chave | `--output` |
-| `aegro assets list` | Lista patrimonios com filtros | `--types`, `--machine-types`, `--page`, `--per-page`, `--output` |
+| `aegro assets list` | Lista patrimonios com filtros | `--type`, `--machine-type`, `--page`, `--output` |
 | `aegro assets create-machine` | Cria maquina | `--name` (obrig.), `--machine-type` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--is-implement`, `--tag-or-model`, `--observations` |
 | `aegro assets create-vehicle` | Cria veiculo | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--odometer`, `--tag-or-model`, `--observations` |
 | `aegro assets create-garner` | Cria silo | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--observations` |
-| `aegro assets create-immobilized` | Cria benfeitoria | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--observations` |
+| `aegro assets create-immobilized` | Cria benfeitoria | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--acquisition-date`, `--life-span`, `--life-span-unit`, `--observations` |
 | `aegro assets create-pivot` | Cria pivo de irrigacao | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--observations` |
 | `aegro assets create-weather-station` | Cria estacao meteorologica | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--observations` |
 
@@ -268,10 +268,10 @@ aegro assets create-weather-station \
   --currency BRL
 
 # Listar apenas maquinas do tipo trator
-aegro assets list --types MACHINE --machine-types TRACTOR
+aegro assets list --type MACHINE --machine-type TRACTOR
 
 # Listar todos os veiculos
-aegro assets list --types VEHICLE
+aegro assets list --type VEHICLE
 ```
 
 ### fuel-supplies
@@ -279,7 +279,7 @@ aegro assets list --types VEHICLE
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--output` |
-| `aegro fuel-supplies list` | Lista abastecimentos (BUG #3 - retorna 500) | `--asset-keys`, `--start-date`, `--end-date`, `--page`, `--per-page`, `--output` |
+| `aegro fuel-supplies list` | Lista abastecimentos (BUG #3 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
 | `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--observations`, `--inputs` (JSON) |
 | `aegro fuel-supplies update <key>` | Atualiza abastecimento | mesmas flags do create |
 
@@ -317,8 +317,8 @@ aegro fuel-supplies update "fuelSupply::67f4d5e6a7b8c9d0" \
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro maintenances get <key>` | Busca manutencao por chave | `--output` |
-| `aegro maintenances list` | Lista manutencoes (BUG #4 - retorna 500) | `--asset-keys`, `--start-date`, `--end-date`, `--page`, `--per-page`, `--output` |
-| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-keys` |
+| `aegro maintenances list` | Lista manutencoes (BUG #4 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
+| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key` |
 | `aegro maintenances update <key>` | Atualiza manutencao | mesmas flags do create |
 
 ```bash
@@ -413,7 +413,7 @@ Os endpoints de listagem (`fuel-supplies list`, `maintenances list`) retornam HT
 
 ```bash
 # ERRADO - vai falhar com 500
-aegro fuel-supplies list --asset-keys "asset::57d299c3e4b059f24e3f99b0"
+aegro fuel-supplies list --asset-key "asset::57d299c3e4b059f24e3f99b0"
 
 # CORRETO - use GET individual se tiver a chave
 aegro fuel-supplies get "fuelSupply::67f4d5e6a7b8c9d0"

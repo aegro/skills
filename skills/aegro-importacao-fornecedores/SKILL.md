@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-fornecedores
 description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
-version: 0.5.1
+version: 0.6.0
 ---
 
 # Importacao de Fornecedores em Lote
@@ -70,9 +70,11 @@ direto em prod**. Siga sempre esta ordem:
    (`--env prod`), apos confirmacao explicita do usuario.
 
 > Os comandos `companies` (`create`/`get`/`list`/`update`) expoem `--env`
-> (`staging` para homologacao; `prod` para producao; default `prod`) — passe-o
-> explicitamente em cada comando. A fazenda ativa e controlada por
-> **`AEGRO_ACTIVE_FARM`**.
+> (`staging` para homologacao; `prod` para producao; default `prod`) e
+> **`--farm <nome|farm::key>`** — passe os dois explicitamente em cada comando. A
+> flag `--farm` e preferivel a `AEGRO_ACTIVE_FARM` e ao `farms select`, porque
+> viaja com o comando: nao depende de estado de shell nem de arquivo global que
+> outra sessao possa ter trocado.
 
 ## Fluxo de Importacao
 
@@ -163,9 +165,9 @@ primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. Faca retry em erros 5xx/timeout; nao faca retry em 4xx.
 
 **Alvo:** passe `--env staging` no primeiro passe e `--env prod` so na
-replicacao final (ver "Ordem Obrigatoria de Ambientes"), com
-`AEGRO_ACTIVE_FARM` apontando para a fazenda de teste em staging e a real em
-prod. Os mesmos comandos valem para os dois ambientes; muda so o `--env`.
+replicacao final (ver "Ordem Obrigatoria de Ambientes"), com `--farm` apontando
+para a fazenda de teste em staging e a real em prod. Os mesmos comandos valem para
+os dois ambientes; mudam so o `--env` e o `--farm`.
 
 ### 6b. Verificar (obrigatorio apos o passe em staging)
 

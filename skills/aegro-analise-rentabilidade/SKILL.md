@@ -1,7 +1,7 @@
 ---
 name: aegro-analise-rentabilidade
 description: Calcular ROI, custo por hectare e margem bruta da safra
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Analise de Rentabilidade
@@ -84,7 +84,7 @@ Agrupar custos por tipo: plantio, aplicacoes, adubacao, colheita.
 ### 4. Obter custos indiretos (rateios)
 
 ```bash
-aegro crops prorates --crop-keys <crop_key>
+aegro crops prorates --crop-key <crop_key>
 aegro crops prorate <prorate_key>
 ```
 

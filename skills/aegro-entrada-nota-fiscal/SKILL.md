@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.3.0
+version: 0.4.0
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -55,8 +55,12 @@ pode ativar o modo interno se dizer explicitamente que e do time.
 
 - **Login OAuth**: os comandos usam **APIs internas** do Aegro — exige
   `aegro auth login` (nao funciona com API key). Confira com `aegro auth status`.
-- Fazenda ativa selecionada (`aegro farms select "<Fazenda>"`) e ambiente certo
-  (`--env prod` no modo externo; `--env staging` no interno ate promover).
+- Fazenda identificada em **cada comando** com `--farm "<Fazenda|farm::key>"`, e
+  ambiente certo (`--env prod` no modo externo; `--env staging` no interno ate
+  promover). Prefira a flag ao `farms select`: o state e global por maquina, e com
+  varias sessoes abertas (uma por fazenda) a selecao de uma troca o alvo das
+  outras. Em safe mode, a escrita recusa fazenda implicita
+  (`IMPLICIT_FARM_BLOCKED`).
 - `/aegro-financeiro` — bills, categorias, parcelas, empresas, contas bancarias.
 - `/aegro-lancamento-financeiro` — sequencia de decisao de a pagar/receber.
 
@@ -196,11 +200,14 @@ So depois que o lancamento saiu **certo em staging** e o EV confirmou na UI de
 staging (`https://app.staging.aegro.io`):
 
 ```bash
-aegro farms select "<Fazenda do Cliente>" --env prod
+# A fazenda vai no PROPRIO comando (--farm), nao num 'farms select' anterior:
+# assim o alvo nao depende de estado global que outra sessao pode ter trocado.
 # MESMO comando validado, SEMPRE com --dry-run primeiro:
-aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense --dry-run --env prod
-# EV confere o plano e SO ENTAO:
-aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense --execute --env prod
+aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
+  --dry-run --env prod --farm "<Fazenda do Cliente>"
+# EV confere o plano (incluindo o campo farmSource) e SO ENTAO:
+aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
+  --execute --env prod --farm "<Fazenda do Cliente>"
 ```
 
 - **Use o NUMERO da nota** (nao a key/ids): chaves e ids diferem entre ambientes;

@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.5.1
+version: 0.6.0
 ---
 
 # Dominio Operacional
@@ -35,7 +35,7 @@ Cobre autenticacao, gestao de fazendas, tags, empresas, ordens de compra e a orq
 | Arquivo | Conteudo | Gerenciado por |
 |---------|----------|----------------|
 | `~/.config/aegro/credentials.json` | Map nome → API key | `aegro auth login` |
-| `~/.config/aegro/state.json` | Fazenda selecionada, timestamp | `aegro farms select` (shadow-ado por `AEGRO_ACTIVE_FARM`) |
+| `~/.config/aegro/state.json` | Fazenda selecionada, timestamp | `aegro farms select` (sombreado por `--farm` e `AEGRO_ACTIVE_FARM`) |
 
 ### Comandos de Autenticacao
 
@@ -54,38 +54,56 @@ aegro auth logout
 
 A fazenda ativa e resolvida nesta ordem de precedencia:
 
-1. **`AEGRO_ACTIVE_FARM`** env var — escopo de processo/sessao. Recomendado para
-   orquestracao (ex.: Claude Cowork operando multiplas fazendas em paralelo).
-2. **`state.json`** — escrito por `aegro farms select`, global por maquina.
+1. **`--farm <nome|farm::key>`** — flag aceita em **todo** comando de API. Escopo
+   de uma invocacao. E a forma recomendada.
+2. **`AEGRO_ACTIVE_FARM`** env var — escopo de processo/sessao.
+3. **`state.json`** — escrito por `aegro farms select`, global por maquina.
 
 ```bash
-# Escopo de sessao (Cowork, CI, scripts) — nao contamina outras sessoes:
+# Recomendado: a fazenda viaja com o comando, imune a outras sessoes
+aegro farms info --farm "Fazenda Aegro"
+aegro farms info --farm farm::5711512de4b0e15eb04da4d0
+
+# Escopo de sessao (CI, orquestradores que controlam o ambiente do processo):
 AEGRO_ACTIVE_FARM="Fazenda Aegro" aegro farms info
 
 # Single-machine / dev — persiste em state.json global:
 aegro farms select "Fazenda Aegro"
 
-# Listar fazendas; o campo `source` indica a origem da selecao ativa
-# ("env" | "state" | null). Use para validar o setup antes de operar:
+# Listar fazendas; `key` e o identificador estavel aceito por --farm, e `source`
+# indica a origem da selecao ativa ("flag" | "env" | "state" | null):
 aegro farms list
 
 # Detalhes da fazenda ativa (chama a API):
 aegro farms info
 ```
 
-**Multi-fazenda (Claude Cowork):** Em contextos com varias fazendas configuradas
-(operador de servicos atendendo varios clientes), sempre prefira
-`AEGRO_ACTIVE_FARM` por sessao/projeto. `farms select` grava global e pode
-ser sobrescrito por outra sessao em paralelo, contaminando a fazenda ativa.
+**Multi-fazenda (varias sessoes em paralelo):** com uma sessao por fazenda —
+operador de servicos atendendo vários clientes — **passe `--farm` em cada
+comando**. O `state.json` e global por maquina: o `farms select` de uma sessao
+troca o alvo de todas as outras, silenciosamente. `AEGRO_ACTIVE_FARM` tambem
+resolve, mas so quando quem orquestra controla o ambiente do processo — num
+harness de agente, um `export` de shell **nao persiste** entre chamadas de tool,
+entao a flag e o caminho confiavel.
 
-**Validacao obrigatoria antes de operar:** rode `aegro farms list` e confirme
-que a fazenda alvo aparece com `"active": true`. Se o `source` nao bater com
-o esperado (env em Cowork, state em dev local), PARE e investigue antes de
-qualquer comando de escrita.
+**O `--farm` aceita nome ou key.** O nome casa sem exigir caixa e acento exatos
+(`"fazenda aegro"` encontra `"Fazenda Aegro"`); a key (`farm::...`, visivel em
+`farms list`) e opaca e estavel, util para evitar quoting de nomes com espaco.
+Nome ambiguo e recusado, nunca adivinhado. Keys so resolvem no modo OAuth.
 
-**Nota:** Todo comando de dominio exige fazenda ativa. Sem selecao (nem env
-var nem state.json), retorna exit code 2 (auth) com mensagem orientando
-`AEGRO_ACTIVE_FARM=<nome>` ou `aegro farms select`.
+**Escrita em safe mode exige fazenda explicita.** Com `AEGRO_SAFE_MODE=1`, uma
+mutacao com `--execute` cuja fazenda veio do `state.json` falha com
+`IMPLICIT_FARM_BLOCKED` (exit 4) — a mensagem traz o `--farm` pronto para repetir
+o comando. Dry-run nao e bloqueado e mostra `farmSource` no envelope, indicando de
+onde veio a fazenda.
+
+**Validacao antes de operar:** rode `aegro farms list` e confirme que a fazenda
+alvo aparece com `"active": true`. Se o `source` nao bater com o esperado, PARE e
+investigue antes de qualquer comando de escrita — ou simplesmente passe `--farm`,
+que dispensa a validacao.
+
+**Nota:** Todo comando de dominio exige fazenda ativa. Sem nenhuma das tres
+fontes, retorna exit code 2 (auth) com mensagem orientando as opcoes.
 
 ## Formato Global da CLI
 
@@ -100,7 +118,8 @@ var nem state.json), retorna exit code 2 (auth) com mensagem orientando
 ### Paginacao
 
 - Padrao: **50 itens por pagina**, maximo 100
-- Controle via `--page N` (inicia em 1) e `--per-page N`
+- Controle via `--page N` (inicia em 1). **Nao existe `--per-page`** no CLI: o
+  tamanho da pagina e definido pela API.
 - Resposta inclui metadata: `totalItems`, `totalPages`, `currentPage`
 
 ### Formato de Chaves
@@ -140,8 +159,8 @@ Erros sao emitidos em stderr no formato JSON, nunca misturados com stdout:
 Flags que aceitam multiplos valores usam repeticao:
 
 ```bash
-aegro tags list --relation-types MACHINE --relation-types VEHICLE
-aegro elements list --categories DEFENSIVE --categories FERTILIZER
+aegro tags list --relation-type MACHINE --relation-type VEHICLE
+aegro elements list --category DEFENSIVE --category FERTILIZER
 ```
 
 ## Referencia de Comandos
@@ -150,14 +169,17 @@ aegro elements list --categories DEFENSIVE --categories FERTILIZER
 
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
-| `aegro farms list` | Lista fazendas; cada entrada tem `active` e `source` (`env`/`state`/null) | `--output` |
-| `aegro farms select <nome>` | Persiste fazenda ativa em state.json global (warn se `AEGRO_ACTIVE_FARM` estiver setada) | — |
-| `aegro farms info` | Detalhes da fazenda ativa via API | `--output` |
+| `aegro farms list` | Lista fazendas; cada entrada tem `key`, `env`, `active` e `source` (`flag`/`env`/`state`/null) | `--env`, `--output` |
+| `aegro farms select <nome>` | Persiste fazenda ativa em state.json global (warn se `AEGRO_ACTIVE_FARM` estiver setada) | `--env` |
+| `aegro farms info` | Detalhes da fazenda ativa via API | `--env`, `--farm`, `--output` |
 
 ```bash
-# Preferido em orquestracao (Cowork, CI, scripts) — escopo de sessao:
-AEGRO_ACTIVE_FARM="Fazenda Aegro" aegro farms info
+# Preferido: a fazenda viaja com o comando (imune a sessoes em paralelo)
+aegro farms info --farm "Fazenda Aegro"
 # {"key": "farm::5711512de4b0e15eb04da4d0", "name": "Fazenda Aegro", ...}
+
+# Escopo de sessao (CI, orquestrador que controla o ambiente do processo):
+AEGRO_ACTIVE_FARM="Fazenda Aegro" aegro farms info
 
 # Dev single-machine (persiste em state.json):
 aegro farms select "Fazenda Aegro"
@@ -169,7 +191,7 @@ aegro farms info
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
 | `aegro auth login` | Setup interativo de credenciais | — |
-| `aegro auth status` | Verifica autenticacao e fazenda ativa | `--output` |
+| `aegro auth status` | Verifica autenticacao e fazenda ativa | `--env` |
 | `aegro auth logout` | Remove credenciais locais | — |
 
 ### tags
@@ -177,7 +199,7 @@ aegro farms info
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
 | `aegro tags get <tag-key>` | Busca tag por chave | `--output` |
-| `aegro tags list` | Lista tags com filtros | `--relation-types`, `--statuses`, `--search-text`, `--page`, `--per-page`, `--output` |
+| `aegro tags list` | Lista tags com filtros | `--relation-type`, `--status`, `--search-text`, `--page`, `--output` |
 | `aegro tags create` | Cria nova tag | `--name` (obrig.), `--relation-type` (obrig.), `--status` |
 
 ```bash
@@ -186,7 +208,7 @@ aegro tags create --name "Frota Principal" --relation-type MACHINE
 # {"key": "tag::67f1a2b3c4d5e6f7", "name": "Frota Principal", "relationType": "MACHINE", "status": "ACTIVE"}
 
 # Listar tags de atividades
-aegro tags list --relation-types ACTIVITY --statuses ACTIVE
+aegro tags list --relation-type ACTIVITY --status ACTIVE
 ```
 
 **Relation Types disponiveis:** `MACHINE`, `VEHICLE`, `WEATHER_STATION`, `IMMOBILIZED`, `PIVOT`, `GARNER`, `HARVEST_TAG`, `HARVEST_IDENTIFIER`, `BILL`, `OBSERVATION`, `SCOUT_METHOD`, `GLEBE`, `ACTIVITY`, `PURCHASE`
@@ -196,16 +218,16 @@ aegro tags list --relation-types ACTIVITY --statuses ACTIVE
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
 | `aegro companies get <key>` | Busca empresa por chave | `--output` |
-| `aegro companies list` | Lista empresas com filtros | `--search-text`, `--fiscal-number-type`, `--page`, `--per-page`, `--output` |
-| `aegro companies create` | Cadastra nova empresa | `--name` (obrig.), `--fiscal-number-code` (obrig.), `--fiscal-number-type` (obrig.), `--types`, `--trade-name`, `--legal-name`, `--observations` |
+| `aegro companies list` | Lista empresas com filtros | `--search-text`, `--fiscal-number-type` (atencao: em `create` a flag equivalente chama `--fiscal-type`), `--page`, `--env`, `--farm`, `--output` |
+| `aegro companies create` | Cadastra nova empresa | `--name` (obrig.), `--fiscal-code` (obrig.), `--fiscal-type` (obrig.), `--type`, `--trade-name`, `--legal-name`, `--observations` |
 
 ```bash
 # Cadastrar fornecedor de insumos
 aegro companies create \
   --name "AgroInsumos Sul Ltda" \
-  --fiscal-number-code "12.345.678/0001-90" \
-  --fiscal-number-type CNPJ \
-  --types PROVIDER
+  --fiscal-code "12.345.678/0001-90" \
+  --fiscal-type CNPJ \
+  --type PROVIDER
 # {"key": "company::67f2b3c4d5e6a7b8", "name": "AgroInsumos Sul Ltda", ...}
 
 # Buscar empresa por texto
@@ -219,15 +241,15 @@ aegro companies list --search-text "Bayer"
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
 | `aegro purchase-orders get <key>` | Busca ordem de compra por chave | `--output` |
-| `aegro purchase-orders list` | Lista ordens de compra | `--company-key`, `--start-date`, `--end-date`, `--search-text`, `--delivery-status`, `--tag`, `--page`, `--per-page`, `--output` |
-| `aegro purchase-orders create` | Cria ordem de compra | `--order-date` (obrig.), `--currency-code` (obrig.), `--gross-amount` (obrig.), `--items` (obrig. JSON), `--company-key`, `--description`, `--expected-delivery-date`, `--tags` |
+| `aegro purchase-orders list` | Lista ordens de compra | `--company-key`, `--start-date`, `--end-date`, `--search-text`, `--delivery-status`, `--page`, `--env`, `--farm`, `--output` |
+| `aegro purchase-orders create` | Cria ordem de compra | `--order-date` (obrig.), `--currency` (obrig.), `--gross-amount` (obrig.), `--items` (obrig. JSON), `--company-key`, `--description`, `--expected-delivery-date`, `--tag` |
 
 ```bash
 # Criar ordem de compra de defensivos
 aegro purchase-orders create \
   --company-key "company::67f2b3c4d5e6a7b8" \
   --order-date "2026-03-13" \
-  --currency-code BRL \
+  --currency BRL \
   --gross-amount 45000.00 \
   --description "Defensivos safra 25/26 - lote 1" \
   --items '[{"elementKey": "element::5a9c2d3e4f5b6a78", "quantity": 500, "unitPrice": 90.00}]'
@@ -246,7 +268,7 @@ Fluxos operacionais que cruzam multiplos dominios do Aegro. A sequencia correta 
 companies create (ou usar existente)
     → purchase-orders create (vincula empresa + itens)
         → stock entry (registra entrada no deposito)
-            → financial create-installment (gera parcelas a pagar)
+            → financial create-bill (lancamento + parcelas a pagar)
 ```
 
 ```bash
@@ -258,7 +280,7 @@ aegro companies list --search-text "AgroInsumos"
 aegro purchase-orders create \
   --company-key "company::67f2b3c4d5e6a7b8" \
   --order-date "2026-03-13" \
-  --currency-code BRL \
+  --currency BRL \
   --gross-amount 45000.00 \
   --items '[{"elementKey": "element::5a9c2d3e4f5b6a78", "quantity": 500, "unitPrice": 90.00}]'
 
@@ -269,13 +291,18 @@ aegro stock entry \
   --quantity 500 \
   --date "2026-03-15"
 
-# 4. Criar parcela financeira
-aegro financial create-installment \
-  --bill-key "bill::xyz789" \
+# 4. Criar o lancamento financeiro com as parcelas
+# A API publica NAO expoe create/update/delete de parcela avulsa: as parcelas
+# vao no campo `installments` do proprio create-bill.
+aegro financial create-bill \
+  --description "Compra de fertilizante - safra 25/26" \
+  --total-amount 45000.00 \
+  --cash-flow EXPENSE \
+  --payment-method INSTALLMENT \
+  --category "Insumos" \
   --bank-account-key "bankAccount::def456" \
-  --due-date "2026-04-15" \
-  --amount-value 45000.00 \
-  --amount-currency BRL
+  --installments '[{"number": 1, "dueDate": "2026-04-15", "amount": {"currencyCode": "BRL", "amount": 45000}}]' \
+  --farm "Fazenda Aegro" --execute
 ```
 
 ### Fluxo 2: Aplicacao de Defensivo (Agronomico → Estoque)
@@ -309,7 +336,7 @@ aegro stock logs --element-key "element::5a9c2d3e4f5b6a78" --start-date 2026-03-
 
 ```
 harvest-logs create (registra romaneio de colheita)
-    → financial create-installment (gera recebivel da venda)
+    → financial create-bill (lancamento + recebivel da venda)
 ```
 
 ```bash
@@ -321,12 +348,15 @@ aegro harvest-logs create \
   --humidity 14.5
 
 # 2. Gerar conta a receber (venda do grao)
-aegro financial create-installment \
-  --bill-key "bill::venda001" \
+aegro financial create-bill \
+  --description "Venda de soja - safra 25/26" \
+  --total-amount 192000.00 \
+  --cash-flow REVENUE \
+  --payment-method INSTALLMENT \
+  --category "Venda de graos" \
   --bank-account-key "bankAccount::def456" \
-  --due-date "2026-04-30" \
-  --amount-value 192000.00 \
-  --amount-currency BRL
+  --installments '[{"number": 1, "dueDate": "2026-04-30", "amount": {"currencyCode": "BRL", "amount": 192000}}]' \
+  --farm "Fazenda Aegro" --execute
 ```
 
 ### Fluxo 4: Manutencao de Patrimonio (Patrimonial → Estoque → Financeiro)
@@ -334,7 +364,7 @@ aegro financial create-installment \
 ```
 maintenances create (registra manutencao com pecas)
     → stock removal automatico (baixa de pecas do deposito)
-        → financial create-installment (gera conta a pagar do servico)
+        → financial create-bill (lancamento + conta a pagar do servico)
 ```
 
 ```bash
@@ -347,13 +377,16 @@ aegro maintenances create \
   --observations "Troca filtros + oleo - revisao 500h" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
 
-# 2. Gerar parcela do servico de manutencao
-aegro financial create-installment \
-  --bill-key "bill::manut001" \
+# 2. Gerar o lancamento do servico de manutencao
+aegro financial create-bill \
+  --description "Revisao 500h - troca de filtros e oleo" \
+  --total-amount 3500.00 \
+  --cash-flow EXPENSE \
+  --payment-method INSTALLMENT \
+  --category "Manutencao" \
   --bank-account-key "bankAccount::def456" \
-  --due-date "2026-04-15" \
-  --amount-value 3500.00 \
-  --amount-currency BRL
+  --installments '[{"number": 1, "dueDate": "2026-04-15", "amount": {"currencyCode": "BRL", "amount": 3500}}]' \
+  --farm "Fazenda Aegro" --execute
 ```
 
 ### Fluxo 5: Custeio — Vinculo Elemento x Categoria Financeira

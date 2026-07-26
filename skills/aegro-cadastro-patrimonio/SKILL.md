@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Cadastro de Patrimonio
@@ -60,7 +60,7 @@ Qual tipo de patrimonio?
 ### 1. Verificar se o ativo ja existe
 
 ```bash
-aegro assets list --types <TIPO>
+aegro assets list --type <TIPO>
 ```
 
 Confirmar que nao ha duplicata pelo nome/fabricante.

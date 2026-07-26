@@ -1,7 +1,7 @@
 ---
 name: aegro-conciliacao-bancaria
 description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Aegro Conciliacao Bancaria
@@ -16,8 +16,12 @@ concretos, mostre o progresso, e **sempre termine sugerindo o proximo passo**. O
 usuario deve conseguir avancar respondendo em uma palavra.
 
 > **Requer login OAuth.** A conciliacao usa APIs internas do Aegro. Rode
-> `aegro auth login` e selecione a fazenda (`aegro farms select`). Em modo API
-> key os comandos falham com exit 2.
+> `aegro auth login`. Em modo API key os comandos falham com exit 2.
+>
+> **Identifique a fazenda com `--farm "<nome|farm::key>"`** em cada comando. O
+> `farms select` grava num state global por maquina: com varias sessoes abertas
+> (uma por fazenda), a selecao de uma troca o alvo das outras. Em safe mode, a
+> escrita recusa fazenda implicita e falha com `IMPLICIT_FARM_BLOCKED`.
 >
 > **Fluxo critico (dados financeiros).** O agente **propoe**, o humano **confirma**.
 > Nunca concilie nem baixe uma parcela em silencio. Toda escrita suporta
@@ -48,7 +52,7 @@ obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
 ## 2. Fluxo
 
 ```text
-1. Selecionar conta        -> aegro farms select / (contexto); pegar a key bankAccount::...
+1. Selecionar conta        -> --farm "<fazenda>" em cada comando; pegar a key bankAccount::...
 2. Importar OFX            -> bank-reconciliation import-ofx --execute
 3. Listar entradas PENDING -> bank-reconciliation entries
 4. Casar (matching)        -> bank-reconciliation candidates (banda ±%/±dias) + cruzamento
