@@ -1,5 +1,7 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "aegro-skills",
+  "description": "Public Aegro skills for Claude Code — farm overview, crop closing, financial entries, stock and bank reconciliation, and more.",
   "owner": {
     "name": "Aegro Engineering",
     "url": "https://github.com/aegro/skills"
@@ -7,9 +9,9 @@
   "plugins": [
     {
       "name": "aegro-skills",
-      "description": "17 AI skills for Aegro agricultural management",
+      "description": "19 AI skills for Aegro agricultural management",
       "version": "0.6.1",
-      "path": "."
+      "source": "."
     }
   ]
 }
