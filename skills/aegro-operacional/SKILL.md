@@ -218,7 +218,7 @@ aegro tags list --relation-type ACTIVITY --status ACTIVE
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
 | `aegro companies get <key>` | Busca empresa por chave | `--output` |
-| `aegro companies list` | Lista empresas com filtros | `--search-text`, `--fiscal-number-type` (atencao: em `create` a flag equivalente chama `--fiscal-type`), `--page`, `--env`, `--farm`, `--output` |
+| `aegro companies list` | Lista empresas com filtros | `--search-text`, `--fiscal-type` (alias: `--fiscal-number-type`), `--page`, `--env`, `--farm`, `--output` |
 | `aegro companies create` | Cadastra nova empresa | `--name` (obrig.), `--fiscal-code` (obrig.), `--fiscal-type` (obrig.), `--type`, `--trade-name`, `--legal-name`, `--observations` |
 
 ```bash
