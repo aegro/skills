@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -22,6 +22,7 @@ fertilizantes). Base para todos os workflows agronomicos.
 | **Atividade** | `activity` | Operacao agricola planejada ou executada (plantio, aplicacao, colheita, etc). |
 | **Plano** | `plan` | Planejamento: quais talhoes, quais insumos, datas previstas. |
 | **Realizacao** | `realization` | Execucao efetiva. Uma atividade pode ter multiplas realizacoes. |
+| **Operacao (tag)** | `tag` | Nome/etiqueta da atividade, exibido como "Operacao" no app web/mobile. Na API o campo se chama `tag`. |
 | **Romaneio** | `harvest-log` | Registro de pesagem de colheita. Pesos: bruto, tara, liquido, descontado, produto. |
 | **Rateio** | `crop-prorate` | Distribuicao proporcional de custos entre talhoes. Soma = 100%. |
 | **Elemento** | `element` | Insumo: semente, defensivo, fertilizante, item ou servico. |
@@ -135,7 +136,7 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 | `activities get-plan <key>` | posicional - **chave do plano** → `/activities/plans/{key}` |
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
-| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--inputs` (JSON) |
+| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
 
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
@@ -153,6 +154,7 @@ aegro activities create-plan \
   --crop-key crop::68dd6719e90f726622b7f549 \
   --type SOWING --start-date 2026-01-15 \
   --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
+  --tag "Plantio Soja TMG 2381" \
   --observations "Plantio soja TMG 2381" \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
