@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.0
+version: 0.6.1
 ---
 
 # Dominio Patrimonial
@@ -186,7 +186,7 @@ Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticam
 
 ```bash
 # Criar trator John Deere
-aegro assets create-machine \
+aegro assets create-machine --farm "Fazenda Aegro" \
   --name "JD 8R 410" \
   --manufacturer "John Deere" \
   --machine-type TRACTOR \
@@ -197,7 +197,7 @@ aegro assets create-machine \
 # {"key": "asset::67f3c4d5e6a7b8c9", "name": "JD 8R 410", "type": "MACHINE", "machineType": "TRACTOR", ...}
 
 # Criar colheitadeira
-aegro assets create-machine \
+aegro assets create-machine --farm "Fazenda Aegro" \
   --name "Case IH 8250" \
   --manufacturer "Case IH" \
   --machine-type HARVESTER \
@@ -207,7 +207,7 @@ aegro assets create-machine \
   --hourmeter 320
 
 # Criar pulverizador autopropelido
-aegro assets create-machine \
+aegro assets create-machine --farm "Fazenda Aegro" \
   --name "Jacto Uniport 4530" \
   --manufacturer "Jacto" \
   --machine-type SPRAYER \
@@ -217,7 +217,7 @@ aegro assets create-machine \
   --hourmeter 2100
 
 # Criar implemento (grade aradora)
-aegro assets create-machine \
+aegro assets create-machine --farm "Fazenda Aegro" \
   --name "Grade Aradora 32 discos" \
   --manufacturer "Baldan" \
   --machine-type TILLER \
@@ -227,7 +227,7 @@ aegro assets create-machine \
   --is-implement
 
 # Criar veiculo (pickup)
-aegro assets create-vehicle \
+aegro assets create-vehicle --farm "Fazenda Aegro" \
   --name "Hilux CD 4x4 SRV" \
   --manufacturer "Toyota" \
   --manufacture-year 2024 \
@@ -236,7 +236,7 @@ aegro assets create-vehicle \
   --odometer 15000
 
 # Criar silo
-aegro assets create-garner \
+aegro assets create-garner --farm "Fazenda Aegro" \
   --name "Silo Metalico 3000t" \
   --manufacturer "Kepler Weber" \
   --manufacture-year 2020 \
@@ -244,14 +244,14 @@ aegro assets create-garner \
   --currency BRL
 
 # Criar benfeitoria
-aegro assets create-immobilized \
+aegro assets create-immobilized --farm "Fazenda Aegro" \
   --name "Barracão de Máquinas" \
   --manufacture-year 2018 \
   --value 280000 \
   --currency BRL
 
 # Criar pivo de irrigacao
-aegro assets create-pivot \
+aegro assets create-pivot --farm "Fazenda Aegro" \
   --name "Pivo Central Talhao 5" \
   --manufacturer "Valley" \
   --manufacture-year 2022 \
@@ -260,7 +260,7 @@ aegro assets create-pivot \
   --hourmeter 4200
 
 # Criar estacao meteorologica
-aegro assets create-weather-station \
+aegro assets create-weather-station --farm "Fazenda Aegro" \
   --name "Estacao Sede" \
   --manufacturer "Davis Instruments" \
   --manufacture-year 2023 \
@@ -268,10 +268,10 @@ aegro assets create-weather-station \
   --currency BRL
 
 # Listar apenas maquinas do tipo trator
-aegro assets list --type MACHINE --machine-type TRACTOR
+aegro assets list --farm "Fazenda Aegro" --type MACHINE --machine-type TRACTOR
 
 # Listar todos os veiculos
-aegro assets list --type VEHICLE
+aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
 
 ### fuel-supplies
@@ -285,7 +285,7 @@ aegro assets list --type VEHICLE
 
 ```bash
 # Registrar abastecimento de trator (Diesel S10 - 200L)
-aegro fuel-supplies create \
+aegro fuel-supplies create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-13" \
   --hourmeter 1550 \
@@ -295,17 +295,17 @@ aegro fuel-supplies create \
 # {"key": "fuelSupply::67f4d5e6a7b8c9d0", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Registrar abastecimento de veiculo (com hodometro)
-aegro fuel-supplies create \
+aegro fuel-supplies create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-13" \
   --odometer 15500 \
   --observations "Diesel S10 - 80L - Posto externo"
 
 # Buscar abastecimento especifico
-aegro fuel-supplies get "fuelSupply::67f4d5e6a7b8c9d0"
+aegro fuel-supplies get --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
 
 # Atualizar observacao de abastecimento
-aegro fuel-supplies update "fuelSupply::67f4d5e6a7b8c9d0" \
+aegro fuel-supplies update --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-13" \
   --hourmeter 1550 \
@@ -323,7 +323,7 @@ aegro fuel-supplies update "fuelSupply::67f4d5e6a7b8c9d0" \
 
 ```bash
 # Registrar manutencao preventiva de trator (troca de filtros + oleo)
-aegro maintenances create \
+aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-12" \
   --hourmeter 1545 \
@@ -333,7 +333,7 @@ aegro maintenances create \
 # {"key": "maintenance::67f5e6a7b8c9d0e1", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Manutencao corretiva de colheitadeira
-aegro maintenances create \
+aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::colheitadeira_case01" \
   --date "2026-03-10" \
   --hourmeter 318 \
@@ -341,7 +341,7 @@ aegro maintenances create \
   --inputs '[{"elementKey": "element::correia_elevador", "quantity": 1}]'
 
 # Manutencao de veiculo (usa hodometro)
-aegro maintenances create \
+aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-11" \
   --odometer 15200 \
@@ -349,7 +349,7 @@ aegro maintenances create \
   --inputs '[{"elementKey": "element::oleo_motor_5w30", "quantity": 7}, {"elementKey": "element::filtro_oleo_hilux", "quantity": 1}]'
 
 # Manutencao com rateio para safra
-aegro maintenances create \
+aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-08" \
   --hourmeter 1540 \
@@ -357,7 +357,7 @@ aegro maintenances create \
   --observations "Reparo sistema hidraulico - rateado para safra 25/26"
 
 # Buscar manutencao especifica
-aegro maintenances get "maintenance::67f5e6a7b8c9d0e1"
+aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 ```
 
 ## Bugs e Workarounds
@@ -413,10 +413,10 @@ Os endpoints de listagem (`fuel-supplies list`, `maintenances list`) retornam HT
 
 ```bash
 # ERRADO - vai falhar com 500
-aegro fuel-supplies list --asset-key "asset::57d299c3e4b059f24e3f99b0"
+aegro fuel-supplies list --farm "Fazenda Aegro" --asset-key "asset::57d299c3e4b059f24e3f99b0"
 
 # CORRETO - use GET individual se tiver a chave
-aegro fuel-supplies get "fuelSupply::67f4d5e6a7b8c9d0"
+aegro fuel-supplies get --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
 ```
 
 ### 2. Nao use horimetro em veiculos
@@ -425,10 +425,10 @@ Veiculos (`type: VEHICLE`) usam **hodometro** (`odometerAtOccurrenceInKilometers
 
 ```bash
 # ERRADO - veiculo nao usa horimetro
-aegro fuel-supplies create --asset-key "asset::veiculo01" --hourmeter 1500 ...
+aegro fuel-supplies create --farm "Fazenda Aegro" --asset-key "asset::veiculo01" --hourmeter 1500 ...
 
 # CORRETO - veiculo usa hodometro (km)
-aegro fuel-supplies create --asset-key "asset::veiculo01" --odometer 85000 ...
+aegro fuel-supplies create --farm "Fazenda Aegro" --asset-key "asset::veiculo01" --odometer 85000 ...
 ```
 
 ### 3. Nao esqueca o fabricante (manufacturer)
@@ -437,10 +437,10 @@ Embora `manufacturer` nao seja tecnicamente obrigatorio na API, e **fortemente r
 
 ```bash
 # EVITAR - sem fabricante dificulta identificacao
-aegro assets create-machine --name "Trator 180cv" --machine-type TRACTOR
+aegro assets create-machine --farm "Fazenda Aegro" --name "Trator 180cv" --machine-type TRACTOR
 
 # MELHOR - com fabricante e modelo identificavel
-aegro assets create-machine \
+aegro assets create-machine --farm "Fazenda Aegro" \
   --name "JD 8R 410" \
   --manufacturer "John Deere" \
   --machine-type TRACTOR
@@ -456,11 +456,11 @@ O campo `machineType` e **obrigatorio** para patrimonios tipo `MACHINE`. Sem ele
 
 ```bash
 # ERRADO - falta machineType
-aegro assets create-machine --name "Trator" --manufacturer "John Deere"
+aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacturer "John Deere"
 # Erro 422: machineType is required
 
 # CORRETO
-aegro assets create-machine --name "Trator" --manufacturer "John Deere" --machine-type TRACTOR
+aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacturer "John Deere" --machine-type TRACTOR
 ```
 
 ### 6. Nao misture inputs sem stockLocationKey
@@ -469,11 +469,11 @@ Se passar `inputs` em um evento de abastecimento ou manutencao, considere tambem
 
 ```bash
 # Inputs sem stockLocationKey = registro informativo apenas, sem baixa de estoque
-aegro maintenances create --asset-key "asset::x" --date "2026-03-12" \
+aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
 
 # Inputs com stockLocationKey = baixa automatica do estoque no local indicado
-aegro maintenances create --asset-key "asset::x" --date "2026-03-12" \
+aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
   --stock-location-key "stockLocation::abc123" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
 ```

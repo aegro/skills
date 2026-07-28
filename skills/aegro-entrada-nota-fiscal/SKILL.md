@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.4.0
+version: 0.4.1
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -182,10 +182,10 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 
 ```bash
 # 1o: preview (nenhuma escrita acontece; o plano completo e exibido)
-aegro received-fiscal-documents launch-bill <NUMERO> --category "Categoria" --expense --dry-run
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" <NUMERO> --category "Categoria" --expense --dry-run
 
 # 2o: so depois que o usuario conferir o plano (fornecedor, categoria, parcelas, valor):
-aegro received-fiscal-documents launch-bill <NUMERO> --category "Categoria" --expense --execute
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" <NUMERO> --category "Categoria" --expense --execute
 ```
 
 Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`

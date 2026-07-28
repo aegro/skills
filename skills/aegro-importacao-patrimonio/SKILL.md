@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-patrimonio
 description: Importar patrimonio em lote a partir de uma planilha modelo (maquinas, veiculos, silos, benfeitorias, pivos, estacoes)
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Importacao de Patrimonio em Lote
@@ -147,8 +147,8 @@ trabalhosa de desfazer (nao ha delete em lote).
 Antes de criar, liste o que ja existe e pule duplicatas por nome:
 
 ```bash
-aegro assets list --env staging --type MACHINE --output json
-aegro assets list --env staging --type VEHICLE --output json
+aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output json
+aegro assets list --farm "<fazenda>" --env staging --type VEHICLE --output json
 # ... repetir por tipo presente na planilha (troque --env conforme o alvo)
 # ou: aegro assets list --env staging --search "<nome>"  para conferir um nome especifico
 ```
@@ -162,7 +162,7 @@ Crie um ativo por linha com o comando do tipo. Exemplos:
 
 ```bash
 # Maquina (trator) com vida util em horas
-aegro assets create-machine \
+aegro assets create-machine --farm "<fazenda>" \
   --name "TRATOR MF 4297/4K" \
   --machine-type TRACTOR \
   --manufacturer "MASSEY FERGUSON" \
@@ -174,7 +174,7 @@ aegro assets create-machine \
   --observations "RAAT0008JEC003320"
 
 # Implemento (semeadeira)
-aegro assets create-machine \
+aegro assets create-machine --farm "<fazenda>" \
   --name "PLANTADEIRA JD 1109" \
   --machine-type PLANTER \
   --manufacturer "JOHN DEERE" \
@@ -183,7 +183,7 @@ aegro assets create-machine \
   --value 250000 --currency BRL
 
 # Veiculo (usa hodometro e vida util em km)
-aegro assets create-vehicle \
+aegro assets create-vehicle --farm "<fazenda>" \
   --name "Hilux CD 4x4" \
   --manufacturer "Toyota" \
   --manufacture-year 2024 \
@@ -192,7 +192,7 @@ aegro assets create-vehicle \
   --life-span 300000 --life-span-unit km
 
 # Pivo
-aegro assets create-pivot \
+aegro assets create-pivot --farm "<fazenda>" \
   --name "Pivo Central Talhao 5" \
   --manufacturer "Valley" \
   --value 650000 --currency BRL
@@ -212,9 +212,9 @@ Depois de criar em staging, **confira manualmente uma amostra** antes de
 pensar em prod. Use as chaves capturadas:
 
 ```bash
-aegro assets get <key> --env staging --output table
+aegro assets get --farm "<fazenda>" <key> --env staging --output table
 # ou conferir por tipo:
-aegro assets list --env staging --type MACHINE --output table
+aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output table
 ```
 
 Cheque uma amostra que cubra cada `tipo`, o `machineType`, datas, `isImplement`

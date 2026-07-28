@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-fornecedores
 description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
-version: 0.7.0
+version: 0.7.1
 ---
 
 # Importacao de Fornecedores em Lote
@@ -125,10 +125,10 @@ digitos)** em duas frentes:
 
 ```bash
 # Indexar empresas existentes (paginar ate cobrir todas; troque --env conforme o alvo)
-aegro companies list --env staging --fiscal-number-type CNPJ --output json
-aegro companies list --env staging --fiscal-number-type CPF --output json
+aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CNPJ --output json
+aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CPF --output json
 # ou conferir um caso especifico:
-aegro companies list --env staging --search-text "<nome>"
+aegro companies list --farm "<fazenda>" --env staging --search-text "<nome>"
 ```
 
 Compare tambem por nome normalizado (ignorando acento/maiusculas). **Quando
@@ -142,7 +142,7 @@ Crie uma empresa por linha. Capture a `key` retornada de cada uma.
 
 ```bash
 # Fornecedor com CNPJ (apos enriquecimento)
-aegro companies create \
+aegro companies create --farm "<fazenda>" \
   --name "AGRO EXEMPLO LTDA" \
   --type PROVIDER \
   --fiscal-code 23706398000181 --fiscal-type CNPJ \
@@ -150,7 +150,7 @@ aegro companies create \
   --trade-name "AGRO EXEMPLO"
 
 # Fornecedor com CPF
-aegro companies create \
+aegro companies create --farm "<fazenda>" \
   --name "JOAO DA SILVA" \
   --type PROVIDER \
   --fiscal-code 12345678901 --fiscal-type CPF
@@ -172,8 +172,8 @@ os dois ambientes; mudam so o `--env` e o `--farm`.
 ### 6b. Verificar (obrigatorio apos o passe em staging)
 
 ```bash
-aegro companies get <key> --env staging --output table
-aegro companies list --env staging --fiscal-number-type CNPJ --output table
+aegro companies get --farm "<fazenda>" <key> --env staging --output table
+aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CNPJ --output table
 ```
 
 Confira uma amostra que cubra CNPJ enriquecido, CPF e sem documento. So avance

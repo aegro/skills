@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.7.0
+version: 0.7.1
 ---
 
 # Aegro Financeiro
@@ -162,19 +162,19 @@ Relacionamentos-chave:
 
 ```bash
 # Listar despesas pendentes no mes de marco/2026
-aegro financial installments --operation-type EXPENSE --status NOT_PAID \
+aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-03-01 --due-date-end 2026-04-01
 
 # Criar lancamento JA parcelado (parcelas nascem no create-bill)
-aegro financial create-bill --description "Adubo" --total-amount 3000 \
+aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 3000 \
   --cash-flow EXPENSE --payment-method INSTALLMENT --category "Insumos" \
   --installments '[{"number":1,"dueDate":"2026-04-15","amount":{"currencyCode":"BRL","amount":1500}},{"number":2,"dueDate":"2026-05-15","amount":{"currencyCode":"BRL","amount":1500}}]'
 
 # Corrigir um lancamento existente (PATCH: so os campos a alterar)
-aegro financial update-bill bill::abc123 --body '{"description":"Texto novo"}'
+aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}'
 
 # Realizar (pagar) multiplas parcelas em lote
-aegro financial realize --key installment::aaa --key installment::bbb
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb
 ```
 
 ### 4.1.1 Insercao inteligente de contas (create-bill / create-bills)
@@ -214,7 +214,7 @@ bill. Cada item leva `elementKey` (exato — o CLI nao resolve nome de item aqui
 quantidade, valores e `financialCategory` propria:
 
 ```bash
-aegro financial create-bill --description "NF 1234 - insumos" \
+aegro financial create-bill --farm "<fazenda>" --description "NF 1234 - insumos" \
   --cash-flow EXPENSE --payment-method INSTALLMENT --company "AgroSul" \
   --total-amount 8000 \
   --inputs '[{"elementKey":"element::aaa","quantity":{"magnitude":100,"unit":"L"},"unitAmount":{"currencyCode":"BRL","amount":50},"amount":{"currencyCode":"BRL","amount":5000},"financialCategory":{"key":"financialCategory::defensivos"}},{"elementKey":"element::bbb","quantity":{"magnitude":10,"unit":"t"},"unitAmount":{"currencyCode":"BRL","amount":300},"amount":{"currencyCode":"BRL","amount":3000},"financialCategory":{"key":"financialCategory::fertilizantes"}}]' \
@@ -244,12 +244,12 @@ categorias nem inferir de lancamentos antigos:
 ```bash
 # Compra JA PAGA a vista (PROMPT gera parcela unica paga); nomes resolvidos,
 # fazenda e data inferidas
-aegro financial create-bill --description "Adubo NPK" --total-amount 1500 \
+aegro financial create-bill --farm "<fazenda>" --description "Adubo NPK" --total-amount 1500 \
   --cash-flow EXPENSE --payment-method PROMPT \
   --category "Insumos" --company "Fornecedor X"
 
 # Modo headless: so resolve/infere e diz o que falta (nao executa)
-aegro financial create-bill --description "Adubo" --total-amount 1500 \
+aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 1500 \
   --cash-flow EXPENSE --payment-method PROMPT --complete
 ```
 
@@ -259,11 +259,11 @@ uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
 
 ```bash
 # Tabela de conferencia (nao executa)
-aegro financial create-bills --batch contas.json --env staging --complete
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging --complete
 
 # Lancar em staging; depois conferir na UI e promover trocando --env
-aegro financial create-bills --batch contas.json --env staging
-aegro financial create-bills --batch contas.json --env prod
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod
 ```
 
 Exemplo de `contas.json`:
@@ -301,18 +301,18 @@ Exemplo de `contas.json`:
 
 ```bash
 # Listar categorias analiticas de despesa ativas
-aegro fin-categories list --type ANALYTIC --operation-type DEBTOR --status ACTIVE
+aegro fin-categories list --farm "<fazenda>" --type ANALYTIC --operation-type DEBTOR --status ACTIVE
 
 # Criar categoria pai (sintetica)
-aegro fin-categories create --description "Custos Operacionais" --type SYNTHETIC \
+aegro fin-categories create --farm "<fazenda>" --description "Custos Operacionais" --type SYNTHETIC \
   --operation-type DEBTOR --status ACTIVE --bill-type PAYABLE --code "2"
 
 # Criar subcategoria (analitica, vinculada ao pai pelo parent-code)
-aegro fin-categories create --description "Defensivos Agricolas" --type ANALYTIC \
+aegro fin-categories create --farm "<fazenda>" --description "Defensivos Agricolas" --type ANALYTIC \
   --operation-type DEBTOR --status ACTIVE --bill-type PAYABLE --code "2.1" --parent-code "2"
 
 # Listar os ELEMENTOS (itens) vinculados a uma categoria (nome do comando engana)
-aegro fin-categories subcategories financialCategory::xyz
+aegro fin-categories subcategories --farm "<fazenda>" financialCategory::xyz
 ```
 
 **Categoria financeira dos elementos (define a classificacao de custo nos lancamentos):**
@@ -332,16 +332,16 @@ conferir/auditar como cada insumo sera classificado no lancamento):
 
 ```bash
 # Lista em massa: categoria de despesa de cada elemento (classificacao nos lancamentos de despesa)
-aegro elements financial-categories expense
+aegro elements financial-categories --farm "<fazenda>" expense
 
 # Conferir a categoria de despesa de insumos especificos antes de lancar
-aegro elements financial-categories expense --element-key element::abc123 --element-key element::def456
+aegro elements financial-categories --farm "<fazenda>" expense --element-key element::abc123 --element-key element::def456
 
 # Ler (read-only) a associacao de UM elemento
-aegro elements get-categories element::abc123
+aegro elements get-categories --farm "<fazenda>" element::abc123
 
 # Definir a categoria de despesa de um elemento (merge: nao mexe na receita)
-aegro elements set-categories element::abc123 --expense-category-key financialCategory::exp1
+aegro elements set-categories --farm "<fazenda>" element::abc123 --expense-category-key financialCategory::exp1
 ```
 
 **Regras/armadilhas ao definir a classificacao:**
@@ -361,17 +361,17 @@ aegro elements set-categories element::abc123 --expense-category-key financialCa
 
 ```bash
 # Listar contas bancarias
-aegro bank-accounts list
-aegro bank-accounts list --search-text "Itau" --bank-name "Itau"
+aegro bank-accounts list --farm "<fazenda>"
+aegro bank-accounts list --farm "<fazenda>" --search-text "Itau" --bank-name "Itau"
 
 # Criar conta bancaria com saldo inicial
-aegro bank-accounts create --name "Conta Itau" \
+aegro bank-accounts create --farm "<fazenda>" --name "Conta Itau" \
   --balance 10000 --balance-currency BRL \
   --initial-balance 10000 --initial-balance-currency BRL \
   --initial-balance-date 2025-01-01
 
 # Criar conta padrao
-aegro bank-accounts create --name "Conta Principal BB" --is-default \
+aegro bank-accounts create --farm "<fazenda>" --name "Conta Principal BB" --is-default \
   --bank-name "Banco do Brasil" --bank-code "001" --branch-code "1234"
 ```
 
@@ -387,14 +387,14 @@ aegro bank-accounts create --name "Conta Principal BB" --is-default \
 
 ```bash
 # Listar fornecedores com CNPJ
-aegro companies list --fiscal-number-type CNPJ
+aegro companies list --farm "<fazenda>" --fiscal-number-type CNPJ
 
 # Criar fornecedor com CNPJ
-aegro companies create --name "AgroSul Ltda" --type PROVIDER \
+aegro companies create --farm "<fazenda>" --name "AgroSul Ltda" --type PROVIDER \
   --fiscal-code 12345678000199 --fiscal-type CNPJ
 
 # Criar empresa que e fornecedor E cliente
-aegro companies create --name "CoopAgri" --type PROVIDER --type CLIENT \
+aegro companies create --farm "<fazenda>" --name "CoopAgri" --type PROVIDER --type CLIENT \
   --trade-name "Cooperativa Agricola" --legal-name "CoopAgri Ltda"
 ```
 
@@ -421,21 +421,21 @@ e o app **divide pela cotacao** na exibicao. Envie
 
 ```bash
 # Listar ordens de compra de um fornecedor
-aegro purchase-orders list --company-key company::abc123
+aegro purchase-orders list --farm "<fazenda>" --company-key company::abc123
 
 # Criar ordem em BRL, resolvendo empresa e produto por nome
-aegro purchase-orders create --company "AgroSul" \
+aegro purchase-orders create --farm "<fazenda>" --company "AgroSul" \
   --order-date 2026-03-15 --gross-amount 15000 \
   --items '[{"product":"Glifosato","quantity":500,"quantityDelivered":0,"measuringUnit":"L","unitAmount":30,"totalAmount":15000}]' \
   --description "Compra de defensivos safra 25/26"
 
 # Criar ordem em USD (valores convertidos: US$ 4,85 x 5,1395 = 24.9266 BRL)
-aegro purchase-orders create --company "Corteva" --order-date 2026-06-23 \
+aegro purchase-orders create --farm "<fazenda>" --company "Corteva" --order-date 2026-06-23 \
   --gross-amount 9472.10 --currency USD --currency-exchange-rate 5.1395 \
   --items '[{"product":"Joint Oil","quantity":380,"quantityDelivered":0,"measuringUnit":"L","unitAmount":24.9266,"totalAmount":9472.10}]'
 
 # Lote com tabela de conferencia (staging primeiro, depois --env prod)
-aegro purchase-orders create-batch --from-file pedidos.json --env staging --complete
+aegro purchase-orders create-batch --farm "<fazenda>" --from-file pedidos.json --env staging --complete
 ```
 
 ---
@@ -523,7 +523,7 @@ staging a clientes.
 ### Listar despesas pendentes dos proximos 30 dias
 
 ```bash
-aegro financial installments --operation-type EXPENSE --status NOT_PAID \
+aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-03-13 --due-date-end 2026-04-13
 ```
 
@@ -531,30 +531,30 @@ aegro financial installments --operation-type EXPENSE --status NOT_PAID \
 
 ```bash
 # 1. Listar categorias analiticas de despesa
-aegro fin-categories list --type ANALYTIC --operation-type DEBTOR --status ACTIVE
+aegro fin-categories list --farm "<fazenda>" --type ANALYTIC --operation-type DEBTOR --status ACTIVE
 
 # 2. Vincular categoria ao elemento (ponte estoque -> financeiro)
-aegro elements set-categories element::xxx --expense-category-key financialCategory::yyy
+aegro elements set-categories --farm "<fazenda>" element::xxx --expense-category-key financialCategory::yyy
 ```
 
 ### Consultar saldo consolidado de contas
 
 ```bash
 # Listar todas as contas e verificar saldo
-aegro bank-accounts list --output table
+aegro bank-accounts list --farm "<fazenda>" --output table
 ```
 
 ### Fluxo completo: criar fornecedor e ordem de compra
 
 ```bash
 # 1. Criar empresa fornecedora
-aegro companies create --name "Syngenta Brasil" --type PROVIDER \
+aegro companies create --farm "<fazenda>" --name "Syngenta Brasil" --type PROVIDER \
   --fiscal-code 60744463000178 --fiscal-type CNPJ
 
 # 2. Anotar a key retornada (company::abc123)
 
 # 3. Criar ordem de compra vinculada
-aegro purchase-orders create --company-key company::abc123 \
+aegro purchase-orders create --farm "<fazenda>" --company-key company::abc123 \
   --order-date 2026-03-15 --gross-amount 25000 \
   --items '[{"productKey":"element::def456","quantity":200}]' \
   --description "Defensivos safra soja 25/26"
@@ -564,11 +564,11 @@ aegro purchase-orders create --company-key company::abc123 \
 
 ```bash
 # 1. Listar parcelas vencidas
-aegro financial installments --operation-type EXPENSE --status NOT_PAID \
+aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-01-01 --due-date-end 2026-03-13
 
 # 2. Realizar as parcelas desejadas
-aegro financial realize --key installment::aaa --key installment::bbb --key installment::ccc
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --key installment::ccc
 ```
 
 ---

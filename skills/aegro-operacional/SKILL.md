@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.7.0
+version: 0.7.1
 ---
 
 # Dominio Operacional
@@ -68,10 +68,10 @@ aegro farms select "Fazenda Aegro"
 
 # Listar fazendas; `key` e o identificador estavel aceito por --farm, e `source`
 # indica a origem da selecao ativa ("flag" | "state" | null):
-aegro farms list
+aegro farms list --farm "Fazenda Aegro"
 
 # Detalhes da fazenda ativa (chama a API):
-aegro farms info
+aegro farms info --farm "Fazenda Aegro"
 ```
 
 **Multi-fazenda (varias sessoes em paralelo):** com uma sessao por fazenda —
@@ -159,8 +159,8 @@ Erros sao emitidos em stderr no formato JSON, nunca misturados com stdout:
 Flags que aceitam multiplos valores usam repeticao:
 
 ```bash
-aegro tags list --relation-type MACHINE --relation-type VEHICLE
-aegro elements list --category DEFENSIVE --category FERTILIZER
+aegro tags list --farm "Fazenda Aegro" --relation-type MACHINE --relation-type VEHICLE
+aegro elements list --farm "Fazenda Aegro" --category DEFENSIVE --category FERTILIZER
 ```
 
 ## Referencia de Comandos
@@ -180,7 +180,7 @@ aegro farms info --farm "Fazenda Aegro"
 
 # Dev single-machine (persiste em state.json):
 aegro farms select "Fazenda Aegro"
-aegro farms info
+aegro farms info --farm "Fazenda Aegro"
 ```
 
 ### auth
@@ -201,11 +201,11 @@ aegro farms info
 
 ```bash
 # Criar tag para maquinas
-aegro tags create --name "Frota Principal" --relation-type MACHINE
+aegro tags create --farm "Fazenda Aegro" --name "Frota Principal" --relation-type MACHINE
 # {"key": "tag::67f1a2b3c4d5e6f7", "name": "Frota Principal", "relationType": "MACHINE", "status": "ACTIVE"}
 
 # Listar tags de atividades
-aegro tags list --relation-type ACTIVITY --status ACTIVE
+aegro tags list --farm "Fazenda Aegro" --relation-type ACTIVITY --status ACTIVE
 ```
 
 **Relation Types disponiveis:** `MACHINE`, `VEHICLE`, `WEATHER_STATION`, `IMMOBILIZED`, `PIVOT`, `GARNER`, `HARVEST_TAG`, `HARVEST_IDENTIFIER`, `BILL`, `OBSERVATION`, `SCOUT_METHOD`, `GLEBE`, `ACTIVITY`, `PURCHASE`
@@ -220,7 +220,7 @@ aegro tags list --relation-type ACTIVITY --status ACTIVE
 
 ```bash
 # Cadastrar fornecedor de insumos
-aegro companies create \
+aegro companies create --farm "Fazenda Aegro" \
   --name "AgroInsumos Sul Ltda" \
   --fiscal-code "12.345.678/0001-90" \
   --fiscal-type CNPJ \
@@ -228,7 +228,7 @@ aegro companies create \
 # {"key": "company::67f2b3c4d5e6a7b8", "name": "AgroInsumos Sul Ltda", ...}
 
 # Buscar empresa por texto
-aegro companies list --search-text "Bayer"
+aegro companies list --farm "Fazenda Aegro" --search-text "Bayer"
 ```
 
 **Tipos de empresa:** `PROVIDER` (fornecedor), `CLIENT` (cliente), `TRANSPORTER` (transportadora)
@@ -243,7 +243,7 @@ aegro companies list --search-text "Bayer"
 
 ```bash
 # Criar ordem de compra de defensivos
-aegro purchase-orders create \
+aegro purchase-orders create --farm "Fazenda Aegro" \
   --company-key "company::67f2b3c4d5e6a7b8" \
   --order-date "2026-03-13" \
   --currency BRL \
@@ -252,7 +252,7 @@ aegro purchase-orders create \
   --items '[{"elementKey": "element::5a9c2d3e4f5b6a78", "quantity": 500, "unitPrice": 90.00}]'
 
 # Listar compras de um fornecedor
-aegro purchase-orders list --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
+aegro purchase-orders list --farm "Fazenda Aegro" --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
 ```
 
 ## Orquestracao Entre Dominios
@@ -270,11 +270,11 @@ companies create (ou usar existente)
 
 ```bash
 # 1. Garantir fornecedor cadastrado
-aegro companies list --search-text "AgroInsumos"
+aegro companies list --farm "Fazenda Aegro" --search-text "AgroInsumos"
 # Se nao existir: aegro companies create ...
 
 # 2. Criar ordem de compra
-aegro purchase-orders create \
+aegro purchase-orders create --farm "Fazenda Aegro" \
   --company-key "company::67f2b3c4d5e6a7b8" \
   --order-date "2026-03-13" \
   --currency BRL \
@@ -282,7 +282,7 @@ aegro purchase-orders create \
   --items '[{"elementKey": "element::5a9c2d3e4f5b6a78", "quantity": 500, "unitPrice": 90.00}]'
 
 # 3. Registrar entrada no estoque
-aegro stock entry \
+aegro stock entry --farm "Fazenda Aegro" \
   --element-key "element::5a9c2d3e4f5b6a78" \
   --location-key "stockLocation::abc123" \
   --quantity 500 \
@@ -314,7 +314,7 @@ activities create-plan (planeja aplicacao com insumos)
 
 ```bash
 # 1. Planejar aplicacao
-aegro activities create-plan \
+aegro activities create-plan --farm "Fazenda Aegro" \
   --crop-key "crop::68dd6719e90f726622b7f549" \
   --type APPLICATION \
   --start-date "2026-03-15" \
@@ -323,10 +323,10 @@ aegro activities create-plan \
   --dry-run
 
 # 2. Verificar realizacoes (apos execucao no campo)
-aegro activities realizations --crop-key "crop::68dd6719e90f726622b7f549"
+aegro activities realizations --farm "Fazenda Aegro" --crop-key "crop::68dd6719e90f726622b7f549"
 
 # 3. Conferir baixa de estoque
-aegro stock logs --element-key "element::5a9c2d3e4f5b6a78" --start-date 2026-03-01
+aegro stock logs --farm "Fazenda Aegro" --element-key "element::5a9c2d3e4f5b6a78" --start-date 2026-03-01
 ```
 
 ### Fluxo 3: Colheita (Campo → Financeiro)
@@ -338,7 +338,7 @@ harvest-logs create (registra romaneio de colheita)
 
 ```bash
 # 1. Registrar colheita
-aegro harvest-logs create \
+aegro harvest-logs create --farm "Fazenda Aegro" \
   --crop-key "crop::68dd6719e90f726622b7f549" \
   --date "2026-03-10" \
   --gross-weight 32000 \
@@ -366,7 +366,7 @@ maintenances create (registra manutencao com pecas)
 
 ```bash
 # 1. Registrar manutencao com pecas
-aegro maintenances create \
+aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-12" \
   --stock-location-key "stockLocation::abc123" \
@@ -395,7 +395,7 @@ elements set-categories (vincula insumo a categoria financeira)
 
 ```bash
 # Vincular defensivo a categoria financeira "Defensivos"
-aegro elements set-categories \
+aegro elements set-categories --farm "Fazenda Aegro" \
   --element-key "element::5a9c2d3e4f5b6a78" \
   --expense-category-key "finCategory::desp_defensivos" \
   --revenue-category-key "finCategory::rec_vendas"
