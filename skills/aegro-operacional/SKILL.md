@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Dominio Operacional
@@ -35,7 +35,7 @@ Cobre autenticacao, gestao de fazendas, tags, empresas, ordens de compra e a orq
 | Arquivo | Conteudo | Gerenciado por |
 |---------|----------|----------------|
 | `~/.config/aegro/credentials.json` | Map nome → API key | `aegro auth login` |
-| `~/.config/aegro/state.json` | Fazenda selecionada, timestamp | `aegro farms select` (sombreado por `--farm` e `AEGRO_ACTIVE_FARM`) |
+| `~/.config/aegro/state.json` | Fazenda selecionada, timestamp | `aegro farms select` (sombreado por `--farm`) |
 
 ### Comandos de Autenticacao
 
@@ -52,26 +52,22 @@ aegro auth logout
 
 ### Selecao de Fazenda Ativa
 
-A fazenda ativa e resolvida nesta ordem de precedencia:
+A fazenda ativa vem de **duas** fontes, nesta ordem:
 
 1. **`--farm <nome|farm::key>`** — flag aceita em **todo** comando de API. Escopo
    de uma invocacao. E a forma recomendada.
-2. **`AEGRO_ACTIVE_FARM`** env var — escopo de processo/sessao.
-3. **`state.json`** — escrito por `aegro farms select`, global por maquina.
+2. **`state.json`** — escrito por `aegro farms select`, global por maquina.
 
 ```bash
 # Recomendado: a fazenda viaja com o comando, imune a outras sessoes
 aegro farms info --farm "Fazenda Aegro"
 aegro farms info --farm farm::5711512de4b0e15eb04da4d0
 
-# Escopo de sessao (CI, orquestradores que controlam o ambiente do processo):
-AEGRO_ACTIVE_FARM="Fazenda Aegro" aegro farms info
-
 # Single-machine / dev — persiste em state.json global:
 aegro farms select "Fazenda Aegro"
 
 # Listar fazendas; `key` e o identificador estavel aceito por --farm, e `source`
-# indica a origem da selecao ativa ("flag" | "env" | "state" | null):
+# indica a origem da selecao ativa ("flag" | "state" | null):
 aegro farms list
 
 # Detalhes da fazenda ativa (chama a API):
@@ -79,12 +75,16 @@ aegro farms info
 ```
 
 **Multi-fazenda (varias sessoes em paralelo):** com uma sessao por fazenda —
-operador de servicos atendendo vários clientes — **passe `--farm` em cada
+operador de servicos atendendo varios clientes — **passe `--farm` em cada
 comando**. O `state.json` e global por maquina: o `farms select` de uma sessao
-troca o alvo de todas as outras, silenciosamente. `AEGRO_ACTIVE_FARM` tambem
-resolve, mas so quando quem orquestra controla o ambiente do processo — num
-harness de agente, um `export` de shell **nao persiste** entre chamadas de tool,
-entao a flag e o caminho confiavel.
+troca o alvo de todas as outras, silenciosamente.
+
+**A env var `AEGRO_ACTIVE_FARM` foi removida** (28/07/2026). Tres caminhos para a
+mesma coisa era a propria fonte da confusao, e ela nao resolvia o caso principal:
+num harness de agente, um `export` de shell **nao persiste** entre chamadas de
+tool. Se a variavel ainda estiver definida no ambiente, os comandos de API falham
+com `ACTIVE_FARM_ENV_REMOVED` (exit 4) em vez de operar pelo `state.json` — que
+seria uma fazenda diferente da que ela indica. Remova-a e use `--farm`.
 
 **O `--farm` aceita nome ou key.** O nome casa sem exigir caixa e acento exatos
 (`"fazenda aegro"` encontra `"Fazenda Aegro"`); a key (`farm::...`, visivel em
@@ -102,8 +102,8 @@ alvo aparece com `"active": true`. Se o `source` nao bater com o esperado, PARE 
 investigue antes de qualquer comando de escrita — ou simplesmente passe `--farm`,
 que dispensa a validacao.
 
-**Nota:** Todo comando de dominio exige fazenda ativa. Sem nenhuma das tres
-fontes, retorna exit code 2 (auth) com mensagem orientando as opcoes.
+**Nota:** Todo comando de dominio exige fazenda ativa. Sem nenhuma das duas
+fontes, retorna exit code 2 (auth) com mensagem orientando o `--farm`.
 
 ## Formato Global da CLI
 
@@ -169,17 +169,14 @@ aegro elements list --category DEFENSIVE --category FERTILIZER
 
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
-| `aegro farms list` | Lista fazendas; cada entrada tem `key`, `env`, `active` e `source` (`flag`/`env`/`state`/null) | `--env`, `--output` |
-| `aegro farms select <nome>` | Persiste fazenda ativa em state.json global (warn se `AEGRO_ACTIVE_FARM` estiver setada) | `--env` |
+| `aegro farms list` | Lista fazendas; cada entrada tem `key`, `env`, `active` e `source` (`flag`/`state`/null) | `--env`, `--farm`, `--output` |
+| `aegro farms select <nome>` | Persiste fazenda ativa em state.json global | `--env` |
 | `aegro farms info` | Detalhes da fazenda ativa via API | `--env`, `--farm`, `--output` |
 
 ```bash
 # Preferido: a fazenda viaja com o comando (imune a sessoes em paralelo)
 aegro farms info --farm "Fazenda Aegro"
 # {"key": "farm::5711512de4b0e15eb04da4d0", "name": "Fazenda Aegro", ...}
-
-# Escopo de sessao (CI, orquestrador que controla o ambiente do processo):
-AEGRO_ACTIVE_FARM="Fazenda Aegro" aegro farms info
 
 # Dev single-machine (persiste em state.json):
 aegro farms select "Fazenda Aegro"

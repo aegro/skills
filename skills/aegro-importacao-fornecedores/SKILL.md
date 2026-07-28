@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-fornecedores
 description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Importacao de Fornecedores em Lote
@@ -72,9 +72,9 @@ direto em prod**. Siga sempre esta ordem:
 > Os comandos `companies` (`create`/`get`/`list`/`update`) expoem `--env`
 > (`staging` para homologacao; `prod` para producao; default `prod`) e
 > **`--farm <nome|farm::key>`** — passe os dois explicitamente em cada comando. A
-> flag `--farm` e preferivel a `AEGRO_ACTIVE_FARM` e ao `farms select`, porque
-> viaja com o comando: nao depende de estado de shell nem de arquivo global que
-> outra sessao possa ter trocado.
+> flag `--farm` e preferivel ao `farms select`, porque viaja com o comando: nao
+> depende de arquivo global que outra sessao possa ter trocado. (A env var
+> `AEGRO_ACTIVE_FARM` foi removida em 28/07/2026.)
 
 ## Fluxo de Importacao
 
