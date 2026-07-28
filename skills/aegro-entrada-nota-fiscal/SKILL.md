@@ -48,8 +48,10 @@ default seguro e nao levar ninguem a staging). Um EV logado com conta pessoal
 pode ativar o modo interno se dizer explicitamente que e do time.
 
 > **A protecao que vale nos dois modos e o `--dry-run` antes de todo
-> `--execute`.** Nao existe mais trava por variavel de ambiente: o preview
-> obrigatorio, conferido com quem opera, e a rede de seguranca.
+> `--execute`**, conferido com quem opera. Em sessoes de agente, some a isso o
+> `AEGRO_SAFE_MODE=1`: alem de exigir `--execute`, ele recusa escrita cuja fazenda
+> nao veio de `--farm` (`IMPLICIT_FARM_BLOCKED`) — no envelope do dry-run, confira
+> `farm` e `farmSource: "flag"` antes de aprovar.
 
 ## Pre-requisitos
 
