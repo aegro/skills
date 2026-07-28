@@ -137,12 +137,19 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
 | `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
+| `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel) |
+| `activities update-plan <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
+| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
 
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
 - `activities get-plan <PLAN_KEY>` → plano pela chave do **plano**
-- `activities create-plan` cria **planejamento**, nao realizacao. A API publica permite
-  consultar realizacoes, mas nao expoe endpoint para criar realizacao.
+- `activities create-plan` cria **planejamento**; `activities create-realization` cria
+  **realizacao** (execucao em campo).
+- **Editar e PATCH / JSON Merge Patch** (`update-plan`/`update-realization`): passe em
+  `--body` apenas os campos a alterar, ex.: `--body '{"tag":"Aplicacao de Herbicida"}'`
+  para trocar a Operacao. O `tag` (Operacao) e atributo da **atividade** — alterar num
+  plano ou realizacao reflete na atividade inteira (plano + todas as realizacoes).
 
 ```bash
 aegro activities list --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
