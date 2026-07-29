@@ -1,7 +1,7 @@
 ---
 name: aegro-conciliacao-bancaria
 description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
-version: 0.3.1
+version: 0.3.2
 ---
 
 # Aegro Conciliacao Bancaria
@@ -160,7 +160,11 @@ diferenca entra como desconto ou juros na baixa):
 # parcela agendada R$ 2.359,24; banco pagou R$ 2.243,88 em 18/06 (desconto R$ 115,36)
 aegro financial settle --farm "<fazenda>" --key installment::<id> --date 2026-06-18 --discount 115.36 --dry-run
 aegro financial settle --farm "<fazenda>" --key installment::<id> --date 2026-06-18 --discount 115.36 --execute
-# depois concilie a entrada do extrato com o movimento gerado
+# depois concilie a entrada do extrato com o movimento gerado:
+# previa primeiro (confira o par extrato<->movimento e a soma), e so apos o
+# usuario aprovar rode o MESMO comando com --execute
+aegro bank-reconciliation confirm --farm "<fazenda>" --account bankAccount::<id> \
+  --external <ext> --movement <mov> --dry-run
 aegro bank-reconciliation confirm --farm "<fazenda>" --account bankAccount::<id> \
   --external <ext> --movement <mov> --execute
 ```

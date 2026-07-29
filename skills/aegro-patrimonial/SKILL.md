@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.2
+version: 0.6.3
 ---
 
 # Dominio Patrimonial
@@ -243,12 +243,15 @@ aegro assets create-garner --farm "Fazenda Aegro" \
   --value 450000 \
   --currency BRL
 
-# Criar benfeitoria
+# Criar benfeitoria (sem medidor: usa aquisicao + vida util)
 aegro assets create-immobilized --farm "Fazenda Aegro" \
-  --name "Barracão de Máquinas" \
+  --name "Barracao de Maquinas" \
   --manufacture-year 2018 \
   --value 280000 \
-  --currency BRL
+  --currency BRL \
+  --acquisition-date "2018-06-01" \
+  --life-span 219000 \
+  --life-span-unit h   # ~25 anos; default da unidade e 'h' para nao-veiculo
 
 # Criar pivo de irrigacao
 aegro assets create-pivot --farm "Fazenda Aegro" \

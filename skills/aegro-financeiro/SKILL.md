@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.7.1
+version: 0.7.2
 ---
 
 # Aegro Financeiro
@@ -165,15 +165,22 @@ Relacionamentos-chave:
 aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-03-01 --due-date-end 2026-04-01
 
-# Criar lancamento JA parcelado (parcelas nascem no create-bill)
+# Criar lancamento JA parcelado (parcelas nascem no create-bill).
+# Preview com --dry-run, apresente o plano e so grave apos confirmacao do usuario.
 aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 3000 \
   --cash-flow EXPENSE --payment-method INSTALLMENT --category "Insumos" \
-  --installments '[{"number":1,"dueDate":"2026-04-15","amount":{"currencyCode":"BRL","amount":1500}},{"number":2,"dueDate":"2026-05-15","amount":{"currencyCode":"BRL","amount":1500}}]'
+  --installments '[{"number":1,"dueDate":"2026-04-15","amount":{"currencyCode":"BRL","amount":1500}},{"number":2,"dueDate":"2026-05-15","amount":{"currencyCode":"BRL","amount":1500}}]' \
+  --dry-run
+# aprovado? repita o MESMO comando sem --dry-run para gravar
 
-# Corrigir um lancamento existente (PATCH: so os campos a alterar)
-aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}'
+# Corrigir um lancamento existente (PATCH: so os campos a alterar).
+# --dry-run mostra o resultado; --execute so apos o usuario conferir.
+aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --dry-run
+aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --execute
 
-# Realizar (pagar) multiplas parcelas em lote
+# Realizar (pagar) multiplas parcelas em lote.
+# IRREVERSIVEL via API (nao ha unrealize) e sem --dry-run: liste as parcelas
+# antes (installments), apresente ao usuario e so rode apos confirmacao explicita.
 aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb
 ```
 
@@ -242,15 +249,16 @@ categorias nem inferir de lancamentos antigos:
 > mais necessaria so para descobrir a categoria de um item.
 
 ```bash
-# Compra JA PAGA a vista (PROMPT gera parcela unica paga); nomes resolvidos,
-# fazenda e data inferidas
-aegro financial create-bill --farm "<fazenda>" --description "Adubo NPK" --total-amount 1500 \
-  --cash-flow EXPENSE --payment-method PROMPT \
-  --category "Insumos" --company "Fornecedor X"
-
 # Modo headless: so resolve/infere e diz o que falta (nao executa)
 aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 1500 \
   --cash-flow EXPENSE --payment-method PROMPT --complete
+
+# Compra JA PAGA a vista (PROMPT gera parcela unica paga E irreversivel via API);
+# nomes resolvidos, fazenda e data inferidas. Preview primeiro, apresente o plano
+# e so grave (sem --dry-run) apos confirmacao explicita do usuario.
+aegro financial create-bill --farm "<fazenda>" --description "Adubo NPK" --total-amount 1500 \
+  --cash-flow EXPENSE --payment-method PROMPT \
+  --category "Insumos" --company "Fornecedor X" --dry-run
 ```
 
 **Lancamento em massa (`create-bills`)** -- a tabela de conferencia. Recebe um
@@ -258,10 +266,12 @@ arquivo JSON com uma lista de lancamentos *name-based* (mesmos campos) e devolve
 uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
 
 ```bash
-# Tabela de conferencia (nao executa)
+# Tabela de conferencia (nao executa): apresente-a ao usuario e so avance
+# para a escrita depois que ele aprovar linha a linha
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging --complete
 
-# Lancar em staging; depois conferir na UI e promover trocando --env
+# Lancar em staging (apos aprovacao da tabela); conferir na UI de staging e,
+# com nova confirmacao explicita do usuario, promover trocando --env
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod
 ```
@@ -567,7 +577,11 @@ aegro purchase-orders create --farm "<fazenda>" --company-key company::abc123 \
 aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --status NOT_PAID \
   --due-date-start 2026-01-01 --due-date-end 2026-03-13
 
-# 2. Realizar as parcelas desejadas
+# 2. Apresentar a lista ao usuario (parcela, valor, vencimento) e obter
+#    confirmacao explicita: realize marca como PAID em lote, sem --dry-run,
+#    e NAO tem desfazer via API (correcao apenas pelo app).
+
+# 3. Realizar as parcelas confirmadas
 aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --key installment::ccc
 ```
 

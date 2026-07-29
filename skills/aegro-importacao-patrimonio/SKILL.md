@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-patrimonio
 description: Importar patrimonio em lote a partir de uma planilha modelo (maquinas, veiculos, silos, benfeitorias, pivos, estacoes)
-version: 0.5.2
+version: 0.5.3
 ---
 
 # Importacao de Patrimonio em Lote
@@ -147,9 +147,13 @@ trabalhosa de desfazer (nao ha delete em lote).
 Antes de criar, liste o que ja existe e pule duplicatas por nome:
 
 ```bash
+# cubra TODOS os tipos presentes na planilha - um list por tipo (troque --env conforme o alvo):
 aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output json
 aegro assets list --farm "<fazenda>" --env staging --type VEHICLE --output json
-# ... repetir por tipo presente na planilha (troque --env conforme o alvo)
+aegro assets list --farm "<fazenda>" --env staging --type GARNER --output json
+aegro assets list --farm "<fazenda>" --env staging --type IMMOBILIZED --output json
+aegro assets list --farm "<fazenda>" --env staging --type PIVOT --output json
+aegro assets list --farm "<fazenda>" --env staging --type WEATHER_STATION --output json
 # ou: aegro assets list --env staging --search "<nome>"  para conferir um nome especifico
 ```
 

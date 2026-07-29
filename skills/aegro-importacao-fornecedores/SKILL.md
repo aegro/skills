@@ -1,7 +1,7 @@
 ---
 name: aegro-importacao-fornecedores
 description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
-version: 0.7.1
+version: 0.7.2
 ---
 
 # Importacao de Fornecedores em Lote
@@ -141,8 +141,12 @@ decisao do usuario.
 Crie uma empresa por linha. Capture a `key` retornada de cada uma.
 
 ```bash
+# --env staging explicito: o default e prod, e o primeiro passe NUNCA vai
+# direto a producao. Troque para --env prod so na replicacao final, apos
+# conferencia em staging e confirmacao explicita do usuario.
+
 # Fornecedor com CNPJ (apos enriquecimento)
-aegro companies create --farm "<fazenda>" \
+aegro companies create --farm "<fazenda>" --env staging \
   --name "AGRO EXEMPLO LTDA" \
   --type PROVIDER \
   --fiscal-code 23706398000181 --fiscal-type CNPJ \
@@ -150,7 +154,7 @@ aegro companies create --farm "<fazenda>" \
   --trade-name "AGRO EXEMPLO"
 
 # Fornecedor com CPF
-aegro companies create --farm "<fazenda>" \
+aegro companies create --farm "<fazenda>" --env staging \
   --name "JOAO DA SILVA" \
   --type PROVIDER \
   --fiscal-code 12345678901 --fiscal-type CPF
