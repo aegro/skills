@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.1
+version: 0.5.3
 ---
 
 # Cadastro de Patrimonio
@@ -60,7 +60,7 @@ Qual tipo de patrimonio?
 ### 1. Verificar se o ativo ja existe
 
 ```bash
-aegro assets list --types <TIPO>
+aegro assets list --farm "<fazenda>" --type <TIPO>
 ```
 
 Confirmar que nao ha duplicata pelo nome/fabricante.
@@ -69,7 +69,7 @@ Confirmar que nao ha duplicata pelo nome/fabricante.
 
 ```bash
 # Exemplo: trator
-aegro assets create-machine \
+aegro assets create-machine --farm "<fazenda>" \
   --name "JD 8R 410" \
   --manufacturer "John Deere" \
   --machine-type TRACTOR \
@@ -78,7 +78,7 @@ aegro assets create-machine \
   --hourmeter 1500
 
 # Exemplo: veiculo
-aegro assets create-vehicle \
+aegro assets create-vehicle --farm "<fazenda>" \
   --name "Hilux CD 4x4" \
   --manufacturer "Toyota" \
   --manufacture-year 2024 \
@@ -89,7 +89,7 @@ aegro assets create-vehicle \
 ### 3. Confirmar cadastro
 
 ```bash
-aegro assets get <asset_key_retornada>
+aegro assets get --farm "<fazenda>" <asset_key_retornada>
 ```
 
 **Campos obrigatorios por tipo:**
@@ -103,7 +103,7 @@ aegro assets get <asset_key_retornada>
 
 ```bash
 # Maquina (horimetro) | Veiculo: trocar --hourmeter por --odometer
-aegro fuel-supplies create \
+aegro fuel-supplies create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-13" --hourmeter 1550 \
   --stock-location-key <stock_location_key> \
   --inputs '[{"elementKey": "element::combustivel", "quantity": 200}]'
@@ -115,7 +115,7 @@ Com `stockLocationKey`: baixa de estoque automatica. Sem ele: registro informati
 
 ```bash
 # Preventiva com pecas (adicionar --crop-prorate-group-key para ratear na safra)
-aegro maintenances create \
+aegro maintenances create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
   --stock-location-key <stock_location_key> \
   --observations "Revisao 500h" \

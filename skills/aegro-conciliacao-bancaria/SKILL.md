@@ -1,7 +1,7 @@
 ---
 name: aegro-conciliacao-bancaria
 description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
-version: 0.2.0
+version: 0.3.2
 ---
 
 # Aegro Conciliacao Bancaria
@@ -16,8 +16,12 @@ concretos, mostre o progresso, e **sempre termine sugerindo o proximo passo**. O
 usuario deve conseguir avancar respondendo em uma palavra.
 
 > **Requer login OAuth.** A conciliacao usa APIs internas do Aegro. Rode
-> `aegro auth login` e selecione a fazenda (`aegro farms select`). Em modo API
-> key os comandos falham com exit 2.
+> `aegro auth login`. Em modo API key os comandos falham com exit 2.
+>
+> **Identifique a fazenda com `--farm "<nome|farm::key>"`** em cada comando. O
+> `farms select` grava num state global por maquina: com varias sessoes abertas
+> (uma por fazenda), a selecao de uma troca o alvo das outras. Em safe mode, a
+> escrita recusa fazenda implicita e falha com `IMPLICIT_FARM_BLOCKED`.
 >
 > **Fluxo critico (dados financeiros).** O agente **propoe**, o humano **confirma**.
 > Nunca concilie nem baixe uma parcela em silencio. Toda escrita suporta
@@ -48,7 +52,7 @@ obtenha em `aegro bank-accounts list` (campo `key`) ou prefixe o id com
 ## 2. Fluxo
 
 ```text
-1. Selecionar conta        -> aegro farms select / (contexto); pegar a key bankAccount::...
+1. Selecionar conta        -> --farm "<fazenda>" em cada comando; pegar a key bankAccount::...
 2. Importar OFX            -> bank-reconciliation import-ofx --execute
 3. Listar entradas PENDING -> bank-reconciliation entries
 4. Casar (matching)        -> bank-reconciliation candidates (banda ±%/±dias) + cruzamento
@@ -154,10 +158,14 @@ diferenca entra como desconto ou juros na baixa):
 
 ```bash
 # parcela agendada R$ 2.359,24; banco pagou R$ 2.243,88 em 18/06 (desconto R$ 115,36)
-aegro financial settle --key installment::<id> --date 2026-06-18 --discount 115.36 --dry-run
-aegro financial settle --key installment::<id> --date 2026-06-18 --discount 115.36 --execute
-# depois concilie a entrada do extrato com o movimento gerado
-aegro bank-reconciliation confirm --account bankAccount::<id> \
+aegro financial settle --farm "<fazenda>" --key installment::<id> --date 2026-06-18 --discount 115.36 --dry-run
+aegro financial settle --farm "<fazenda>" --key installment::<id> --date 2026-06-18 --discount 115.36 --execute
+# depois concilie a entrada do extrato com o movimento gerado:
+# previa primeiro (confira o par extrato<->movimento e a soma), e so apos o
+# usuario aprovar rode o MESMO comando com --execute
+aegro bank-reconciliation confirm --farm "<fazenda>" --account bankAccount::<id> \
+  --external <ext> --movement <mov> --dry-run
+aegro bank-reconciliation confirm --farm "<fazenda>" --account bankAccount::<id> \
   --external <ext> --movement <mov> --execute
 ```
 

@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -22,6 +22,7 @@ fertilizantes). Base para todos os workflows agronomicos.
 | **Atividade** | `activity` | Operacao agricola planejada ou executada (plantio, aplicacao, colheita, etc). |
 | **Plano** | `plan` | Planejamento: quais talhoes, quais insumos, datas previstas. |
 | **Realizacao** | `realization` | Execucao efetiva. Uma atividade pode ter multiplas realizacoes. |
+| **Operacao (tag)** | `tag` | Nome/etiqueta da atividade, exibido como "Operacao" no app web/mobile. Na API o campo se chama `tag`. |
 | **Romaneio** | `harvest-log` | Registro de pesagem de colheita. Pesos: bruto, tara, liquido, descontado, produto. |
 | **Rateio** | `crop-prorate` | Distribuicao proporcional de custos entre talhoes. Soma = 100%. |
 | **Elemento** | `element` | Insumo: semente, defensivo, fertilizante, item ou servico. |
@@ -100,9 +101,9 @@ Produtividade (sc/ha) = Peso Descontado Total (kg) / Area (ha) / 60
 | `crops harvest-discounts <crop_key>` | posicional |
 
 ```bash
-aegro crops list --start-date 2025-01-01 --end-date 2026-12-31
-aegro crops glebes crop::68dd6719e90f726622b7f549
-aegro crops prorates --crop-key crop::68dd6719e90f726622b7f549 --status ACTIVE
+aegro crops list --farm "<fazenda>" --start-date 2025-01-01 --end-date 2026-12-31
+aegro crops glebes --farm "<fazenda>" crop::68dd6719e90f726622b7f549
+aegro crops prorates --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --status ACTIVE
 ```
 
 ### 4.2 Talhoes de Safra (`aegro crop-glebes`)
@@ -115,7 +116,7 @@ aegro crops prorates --crop-key crop::68dd6719e90f726622b7f549 --status ACTIVE
 `crop-glebes list` recebe `crop_key` posicional. Endpoint: `POST /pub/v1/crops/{crop_key}/crop-glebes/filter`.
 
 ```bash
-aegro crop-glebes list crop::68dd6719e90f726622b7f549
+aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 ```
 
 ### 4.3 Talhoes Permanentes (`aegro glebes`)
@@ -135,7 +136,10 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 | `activities get-plan <key>` | posicional - **chave do plano** → `/activities/plans/{key}` |
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
-| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--inputs` (JSON) |
+| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
+| `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel) |
+| `activities update-plan <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
+| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
 | `activities delete-activity <key>` | posicional - **chave da atividade** → `DELETE /activities/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 | `activities delete-realization <key>` | posicional - **chave da realizacao** → `DELETE /activities/realizations/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 
@@ -148,19 +152,24 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
 - `activities get-plan <PLAN_KEY>` → plano pela chave do **plano**
-- `activities create-plan` cria **planejamento**, nao realizacao. A API publica permite
-  consultar realizacoes, mas nao expoe endpoint para criar realizacao.
+- `activities create-plan` cria **planejamento**; `activities create-realization` cria
+  **realizacao** (execucao em campo).
+- **Editar e PATCH / JSON Merge Patch** (`update-plan`/`update-realization`): passe em
+  `--body` apenas os campos a alterar, ex.: `--body '{"tag":"Aplicacao de Herbicida"}'`
+  para trocar a Operacao. O `tag` (Operacao) e atributo da **atividade** — alterar num
+  plano ou realizacao reflete na atividade inteira (plano + todas as realizacoes).
 
 ```bash
-aegro activities list --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
-aegro activities list --crop-key crop::68dd6719e90f726622b7f549 --type SOWING --type HARVEST
-aegro activities realizations --crop-key crop::68dd6719e90f726622b7f549 --start-date 2025-10-01 --end-date 2026-03-31
+aegro activities list --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
+aegro activities list --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --type SOWING --type HARVEST
+aegro activities realizations --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --start-date 2025-10-01 --end-date 2026-03-31
 
 # Criar plano de plantio com insumos
-aegro activities create-plan \
+aegro activities create-plan --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 \
   --type SOWING --start-date 2026-01-15 \
   --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
+  --tag "Plantio Soja TMG 2381" \
   --observations "Plantio soja TMG 2381" \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
@@ -189,13 +198,13 @@ aegro activities delete-realization activityRealization::68dd6730e90f726622b7f56
 
 ```bash
 # Romaneio automatico
-aegro harvest-logs create \
+aegro harvest-logs create --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
   --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
   --gross-weight 32000 --tare-weight 12000
 
 # Romaneio manual completo
-aegro harvest-logs create \
+aegro harvest-logs create --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
   --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
   --crop-glebe cropGlebe::68dd6730e90f726622b7f556 \
@@ -219,7 +228,7 @@ aegro harvest-logs create \
 **Independentes:** `--humidity` (%), `--pressure` (hPa).
 
 ```bash
-aegro weather create --weather-station-key weatherstation::ws001 --date 2026-03-12 \
+aegro weather create --farm "<fazenda>" --weather-station-key weatherstation::ws001 --date 2026-03-12 \
   --precipitation 12.5 --precipitation-unit mm \
   --temperature 28.0 --temperature-unit CELSIUS --humidity 65.0
 ```
@@ -237,11 +246,11 @@ aegro weather create --weather-station-key weatherstation::ws001 --date 2026-03-
 Categorias agro: `SEED`, `DEFENSIVE`, `FERTILIZER`.
 
 ```bash
-aegro elements list --category SEED
-aegro elements list --category DEFENSIVE --type HERBICIDE
-aegro elements create-defensive --name "Roundup Original" --type HERBICIDE --unit L --manufacturer Monsanto
-aegro elements create-fertilizer --name "MAP Granulado" --unit KG --manufacturer Mosaic
-aegro elements create-seed --name "TMG 2381 IPRO" --type SOYBEAN --unit KG --manufacturer TMG
+aegro elements list --farm "<fazenda>" --category SEED
+aegro elements list --farm "<fazenda>" --category DEFENSIVE --type HERBICIDE
+aegro elements create-defensive --farm "<fazenda>" --name "Roundup Original" --type HERBICIDE --unit L --manufacturer Monsanto
+aegro elements create-fertilizer --farm "<fazenda>" --name "MAP Granulado" --unit KG --manufacturer Mosaic
+aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOYBEAN --unit KG --manufacturer TMG
 ```
 
 **Opcao global:** Todos os comandos aceitam `--output` / `-o` com `json` (padrao), `table` ou `csv`.
@@ -316,17 +325,17 @@ Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 
 ```bash
 # Quanto produziu a safra? (coletar todos os romaneios)
-aegro crops list --start-date 2025-01-01 --end-date 2026-12-31
+aegro crops list --farm "<fazenda>" --start-date 2025-01-01 --end-date 2026-12-31
 # → pegar crop_key da safra desejada
-aegro activities list --crop-key crop::xxx --type HARVEST
+aegro activities list --farm "<fazenda>" --crop-key crop::xxx --type HARVEST
 # → ver realizacoes de colheita com pesos
 
 # Quais defensivos foram aplicados?
-aegro activities list --crop-key crop::xxx --type APPLICATION
-aegro activities realizations --crop-key crop::xxx --start-date 2025-10-01
+aegro activities list --farm "<fazenda>" --crop-key crop::xxx --type APPLICATION
+aegro activities realizations --farm "<fazenda>" --crop-key crop::xxx --start-date 2025-10-01
 
 # Qual a area plantada?
-aegro crops glebes crop::xxx
+aegro crops glebes --farm "<fazenda>" crop::xxx
 # → somar areas dos crop-glebes retornados
 ```
 

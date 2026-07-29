@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.3.0
+version: 0.4.3
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -48,15 +48,21 @@ default seguro e nao levar ninguem a staging). Um EV logado com conta pessoal
 pode ativar o modo interno se dizer explicitamente que e do time.
 
 > **A protecao que vale nos dois modos e o `--dry-run` antes de todo
-> `--execute`.** Nao existe mais trava por variavel de ambiente: o preview
-> obrigatorio, conferido com quem opera, e a rede de seguranca.
+> `--execute`**, conferido com quem opera. Em sessoes de agente, some a isso o
+> `AEGRO_SAFE_MODE=1`: alem de exigir `--execute`, ele recusa escrita cuja fazenda
+> nao veio de `--farm` (`IMPLICIT_FARM_BLOCKED`) — no envelope do dry-run, confira
+> `farm` e `farmSource: "flag"` antes de aprovar.
 
 ## Pre-requisitos
 
 - **Login OAuth**: os comandos usam **APIs internas** do Aegro — exige
   `aegro auth login` (nao funciona com API key). Confira com `aegro auth status`.
-- Fazenda ativa selecionada (`aegro farms select "<Fazenda>"`) e ambiente certo
-  (`--env prod` no modo externo; `--env staging` no interno ate promover).
+- Fazenda identificada em **cada comando** com `--farm "<Fazenda|farm::key>"`, e
+  ambiente certo (`--env prod` no modo externo; `--env staging` no interno ate
+  promover). Prefira a flag ao `farms select`: o state e global por maquina, e com
+  varias sessoes abertas (uma por fazenda) a selecao de uma troca o alvo das
+  outras. Em safe mode, a escrita recusa fazenda implicita
+  (`IMPLICIT_FARM_BLOCKED`).
 - `/aegro-financeiro` — bills, categorias, parcelas, empresas, contas bancarias.
 - `/aegro-lancamento-financeiro` — sequencia de decisao de a pagar/receber.
 
@@ -66,11 +72,11 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 
 | Passo | Comando | O que faz |
 |---|---|---|
-| Listar | `list` (`listar`) `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--not-launched|--launched] [--type NFE|NFSE] [-o table]` | Resumo por nota: numero, fornecedor (e se ja tem cadastro), CFOPs, valor, se ja esta lancada e as contas vinculadas. Traz `sugestaoDestino` (triagem CFOP conservadora) e `instrucaoUI` para destinos nao executaveis. Alias PT: `--desde/--ate/--tipo/--texto`. |
+| Listar | `list` (`listar`) `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--not-launched\|--launched] [--type NFE\|NFSE] [-o table]` | Resumo por nota: numero, fornecedor (e se ja tem cadastro), CFOPs, valor, se ja esta lancada e as contas vinculadas. Traz `sugestaoDestino` (triagem CFOP conservadora) e `instrucaoUI` para destinos nao executaveis. Alias PT: `--desde/--ate/--tipo/--texto`. |
 | Detalhe | `items <doc>` (`detalhe`) `[--full]` | Itens (codigo, descricao, NCM, CFOP por item, qtd, valor), totais, pagamento/parcelas, fornecedor/produtor conciliados e sugestoes de elemento. `--full` = Invoice bruto. `doc` = numero, chave de acesso (44) ou key. |
 | Status | `status <doc>...` | Confere em lote se cada nota ja foi lancada, com referencia das bills (guardrail contra duplicidade). |
 | Conciliar | `conciliate <doc> --item CODIGO=elemento --execute` (`conciliar`) | Persiste o mapa produto-da-nota -> elemento (por fazenda+fornecedor+item), reaproveitado nas proximas notas. Elemento por nome ou id; preserva `conversionRate` salvo. |
-| Lancar conta | `launch-bill <doc> --category X [--revenue|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**. |
+| Lancar conta | `launch-bill <doc> --category X [--revenue\|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**. |
 | Lancar pedido | `launch-purchase-order <doc> --dry-run/--execute` | Idem como pedido de compra, com guard de pedido duplicado. |
 
 > `preparar` foi **descontinuado** (ensinava o caminho publico sem vinculo
@@ -175,11 +181,14 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 ### 5. Lancar — sempre dry-run primeiro
 
 ```bash
+# --env explicito nas DUAS fases: staging no modo interno, prod no externo.
+# Sem ele o comando usa o default e um lancamento interno pode ir para producao.
+
 # 1o: preview (nenhuma escrita acontece; o plano completo e exibido)
-aegro received-fiscal-documents launch-bill <NUMERO> --category "Categoria" --expense --dry-run
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> --category "Categoria" --expense --dry-run
 
 # 2o: so depois que o usuario conferir o plano (fornecedor, categoria, parcelas, valor):
-aegro received-fiscal-documents launch-bill <NUMERO> --category "Categoria" --expense --execute
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> --category "Categoria" --expense --execute
 ```
 
 Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`
@@ -196,11 +205,14 @@ So depois que o lancamento saiu **certo em staging** e o EV confirmou na UI de
 staging (`https://app.staging.aegro.io`):
 
 ```bash
-aegro farms select "<Fazenda do Cliente>" --env prod
+# A fazenda vai no PROPRIO comando (--farm), nao num 'farms select' anterior:
+# assim o alvo nao depende de estado global que outra sessao pode ter trocado.
 # MESMO comando validado, SEMPRE com --dry-run primeiro:
-aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense --dry-run --env prod
-# EV confere o plano e SO ENTAO:
-aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense --execute --env prod
+aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
+  --dry-run --env prod --farm "<Fazenda do Cliente>"
+# EV confere o plano (incluindo o campo farmSource) e SO ENTAO:
+aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
+  --execute --env prod --farm "<Fazenda do Cliente>"
 ```
 
 - **Use o NUMERO da nota** (nao a key/ids): chaves e ids diferem entre ambientes;

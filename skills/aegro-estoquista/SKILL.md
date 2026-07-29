@@ -1,7 +1,7 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Aegro Estoquista
@@ -116,33 +116,33 @@ Relacionamentos-chave:
 
 ```bash
 # Listar todos os itens de estoque de um elemento
-aegro stock items --element-key element::abc123
+aegro stock items --farm "<fazenda>" --element-key element::abc123
 
 # Listar itens em um local especifico
-aegro stock items --location-key stockLocation::def456
+aegro stock items --farm "<fazenda>" --location-key stockLocation::def456
 
 # Listar locais de estoque
-aegro stock locations --output table
+aegro stock locations --farm "<fazenda>" --output table
 
 # Consultar historico de movimentacoes de um elemento no periodo da safra
-aegro stock logs --element-key element::abc123 \
+aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --start-date 2025-09-01 --end-date 2026-03-13
 
 # Filtrar movimentacoes por local de origem
-aegro stock logs --source-key stockLocation::def456
+aegro stock logs --farm "<fazenda>" --source-key stockLocation::def456
 
 # Registrar entrada de estoque (compra de 50kg a R$ 500)
-aegro stock entry --element-key element::abc123 \
+aegro stock entry --farm "<fazenda>" --element-key element::abc123 \
   --quantity 50 --unit kg --date 2026-03-13 \
   --amount 500 --currency BRL --dest-key stockLocation::def456
 
 # Registrar remocao de estoque (perda/ajuste de 5kg)
-aegro stock removal --element-key element::abc123 \
+aegro stock removal --farm "<fazenda>" --element-key element::abc123 \
   --quantity 5 --unit kg --date 2026-03-13 \
   --source-key stockLocation::def456 --observations "Perda por validade"
 
 # Transferir 10kg entre locais
-aegro stock transfer --element-key element::abc123 \
+aegro stock transfer --farm "<fazenda>" --element-key element::abc123 \
   --quantity 10 --unit kg --date 2026-03-13 \
   --source-key stockLocation::s1 --dest-key stockLocation::s2
 ```
@@ -166,41 +166,41 @@ aegro stock transfer --element-key element::abc123 \
 
 ```bash
 # Listar todos os defensivos
-aegro elements list --category DEFENSIVE
+aegro elements list --farm "<fazenda>" --category DEFENSIVE
 
 # Listar herbicidas especificamente
-aegro elements list --category DEFENSIVE --type HERBICIDE
+aegro elements list --farm "<fazenda>" --category DEFENSIVE --type HERBICIDE
 
 # Listar fertilizantes e sementes
-aegro elements list --category FERTILIZER --category SEED
+aegro elements list --farm "<fazenda>" --category FERTILIZER --category SEED
 
 # Criar defensivo herbicida
-aegro elements create-defensive --name "Roundup Original" \
+aegro elements create-defensive --farm "<fazenda>" --name "Roundup Original" \
   --type HERBICIDE --unit L --manufacturer "Bayer"
 
 # Criar fertilizante
-aegro elements create-fertilizer --name "Ureia 46%" --unit kg \
+aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg \
   --manufacturer "Mosaic"
 
 # Criar semente de soja
-aegro elements create-seed --name "TMG 2381 IPRO" --type SOYBEAN --unit kg
+aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOYBEAN --unit kg
 
 # Criar servico
-aegro elements create-service --name "Pulverizacao Aerea" --unit HA
+aegro elements create-service --farm "<fazenda>" --name "Pulverizacao Aerea" --unit HA
 
 # Criar item generico
-aegro elements create-item --name "Sacaria 60kg" --type GENERAL --unit UN
+aegro elements create-item --farm "<fazenda>" --name "Sacaria 60kg" --type GENERAL --unit UN
 
 # Vincular elemento a categorias financeiras
-aegro elements set-categories element::abc123 \
+aegro elements set-categories --farm "<fazenda>" element::abc123 \
   --revenue-category-key financialCategory::rev1 \
   --expense-category-key financialCategory::exp1
 
 # Consultar a categoria financeira de despesa dos elementos (todos ou filtrando por elemento)
-aegro elements financial-categories expense
-aegro elements financial-categories expense --element-key element::abc123
+aegro elements financial-categories --farm "<fazenda>" expense
+aegro elements financial-categories --farm "<fazenda>" expense --element-key element::abc123
 # Categoria de receita de elementos especificos
-aegro elements financial-categories revenue \
+aegro elements financial-categories --farm "<fazenda>" revenue \
   --element-key element::abc123 --element-key element::def456
 ```
 
@@ -216,16 +216,16 @@ aegro elements financial-categories revenue \
 
 ```bash
 # Listar catalogos disponiveis
-aegro catalogs list
+aegro catalogs list --farm "<fazenda>"
 
 # Listar chaves de elementos de um catalogo
-aegro catalogs element-keys catalog::abc123
+aegro catalogs element-keys --farm "<fazenda>" catalog::abc123
 
 # Buscar elemento no catalogo por nome
-aegro catalogs elements catalog::abc123 --search-text "Roundup" --category DEFENSIVE
+aegro catalogs elements --farm "<fazenda>" catalog::abc123 --search-text "Roundup" --category DEFENSIVE
 
 # Listar sementes disponiveis no catalogo
-aegro catalogs elements catalog::abc123 --category SEED --page 1
+aegro catalogs elements --farm "<fazenda>" catalog::abc123 --category SEED --page 1
 ```
 
 ---
@@ -253,11 +253,11 @@ A criacao de sementes via API retorna erro 500 intermitentemente. Este e um bug 
 
 ```bash
 # Ler antes de mexer
-aegro elements get-categories element::abc123
+aegro elements get-categories --farm "<fazenda>" element::abc123
 # Definir so a despesa (nao mexe na receita)
-aegro elements set-categories element::abc123 --expense-category-key financialCategory::exp1
+aegro elements set-categories --farm "<fazenda>" element::abc123 --expense-category-key financialCategory::exp1
 # Limpar a receita explicitamente
-aegro elements set-categories element::abc123 --clear-revenue
+aegro elements set-categories --farm "<fazenda>" element::abc123 --clear-revenue
 ```
 
 ### Transfer usa endpoint generico
@@ -284,7 +284,7 @@ Diferente de defensivo, semente e item, os endpoints de criacao de fertilizante 
 
 ```bash
 # 1. Listar todas as posicoes do elemento
-aegro stock items --element-key element::abc123 --output table
+aegro stock items --farm "<fazenda>" --element-key element::abc123 --output table
 
 # Cada item retorna a quantidade atual no local. Some as magnitudes para o total.
 ```
@@ -293,11 +293,11 @@ aegro stock items --element-key element::abc123 --output table
 
 ```bash
 # Movimentacoes de semente de soja na safra 2025/2026
-aegro stock logs --element-key element::abc123 \
+aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --start-date 2025-09-01 --end-date 2026-03-31
 
 # Para filtrar por local especifico
-aegro stock logs --element-key element::abc123 \
+aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --source-key stockLocation::def456 --start-date 2025-09-01
 ```
 
@@ -320,26 +320,26 @@ Para verificar:
 
 ```bash
 # 1. Consultar catalogo para referencia
-aegro catalogs elements catalog::abc --search-text "Glifosato" --category DEFENSIVE
+aegro catalogs elements --farm "<fazenda>" catalog::abc --search-text "Glifosato" --category DEFENSIVE
 
 # 2. Criar o elemento na fazenda
-aegro elements create-defensive --name "Glifosato 480 SL" \
+aegro elements create-defensive --farm "<fazenda>" --name "Glifosato 480 SL" \
   --type HERBICIDE --unit L --manufacturer "Nortox"
 
 # 3. Anotar a key retornada (element::xyz789)
 
 # 4. Verificar locais de estoque disponiveis
-aegro stock locations --output table
+aegro stock locations --farm "<fazenda>" --output table
 
 # 5. Registrar entrada de compra
-aegro stock entry --element-key element::xyz789 \
+aegro stock entry --farm "<fazenda>" --element-key element::xyz789 \
   --quantity 200 --unit L --date 2026-03-13 \
   --amount 3600 --currency BRL \
   --dest-key stockLocation::armazem1 \
   --observations "NF 12345 - Nortox"
 
 # 6. Vincular a categoria financeira de despesa
-aegro elements set-categories element::xyz789 \
+aegro elements set-categories --farm "<fazenda>" element::xyz789 \
   --expense-category-key financialCategory::defensivos
 ```
 
@@ -347,28 +347,28 @@ aegro elements set-categories element::xyz789 \
 
 ```bash
 # 1. Verificar posicao no deposito de origem
-aegro stock items --element-key element::abc123 --location-key stockLocation::origem
+aegro stock items --farm "<fazenda>" --element-key element::abc123 --location-key stockLocation::origem
 
 # 2. Executar transferencia
-aegro stock transfer --element-key element::abc123 \
+aegro stock transfer --farm "<fazenda>" --element-key element::abc123 \
   --quantity 50 --unit L --date 2026-03-13 \
   --source-key stockLocation::origem --dest-key stockLocation::destino
 
 # 3. Verificar posicoes atualizadas
-aegro stock items --element-key element::abc123 --output table
+aegro stock items --farm "<fazenda>" --element-key element::abc123 --output table
 ```
 
 ### Buscar elemento no catalogo e criar na fazenda
 
 ```bash
 # 1. Listar catalogos
-aegro catalogs list
+aegro catalogs list --farm "<fazenda>"
 
 # 2. Buscar no catalogo
-aegro catalogs elements catalog::padrao --search-text "Ureia" --category FERTILIZER
+aegro catalogs elements --farm "<fazenda>" catalog::padrao --search-text "Ureia" --category FERTILIZER
 
 # 3. Criar na fazenda baseado nos dados do catalogo
-aegro elements create-fertilizer --name "Ureia 46%" --unit kg --manufacturer "Petrobras"
+aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg --manufacturer "Petrobras"
 ```
 
 ---
