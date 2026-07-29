@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.7.1
+version: 0.7.2
 ---
 
 # Dominio Operacional
@@ -291,6 +291,8 @@ aegro stock entry --farm "Fazenda Aegro" \
 # 4. Criar o lancamento financeiro com as parcelas
 # A API publica NAO expoe create/update/delete de parcela avulsa: as parcelas
 # vao no campo `installments` do proprio create-bill.
+# SEMPRE --dry-run primeiro: apresente o plano (valor, categoria, parcelas)
+# a quem opera e so troque para --execute depois da confirmacao explicita.
 aegro financial create-bill \
   --description "Compra de fertilizante - safra 25/26" \
   --total-amount 45000.00 \
@@ -299,7 +301,8 @@ aegro financial create-bill \
   --category "Insumos" \
   --bank-account-key "bankAccount::def456" \
   --installments '[{"number": 1, "dueDate": "2026-04-15", "amount": {"currencyCode": "BRL", "amount": 45000}}]' \
-  --farm "Fazenda Aegro" --execute
+  --farm "Fazenda Aegro" --dry-run
+# Usuario conferiu e aprovou o plano? Repita o MESMO comando com --execute.
 ```
 
 ### Fluxo 2: Aplicacao de Defensivo (Agronomico → Estoque)
@@ -345,6 +348,7 @@ aegro harvest-logs create --farm "Fazenda Aegro" \
   --humidity 14.5
 
 # 2. Gerar conta a receber (venda do grao)
+# SEMPRE --dry-run primeiro; --execute so apos o usuario conferir o plano.
 aegro financial create-bill \
   --description "Venda de soja - safra 25/26" \
   --total-amount 192000.00 \
@@ -353,7 +357,8 @@ aegro financial create-bill \
   --category "Venda de graos" \
   --bank-account-key "bankAccount::def456" \
   --installments '[{"number": 1, "dueDate": "2026-04-30", "amount": {"currencyCode": "BRL", "amount": 192000}}]' \
-  --farm "Fazenda Aegro" --execute
+  --farm "Fazenda Aegro" --dry-run
+# Usuario conferiu e aprovou o plano? Repita o MESMO comando com --execute.
 ```
 
 ### Fluxo 4: Manutencao de Patrimonio (Patrimonial → Estoque → Financeiro)
@@ -375,6 +380,7 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
 
 # 2. Gerar o lancamento do servico de manutencao
+# SEMPRE --dry-run primeiro; --execute so apos o usuario conferir o plano.
 aegro financial create-bill \
   --description "Revisao 500h - troca de filtros e oleo" \
   --total-amount 3500.00 \
@@ -383,7 +389,8 @@ aegro financial create-bill \
   --category "Manutencao" \
   --bank-account-key "bankAccount::def456" \
   --installments '[{"number": 1, "dueDate": "2026-04-15", "amount": {"currencyCode": "BRL", "amount": 3500}}]' \
-  --farm "Fazenda Aegro" --execute
+  --farm "Fazenda Aegro" --dry-run
+# Usuario conferiu e aprovou o plano? Repita o MESMO comando com --execute.
 ```
 
 ### Fluxo 5: Custeio — Vinculo Elemento x Categoria Financeira

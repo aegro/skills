@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.4.1
+version: 0.4.2
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -72,11 +72,11 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 
 | Passo | Comando | O que faz |
 |---|---|---|
-| Listar | `list` (`listar`) `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--not-launched|--launched] [--type NFE|NFSE] [-o table]` | Resumo por nota: numero, fornecedor (e se ja tem cadastro), CFOPs, valor, se ja esta lancada e as contas vinculadas. Traz `sugestaoDestino` (triagem CFOP conservadora) e `instrucaoUI` para destinos nao executaveis. Alias PT: `--desde/--ate/--tipo/--texto`. |
+| Listar | `list` (`listar`) `--start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--not-launched\|--launched] [--type NFE\|NFSE] [-o table]` | Resumo por nota: numero, fornecedor (e se ja tem cadastro), CFOPs, valor, se ja esta lancada e as contas vinculadas. Traz `sugestaoDestino` (triagem CFOP conservadora) e `instrucaoUI` para destinos nao executaveis. Alias PT: `--desde/--ate/--tipo/--texto`. |
 | Detalhe | `items <doc>` (`detalhe`) `[--full]` | Itens (codigo, descricao, NCM, CFOP por item, qtd, valor), totais, pagamento/parcelas, fornecedor/produtor conciliados e sugestoes de elemento. `--full` = Invoice bruto. `doc` = numero, chave de acesso (44) ou key. |
 | Status | `status <doc>...` | Confere em lote se cada nota ja foi lancada, com referencia das bills (guardrail contra duplicidade). |
 | Conciliar | `conciliate <doc> --item CODIGO=elemento --execute` (`conciliar`) | Persiste o mapa produto-da-nota -> elemento (por fazenda+fornecedor+item), reaproveitado nas proximas notas. Elemento por nome ou id; preserva `conversionRate` salvo. |
-| Lancar conta | `launch-bill <doc> --category X [--revenue|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**. |
+| Lancar conta | `launch-bill <doc> --category X [--revenue\|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**. |
 | Lancar pedido | `launch-purchase-order <doc> --dry-run/--execute` | Idem como pedido de compra, com guard de pedido duplicado. |
 
 > `preparar` foi **descontinuado** (ensinava o caminho publico sem vinculo

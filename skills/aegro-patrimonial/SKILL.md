@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.1
+version: 0.6.2
 ---
 
 # Dominio Patrimonial
@@ -165,7 +165,7 @@ Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticam
 | PIVOT | `hourmeterAtOccurrence` | Horas |
 | VEHICLE | `odometerAtOccurrenceInKilometers` | Km |
 | GARNER | `hourmeterAtOccurrence` | Horas |
-| IMMOBILIZED | `hourmeterAtOccurrence` | Horas |
+| IMMOBILIZED | — (benfeitoria nao tem medidor) | — |
 
 ## Referencia de Comandos
 
