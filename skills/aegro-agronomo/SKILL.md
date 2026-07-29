@@ -22,6 +22,7 @@ fertilizantes). Base para todos os workflows agronomicos.
 | **Atividade** | `activity` | Operacao agricola planejada ou executada (plantio, aplicacao, colheita, etc). |
 | **Plano** | `plan` | Planejamento: quais talhoes, quais insumos, datas previstas. |
 | **Realizacao** | `realization` | Execucao efetiva. Uma atividade pode ter multiplas realizacoes. |
+| **Operacao (tag)** | `tag` | Nome/etiqueta da atividade, exibido como "Operacao" no app web/mobile. Na API o campo se chama `tag`. |
 | **Romaneio** | `harvest-log` | Registro de pesagem de colheita. Pesos: bruto, tara, liquido, descontado, produto. |
 | **Rateio** | `crop-prorate` | Distribuicao proporcional de custos entre talhoes. Soma = 100%. |
 | **Elemento** | `element` | Insumo: semente, defensivo, fertilizante, item ou servico. |
@@ -135,13 +136,20 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 | `activities get-plan <key>` | posicional - **chave do plano** → `/activities/plans/{key}` |
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
-| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--inputs` (JSON) |
+| `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
+| `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel) |
+| `activities update-plan <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
+| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
 
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
 - `activities get-plan <PLAN_KEY>` → plano pela chave do **plano**
-- `activities create-plan` cria **planejamento**, nao realizacao. A API publica permite
-  consultar realizacoes, mas nao expoe endpoint para criar realizacao.
+- `activities create-plan` cria **planejamento**; `activities create-realization` cria
+  **realizacao** (execucao em campo).
+- **Editar e PATCH / JSON Merge Patch** (`update-plan`/`update-realization`): passe em
+  `--body` apenas os campos a alterar, ex.: `--body '{"tag":"Aplicacao de Herbicida"}'`
+  para trocar a Operacao. O `tag` (Operacao) e atributo da **atividade** — alterar num
+  plano ou realizacao reflete na atividade inteira (plano + todas as realizacoes).
 
 ```bash
 aegro activities list --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
@@ -153,6 +161,7 @@ aegro activities create-plan --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 \
   --type SOWING --start-date 2026-01-15 \
   --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
+  --tag "Plantio Soja TMG 2381" \
   --observations "Plantio soja TMG 2381" \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
