@@ -165,11 +165,13 @@ aegro activities create-plan \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
 
-# Excluir uma atividade (cascata: plano + realizacoes) — sempre prever antes
-aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run
+# Excluir uma atividade (cascata: plano + realizacoes) — sempre prever com --dry-run antes.
+# Passe o MESMO --farm no dry-run e no execute, para prever e efetivar na mesma fazenda.
+aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
 
-# Excluir apenas uma realizacao
+# Excluir apenas uma realizacao — idem: dry-run primeiro, mesmo --farm nos dois
+aegro activities delete-realization activityRealization::68dd6730e90f726622b7f560 --dry-run --farm "Fazenda Sul"
 aegro activities delete-realization activityRealization::68dd6730e90f726622b7f560 --execute --farm "Fazenda Sul"
 ```
 
