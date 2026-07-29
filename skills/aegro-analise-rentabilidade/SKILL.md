@@ -1,7 +1,7 @@
 ---
 name: aegro-analise-rentabilidade
 description: Calcular ROI, custo por hectare e margem bruta da safra
-version: 0.5.1
+version: 0.5.3
 ---
 
 # Analise de Rentabilidade
@@ -59,8 +59,8 @@ Producao em sacas (soja): Peso Descontado (kg) / 60
 ### 1. Identificar safra
 
 ```bash
-aegro crops list --start-date {{ano-1}}-01-01 --end-date {{ano}}-12-31
-aegro crops get <crop_key>
+aegro crops list --farm "<fazenda>" --start-date {{ano-1}}-01-01 --end-date {{ano}}-12-31
+aegro crops get --farm "<fazenda>" <crop_key>
 ```
 
 Extrair: area total (ha), cultura, ciclo, status.
@@ -68,7 +68,7 @@ Extrair: area total (ha), cultura, ciclo, status.
 ### 2. Confirmar talhoes e area
 
 ```bash
-aegro crops glebes <crop_key>
+aegro crops glebes --farm "<fazenda>" <crop_key>
 ```
 
 Somar areas dos crop-glebes para area total confirmada.
@@ -76,7 +76,7 @@ Somar areas dos crop-glebes para area total confirmada.
 ### 3. Obter custos diretos (realizacoes)
 
 ```bash
-aegro activities realizations --crop-key <crop_key>
+aegro activities realizations --farm "<fazenda>" --crop-key <crop_key>
 ```
 
 Agrupar custos por tipo: plantio, aplicacoes, adubacao, colheita.
@@ -84,8 +84,8 @@ Agrupar custos por tipo: plantio, aplicacoes, adubacao, colheita.
 ### 4. Obter custos indiretos (rateios)
 
 ```bash
-aegro crops prorates --crop-keys <crop_key>
-aegro crops prorate <prorate_key>
+aegro crops prorates --farm "<fazenda>" --crop-key <crop_key>
+aegro crops prorate --farm "<fazenda>" <prorate_key>
 ```
 
 Se existirem rateios, somar valores rateados para esta safra.
@@ -93,7 +93,7 @@ Se existirem rateios, somar valores rateados para esta safra.
 ### 5. Obter receita
 
 ```bash
-aegro financial installments --operation-type REVENUE
+aegro financial installments --farm "<fazenda>" --operation-type REVENUE
 ```
 
 Filtrar vendas da safra. Se nao houver vendas lancadas, solicitar preco medio ao usuario.

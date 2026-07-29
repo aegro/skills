@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-talhoes
 description: Cadastra e mantem os talhoes (glebas) de uma fazenda no Aegro, manualmente ou importando de um KML (com previa antes de gravar), usando a CLI aegro
-version: 0.1.0
+version: 0.1.2
 ---
 
 # Cadastro de Talhoes no Aegro
@@ -93,7 +93,7 @@ Fazenda ativa
 ### 1. Listar os talhoes existentes (sempre primeiro)
 
 ```bash
-aegro glebes list
+aegro glebes list --farm "<fazenda>"
 ```
 
 Esta e a base para **nao duplicar**: veja quais talhoes a fazenda ja tem (nome,
@@ -105,8 +105,8 @@ area, `key`). As `key`s serao usadas depois para vincular a safra.
 > e voce recria talhoes que ja existem:
 >
 > ```bash
-> aegro glebes list --page 1
-> aegro glebes list --page 2   # ... ate a pagina vir vazia
+> aegro glebes list --farm "<fazenda>" --page 1
+> aegro glebes list --farm "<fazenda>" --page 2   # ... ate a pagina vir vazia
 > ```
 
 ### 2. Cadastrar apenas os talhoes que faltam
@@ -115,7 +115,7 @@ area, `key`). As `key`s serao usadas depois para vincular a safra.
 
 ```bash
 # 1) previa (parseia, NAO persiste)
-aegro glebes preview-kml --file talhoes.kml
+aegro glebes preview-kml --farm "<fazenda>" --file talhoes.kml
 ```
 Devolve a lista dos talhoes do arquivo (nome, area geodesica na unidade da
 fazenda, poligono). Placemarks sem poligono (pontos) sao ignorados; sem nome
@@ -123,7 +123,7 @@ vira "Talhao N".
 
 ```bash
 # 2) para CADA talhao que NAO existe ainda, cria:
-aegro glebes create --name "T-01" --area 45.5 --area-unit ha \
+aegro glebes create --farm "<fazenda>" --name "T-01" --area 45.5 --area-unit ha \
   --polygon '[[-23.1,-47.1],[-23.1,-47.09],[-23.11,-47.09],[-23.1,-47.1]]'
 ```
 Compare com o `glebes list` do passo 1 e **crie so os que faltam**.
@@ -131,7 +131,7 @@ Compare com o `glebes list` do passo 1 e **crie so os que faltam**.
 **Caminho B — manual.** Para cada talhao **que ainda nao existe**:
 
 ```bash
-aegro glebes create --name "T-02" --area 30 --area-unit ha
+aegro glebes create --farm "<fazenda>" --name "T-02" --area 30 --area-unit ha
 ```
 - **`--name`** (obrigatorio).
 - **`--area`** + **`--area-unit`** (obrigatorios) — valor na unidade da fazenda
@@ -142,7 +142,7 @@ aegro glebes create --name "T-02" --area 30 --area-unit ha
 ### 3. Conferir
 
 ```bash
-aegro glebes list
+aegro glebes list --farm "<fazenda>"
 ```
 Valide nomes, areas e total; garanta que nao ha duplicatas antes de seguir para
 a safra.

@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-safra
 description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), usando a CLI aegro
-version: 0.1.0
+version: 0.1.1
 ---
 
 # Cadastro de Safra no Aegro
@@ -59,8 +59,8 @@ Antes, confira se a safra ja nao existe (evite duplicar): `aegro crops list`.
 Depois liste os talhoes:
 
 ```bash
-aegro crops list        # a safra ja existe? entao nao recrie
-aegro glebes list       # talhoes a vincular
+aegro crops list --farm "<fazenda>"        # a safra ja existe? entao nao recrie
+aegro glebes list --farm "<fazenda>"       # talhoes a vincular
 ```
 Selecione os talhoes da safra e guarde as `key`s. Use os talhoes **existentes** —
 nao crie novos aqui.
@@ -73,7 +73,7 @@ nao crie novos aqui.
 ### 2. Criar a safra
 
 ```bash
-aegro crops create --type SOY --name "Soja 25/26" \
+aegro crops create --farm "<fazenda>" --type SOY --name "Soja 25/26" \
   --start-date 2025-10-01 --end-date 2026-03-01 \
   --glebe-key glebe::aaa --glebe-key glebe::bbb
 ```
@@ -102,7 +102,7 @@ aegro crops create --type SOY --name "Soja 25/26" \
 ### 3. Conferir
 
 ```bash
-aegro crops get <crop_key>
+aegro crops get --farm "<fazenda>" <crop_key>
 ```
 Confirme nome, periodo e os talhoes vinculados.
 

@@ -1,7 +1,7 @@
 ---
 name: aegro-monitoramento-pragas
 description: Acompanhar aplicacoes de defensivos, consumo e eficacia no controle fitossanitario
-version: 0.5.1
+version: 0.5.2
 ---
 
 # Monitoramento de Pragas e Defensivos
@@ -34,7 +34,7 @@ Fazenda deve estar selecionada e safra identificada.
 ### 1. Listar defensivos cadastrados
 
 ```bash
-aegro elements list --category DEFENSIVE
+aegro elements list --farm "<fazenda>" --category DEFENSIVE
 ```
 
 Organizar por tipo: HERBICIDE, INSECTICIDE, FUNGICIDE, ACARICIDE, OTHER.
@@ -42,7 +42,7 @@ Organizar por tipo: HERBICIDE, INSECTICIDE, FUNGICIDE, ACARICIDE, OTHER.
 ### 2. Buscar atividades de aplicacao da safra
 
 ```bash
-aegro activities list --crop-key <crop_key> --type APPLICATION
+aegro activities list --farm "<fazenda>" --crop-key <crop_key> --type APPLICATION
 ```
 
 Extrair: data planejada, talhoes alvo, produtos, status (planejada/realizada/cancelada).
@@ -50,7 +50,7 @@ Extrair: data planejada, talhoes alvo, produtos, status (planejada/realizada/can
 ### 3. Buscar realizacoes efetivas
 
 ```bash
-aegro activities realizations --crop-key <crop_key> --start-date {{inicio_safra}} --end-date {{hoje}}
+aegro activities realizations --farm "<fazenda>" --crop-key <crop_key> --start-date {{inicio_safra}} --end-date {{hoje}}
 ```
 
 Filtrar apenas tipo APPLICATION. Extrair: data efetiva, produto, dose/ha, area aplicada.
@@ -58,7 +58,7 @@ Filtrar apenas tipo APPLICATION. Extrair: data efetiva, produto, dose/ha, area a
 ### 4. Verificar estoque atual de defensivos
 
 ```bash
-aegro stock items
+aegro stock items --farm "<fazenda>"
 ```
 
 Filtrar elementos DEFENSIVE. Identificar: estoque critico (<10% uso medio), zerados.
@@ -66,7 +66,7 @@ Filtrar elementos DEFENSIVE. Identificar: estoque critico (<10% uso medio), zera
 ### 5. Buscar movimentacoes de estoque por produto
 
 ```bash
-aegro stock logs --element-key <defensive_key> --start-date {{inicio_safra}} --end-date {{hoje}}
+aegro stock logs --farm "<fazenda>" --element-key <defensive_key> --start-date {{inicio_safra}} --end-date {{hoje}}
 ```
 
 Analisar: entradas (compras), saidas (consumo), transferencias.
