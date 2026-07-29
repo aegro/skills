@@ -6,15 +6,18 @@ description: >-
   blocos de erro dos diarios de sessao ($AEGRO_LEARNING_DIR), telemetria JSONL do
   CLI aegro e relato direto na conversa; deduplica por sintoma, classifica cada
   item (resolvido/mapeado/novo) com dono (CLI, API publica ou skill) e evidencia
-  anonimizada, e produz um doc de feedback com encaminhamento. Detecta se quem usa
-  e do time Aegro (abre issue/PR interno) ou cliente (monta o feedback no molde do
-  formulario publico para o cliente enviar a um clique). Use ao fim de uma sessao com erros ("compilar esses
+  anonimizada, e produz um doc de feedback com encaminhamento. Tres modos de entrega,
+  decididos por quem compila e por ter ou nao clone do workspace: time com repo grava
+  em aegro/workspace (squads/agentes-entrada/knowledge/feedback-campo-cli) e abre
+  issue/PR; EV em Cowork, que nao tem acesso a repo, grava local e manda por Google
+  Chat; cliente recebe o feedback no molde do formulario publico para enviar a um
+  clique. Use ao fim de uma sessao com erros ("compilar esses
   erros pro time de dev", "montar relatorio dos bugs da sessao") ou na rodada
   semanal ("triagem do feedback", "fechar o feedback da semana", "compile field
   feedback", "triage errors for dev"). NAO use para suporte a cliente final, para
   reportar bug de produto Aegro fora do fluxo CLI/API (use o fluxo normal de bug),
   nem durante o lancamento em si (quem registra e a skill de lancamento; esta compila).
-version: 0.1.1
+version: 0.2.0
 ---
 
 # Feedback de campo -> time de dev
@@ -22,22 +25,40 @@ version: 0.1.1
 Transforma o que deu errado nas sessoes de lancamento em melhoria concreta de
 API, CLI e skills: um doc de triagem com dono por item, evidencia anonimizada e
 encaminhamento. E a formalizacao do metodo que ja funcionou nas rodadas de
-jun-jul/2026 (`tool-aegro-cli/docs/feedback/`).
+jun-jul/2026 (hoje em [`feedback-campo-cli/`][pasta]).
 
-## Modo da sessao: time Aegro vs. cliente (ler primeiro)
+[pasta]: https://github.com/aegro/workspace/tree/dev/squads/agentes-entrada/knowledge/feedback-campo-cli
 
-Identifique quem esta compilando pelo **e-mail do usuario** no contexto da sessao:
+## Onde o doc de feedback mora
 
-- **Interno - `@aegro.com.br`** (time de Servicos / dev): fluxo completo - gera o
-  doc de triagem em `tool-aegro-cli/docs/feedback/` e **encaminha** para issue no
-  `aegro/tool-aegro-cli`, item em `melhorias-api-publica.md` ou PR de skill.
+O dono canonico do feedback de campo e o repo `aegro/workspace`, na pasta
+[`squads/agentes-entrada/knowledge/feedback-campo-cli/`][pasta] - nao mais em
+`tool-aegro-cli/docs/feedback/`, que virou ponteiro. Regra de altitude: evidencia
+de sessao nao muda com o codigo, entao mora no workspace; plano e spec tecnica
+ficam no repo do CLI.
+
+## Modo da sessao (ler primeiro)
+
+Dois eixos: **quem compila** (e-mail do usuario na sessao) e **onde o doc pode ser
+gravado** (existe clone do `aegro/workspace` alcancavel?). Nao presuma acesso pelo
+cargo - o EV do time de Servicos e `@aegro.com.br` e **nao** tem acesso ao workspace.
+
+- **Interno com repo** - `@aegro.com.br` e workspace clonado (dev / P&D): fluxo
+  completo - grava o doc na pasta do workspace, acrescenta a linha no `README.md`
+  daquela pasta e **encaminha** (issue no `aegro/tool-aegro-cli`, item em
+  `melhorias-api-publica.md` ou PR de skill).
+- **Interno sem repo** - `@aegro.com.br` sem clone do workspace (EV em Cowork):
+  grava o doc em `$AEGRO_LEARNING_DIR/AAAA-MM-DD-<tema>.md` (fallback: diretorio
+  atual) e **entrega por Google Chat** - ver "Entrega no modo interno sem repo".
+  **Nunca** tenta escrever em repo nem abrir issue/PR.
 - **Externo - outro dominio** (cliente): compila o relatorio **no molde do
   formulario publico de feedback** (Email + Resumo + Descricao), entrega o
   conteudo pronto para colar e o link do formulario. **Nao** abre issue em
-  repositorio interno nem escreve em `docs/` do tool-aegro-cli. Ver
+  repositorio interno nem escreve em repo nenhum. Ver
   "Encaminhamento no modo externo (formulario)".
 
-Sem e-mail identificavel, trate como **externo**.
+Sem e-mail identificavel, trate como **externo**. Na duvida entre os dois modos
+internos, teste: se o caminho do workspace nao existe, e "sem repo".
 
 ## Quando usar / quando NAO usar
 
@@ -94,9 +115,16 @@ Duas dimensoes, sempre:
   (aegro/skills) - ou combinacao, indicando a ordem.
 
 Antes de marcar `novo`, confira o que ja esta mapeado em
-`tool-aegro-cli/docs/melhorias-api-publica.md`, nos docs de
-`tool-aegro-cli/docs/feedback/` anteriores e nos gotchas das skills - item
-re-reportado vira ocorrencia do item existente, nao duplicata.
+[`knowledge/melhorias-api-publica.md`][debitos], nos docs anteriores de
+[`feedback-campo-cli/`][pasta] e nos gotchas das skills - item re-reportado vira
+ocorrencia do item existente, nao duplicata.
+
+[debitos]: https://github.com/aegro/workspace/blob/dev/squads/agentes-entrada/knowledge/melhorias-api-publica.md
+
+**No modo interno sem repo** (EV) essas fontes nao estao acessiveis. Nesse caso use
+o que houver na conversa, e escreva no cabecalho do doc: `dedupe: parcial - sem
+acesso ao historico`. Quem faz a curadoria confere contra o indice antes de aceitar
+um `novo` - marcar `novo` sem checagem e o erro que gera duplicata na priorizacao.
 
 ### 4. Evidenciar com seguranca
 
@@ -107,15 +135,26 @@ shape/agregado a dado bruto.
 
 ### 5. Gerar o doc de triagem
 
-No modo interno, salve em `tool-aegro-cli/docs/feedback/AAAA-MM-DD-<tema>.md`. No
-modo externo, este doc e a fonte dos campos do formulario (secao
-"Encaminhamento no modo externo") - o Resumo de cada item vira o `Resumo:` e o
-corpo vira a `Descricao:`. Formato:
+Onde salvar, por modo:
+
+| Modo | Destino |
+|---|---|
+| interno com repo | `<workspace>/squads/agentes-entrada/knowledge/feedback-campo-cli/AAAA-MM-DD-<tema>.md` + linha no `README.md` da pasta |
+| interno sem repo (EV) | `$AEGRO_LEARNING_DIR/AAAA-MM-DD-<tema>.md` (fallback: diretorio atual) |
+| externo (cliente) | nao grava em repo - o doc e a fonte dos campos do formulario |
+
+No modo externo, o Resumo de cada item vira o `Resumo:` e o corpo vira a
+`Descricao:` (secao "Encaminhamento no modo externo"). No modo interno com repo, o
+doc leva o frontmatter do workspace (`name`, `description`, `type:
+vertical-artifact`, `vertical_artifact_type: report`, `owner`, `last_updated`,
+`status`, `related_repo: aegro/tool-aegro-cli`) - copie a forma de um doc vizinho da
+pasta. Formato do corpo:
 
 ```markdown
 # Feedback de campo - <tema> (AAAA-MM-DD)
 
 > Fontes: N sessoes (DD/MM-DD/MM), M itens apos dedupe.
+> dedupe: completa | parcial - sem acesso ao historico
 
 ## Itens
 
@@ -134,17 +173,40 @@ corpo vira a `Descricao:`. Formato:
 
 ### 6. Encaminhar
 
-**Modo interno**, com aprovacao do usuario:
+**Modo interno com repo**, com aprovacao do usuario:
 - **CLI** -> issue (ou PR direto, se trivial) em `aegro/tool-aegro-cli`.
-- **API** -> adicionar/atualizar item em
-  `tool-aegro-cli/docs/melhorias-api-publica.md`.
+- **API** -> adicionar/atualizar item em [`knowledge/melhorias-api-publica.md`][debitos]
+  (no workspace, junto do doc de feedback).
 - **skill** -> PR em `aegro/skills`.
+
+**Modo interno sem repo (EV):** o encaminhamento nao e seu - a tabela
+"Encaminhamentos" do doc registra o dono sugerido de cada item, e quem recebe o doc
+abre issue/PR. Ver "Entrega no modo interno sem repo".
 
 **Modo externo:** siga a secao "Encaminhamento no modo externo (formulario)" -
 nao abra issue/PR em repositorio interno.
 
 Feche o loop: itens `resolvido` desde a ultima rodada entram numa secao curta
 "Resolvidos desde a ultima rodada" - quem reporta precisa ver que funciona.
+
+## Entrega no modo interno sem repo (EV)
+
+O EV nao tem clone do workspace nem permissao de escrita nos repos: se a skill
+tentar gravar la, falha; se so imprimir na conversa, o feedback morre com a sessao.
+Entao o doc sai da maquina do EV por mensagem.
+
+1. **Grave o arquivo** em `$AEGRO_LEARNING_DIR/AAAA-MM-DD-<tema>.md` (fallback:
+   diretorio atual) e diga o caminho completo em voz alta.
+2. **Tente o Google Chat.** Se a sessao tiver ferramenta/MCP de chat disponivel,
+   monte a mensagem para **antonio.brasil@aegro.com.br** com o doc anexado (ou
+   colado, se anexo nao for possivel) e uma linha de contexto: fazenda (anonimizada),
+   ambiente, versao do CLI, N itens. **Mostre a mensagem e pergunte antes de enviar**
+   - mandar mensagem em nome de alguem exige o "pode enviar" explicito.
+3. **Sem ferramenta de chat, ou se o EV recusar:** encerre com o caminho do arquivo
+   e a instrucao - "manda este arquivo pro Antonio no chat do time". Nao insista.
+
+Nao envie o doc por nenhum outro canal (e-mail externo, servico de upload, link
+publico): pode conter id de fazenda de cliente e trecho de documento fiscal.
 
 ## Encaminhamento no modo externo (formulario)
 
