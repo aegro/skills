@@ -136,6 +136,14 @@ aegro crop-glebes list crop::68dd6719e90f726622b7f549
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
 | `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--inputs` (JSON) |
+| `activities delete-activity <key>` | posicional - **chave da atividade** → `DELETE /activities/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
+| `activities delete-realization <key>` | posicional - **chave da realizacao** → `DELETE /activities/realizations/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
+
+**ATENCAO exclusao (`delete-*`):**
+- `delete-activity <ACTIVITY_KEY>` remove a atividade **e, em cascata, seu plano e todas as realizacoes**, estornando o estoque vinculado.
+- `delete-realization <REALIZATION_KEY>` remove uma realizacao; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
+- E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
+- Comando destrutivo: use `--dry-run` para prever e `--execute` para efetivar. Com `AEGRO_SAFE_MODE=1`, `--execute` exige `--farm` explicito (senao `IMPLICIT_FARM_BLOCKED`).
 
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
@@ -156,6 +164,13 @@ aegro activities create-plan \
   --observations "Plantio soja TMG 2381" \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
+
+# Excluir uma atividade (cascata: plano + realizacoes) — sempre prever antes
+aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run
+aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Excluir apenas uma realizacao
+aegro activities delete-realization activityRealization::68dd6730e90f726622b7f560 --execute --farm "Fazenda Sul"
 ```
 
 ### 4.5 Romaneios de Colheita (`aegro harvest-logs`)
