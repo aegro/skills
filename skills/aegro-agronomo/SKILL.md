@@ -145,9 +145,11 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 
 **ATENCAO exclusao (`delete-*`):**
 - `delete-activity <ACTIVITY_KEY>` remove a atividade **e, em cascata, seu plano e todas as realizacoes**, estornando o estoque vinculado.
-- `delete-realization <REALIZATION_KEY>` remove uma realizacao; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
+- `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
+- A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado retorna 404, indistinguivel de "nao existe".
 - E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
-- Comando destrutivo: use `--dry-run` para prever e `--execute` para efetivar. Com `AEGRO_SAFE_MODE=1`, `--execute` exige `--farm` explicito (senao `IMPLICIT_FARM_BLOCKED`).
+- **Sem `AEGRO_SAFE_MODE=1` nao ha trava: `delete-*` sem flag nenhuma apaga na hora**, sem preview e sem confirmacao. Com `AEGRO_SAFE_MODE=1`, escrever exige `--execute` e `--farm` explicito (senao `SAFE_MODE_BLOCKED` / `IMPLICIT_FARM_BLOCKED`).
+- O `--dry-run` **so imprime a requisicao que seria enviada** - nao chama o servidor, entao nao confirma que a chave existe, que ela e daquela fazenda, nem quanta coisa a cascata vai levar junto. Para prever de verdade **o que sera apagado**, consulte antes: `activities get <ACTIVITY_KEY>` e `activities realizations --activity-key <ACTIVITY_KEY>`.
 
 **ATENCAO `plan` vs `get-plan`:**
 - `activities plan <ACTIVITY_KEY>` → plano a partir da chave da **atividade**
@@ -174,14 +176,18 @@ aegro activities create-plan --farm "<fazenda>" \
   --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
   --dry-run
 
-# Excluir uma atividade (cascata: plano + realizacoes) — sempre prever com --dry-run antes.
-# Passe o MESMO --farm no dry-run e no execute, para prever e efetivar na mesma fazenda.
+# Excluir uma atividade (cascata: plano + realizacoes).
+# 1) Veja o que sera apagado - isto SIM consulta o servidor:
+aegro activities get activity::68dd6719e90f726622b7f549 --farm "Fazenda Sul"
+aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 --farm "Fazenda Sul"
+# 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
 
-# Excluir apenas uma realizacao — idem: dry-run primeiro, mesmo --farm nos dois
-aegro activities delete-realization activityRealization::68dd6730e90f726622b7f560 --dry-run --farm "Fazenda Sul"
-aegro activities delete-realization activityRealization::68dd6730e90f726622b7f560 --execute --farm "Fazenda Sul"
+# Excluir apenas uma realizacao - chave com prefixo activityLog::, idem: confira antes
+aegro activities get-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul"
+aegro activities delete-realization activityLog::68dd6730e90f726622b7f560 --dry-run --farm "Fazenda Sul"
+aegro activities delete-realization activityLog::68dd6730e90f726622b7f560 --execute --farm "Fazenda Sul"
 ```
 
 ### 4.5 Romaneios de Colheita (`aegro harvest-logs`)
