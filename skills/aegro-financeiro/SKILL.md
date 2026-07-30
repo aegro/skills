@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.7.2
+version: 0.8.0
 ---
 
 # Aegro Financeiro
@@ -17,7 +17,8 @@ parcelas (installments), categorias financeiras, contas bancarias, empresas e or
 |--------------------------|------------------------|--------------------------------------------------------------------------------------------|
 | Lancamento financeiro    | `bill`                 | Registro contabil pai. Agrupa uma ou mais parcelas.                                        |
 | Parcela                  | `installment`          | Fracao de pagamento de um lancamento. Possui valor, vencimento e status.                   |
-| Categoria financeira     | `fin-categories`       | Classificacao contabil. Pode ser SYNTHETIC (agrupadora) ou ANALYTIC (recebe lancamentos).  |
+| Categoria financeira     | `fin-categories`       | Classificacao contabil, hierarquica, UMA por lancamento. SYNTHETIC (nao recebe lancamento) ou ANALYTIC (recebe). **NAO e "agrupador financeiro"** — ver linha abaixo. |
+| Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --relation-type BILL`. |
 | Tipo de operacao (bill)  | `--operation-type`     | REVENUE (receita) ou EXPENSE (despesa). Usado no filtro de installments.                   |
 | Tipo de operacao (cat)   | `--operation-type`     | CREDITOR (credora) ou DEBTOR (devedora). Usado em categorias financeiras.                  |
 | Status da parcela        | `--status`             | PAID (paga) ou NOT_PAID (pendente).                                                       |
