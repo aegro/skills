@@ -238,8 +238,22 @@ aegro tags list --farm "Fazenda Aegro" --relation-type BILL --output table
 (exit 4, sem chamada HTTP) e a mensagem lista os validos com a aba de cada um.
 Para um tipo novo que o CLI ainda nao conhece, use `--relation-type-raw`.
 
-**Criacao em lote a partir de planilha:** liste com `--relation-type <TIPO>`
-primeiro e crie **so o que falta**. Rode `--dry-run` antes de `--execute`.
+**Criacao em lote a partir de planilha:** nem a API nem o CLI recusam agrupador
+repetido - a deduplicacao e sua. Faca nesta ordem:
+
+1. **Deduplique a planilha.** A identidade de um agrupador e
+   `(relationType, nome normalizado)` na fazenda. Normalize o nome antes de
+   comparar: corte espaco das pontas, colapse espaco interno e compare
+   ignorando caixa e acento ("Adubos ", "adubos" e "ADUBOS" sao a MESMA linha).
+   Reduza a planilha a esse conjunto unico.
+2. **Liste o que ja existe** com `--relation-type <TIPO>` e subtraia, usando a
+   mesma normalizacao do passo 1.
+3. **Rode `--dry-run` e depois `--execute` so sobre o que sobrou** - o conjunto
+   unico e ainda inexistente no Aegro.
+
+Pular o passo 1 e o erro que passa pelo `--dry-run`: duas linhas iguais da
+planilha viram dois agrupadores iguais, porque cada uma e um `create` valido.
+
 Se criar errado, o desfazer e o arquivamento (nao existe `delete` no CLI):
 
 ```bash
