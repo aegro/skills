@@ -193,10 +193,10 @@ aegro farms info --farm "Fazenda Aegro"
 
 ### tags (= Agrupadores)
 
-**"Agrupador" na tela e `tag` na API sao a MESMA entidade** — o que muda e o
+**"Agrupador" na tela e `tag` na API sao a MESMA entidade**: o que muda e o
 `relationType`. A tela Cadastros > Agrupadores tem uma aba por tipo. Quem chega
 pedindo "agrupador financeiro" quer `--relation-type BILL`, **nao**
-`fin-categories` (aquilo e plano de contas — ver skill `aegro-financeiro`).
+`fin-categories` (aquilo e plano de contas; ver skill `aegro-financeiro`).
 
 | Aba na tela "Agrupadores" | `--relation-type` |
 |---------------------------|-------------------|
@@ -224,7 +224,7 @@ pedindo "agrupador financeiro" quer `--relation-type BILL`, **nao**
 | `aegro tags unarchive <tag-key>` | Desarquiva | `--dry-run`, `--execute` |
 
 ```bash
-# A lista completa de tipos vem do proprio CLI — nao decore nem copie daqui
+# A lista completa de tipos vem do proprio CLI - nao decore nem copie daqui
 aegro tags relation-types --output table
 
 # Criar agrupador FINANCEIRO (a aba "Financeiro" da tela)
@@ -247,7 +247,7 @@ aegro tags archive tag::abc --execute     # sai da selecao, historico preservado
 aegro tags unarchive tag::abc --execute   # reversivel
 ```
 
-**`archive`/`unarchive` exigem login OAuth** (`aegro auth login`) — a API publica
+**`archive`/`unarchive` exigem login OAuth** (`aegro auth login`): a API publica
 nao expoe arquivamento, entao esses dois comandos usam a API interna. Fazenda
 autenticada por API key falha cedo com mensagem apontando o login.
 
