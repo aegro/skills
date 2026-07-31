@@ -17,7 +17,7 @@ parcelas (installments), categorias financeiras, contas bancarias, empresas e or
 |--------------------------|------------------------|--------------------------------------------------------------------------------------------|
 | Lancamento financeiro    | `bill`                 | Registro contabil pai. Agrupa uma ou mais parcelas.                                        |
 | Parcela                  | `installment`          | Fracao de pagamento de um lancamento. Possui valor, vencimento e status.                   |
-| Categoria financeira     | `fin-categories`       | Classificacao contabil, hierarquica, UMA por lancamento. SYNTHETIC (nao recebe lancamento) ou ANALYTIC (recebe). **NAO e "agrupador financeiro"** — ver linha abaixo. |
+| Categoria financeira     | `fin-categories`       | Classificacao contabil hierarquica, UMA por lancamento no nivel da bill; em bills com `inputs`, cada item pode ter a sua PROPRIA (ver regra 12). SYNTHETIC (nao recebe lancamento) ou ANALYTIC (recebe). **NAO e "agrupador financeiro"** - ver linha abaixo. |
 | Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --relation-type BILL`. |
 | Tipo de operacao (bill)  | `--operation-type`     | REVENUE (receita) ou EXPENSE (despesa). Usado no filtro de installments.                   |
 | Tipo de operacao (cat)   | `--operation-type`     | CREDITOR (credora) ou DEBTOR (devedora). Usado em categorias financeiras.                  |
