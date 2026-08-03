@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.7.2
+version: 0.7.3
 ---
 
 # Dominio Operacional
@@ -377,7 +377,7 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --stock-location-key "stockLocation::abc123" \
   --hourmeter 1550 \
   --observations "Troca filtros + oleo - revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
 
 # 2. Gerar o lancamento do servico de manutencao
 # SEMPRE --dry-run primeiro; --execute so apos o usuario conferir o plano.

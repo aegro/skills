@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.3
+version: 0.5.4
 ---
 
 # Cadastro de Patrimonio
@@ -106,10 +106,13 @@ aegro assets get --farm "<fazenda>" <asset_key_retornada>
 aegro fuel-supplies create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-13" --hourmeter 1550 \
   --stock-location-key <stock_location_key> \
-  --inputs '[{"elementKey": "element::combustivel", "quantity": 200}]'
+  --inputs '[{"elementKey": "element::combustivel", "quantity": {"unit": "L", "magnitude": 200}}]'
 ```
 
-Com `stockLocationKey`: baixa de estoque automatica. Sem ele: registro informativo apenas.
+`--stock-location-key` e **obrigatorio** na criacao, com ou sem `--inputs`: o
+servidor recusa o lancamento sem local de estoque (422
+`invalid.asset-event.stock-location.key.required`). Descubra os locais com
+`aegro stock locations`. Havendo `--inputs`, e desse local que sai a baixa.
 
 ## Sequencia: Registrar Manutencao
 
@@ -119,19 +122,21 @@ aegro maintenances create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
   --stock-location-key <stock_location_key> \
   --observations "Revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 1}}]'
 ```
+
+`--stock-location-key` tambem e obrigatorio aqui — vale para todo evento de
+patrimonio (abastecimento e manutencao).
 
 ## Limitacoes Atuais
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
-| **#3** `fuel-supplies list` → HTTP 500 | Impossivel listar historico de abastecimentos | Usar `fuel-supplies get <key>` individual ou Aegro App |
-| **#4** `maintenances list` → HTTP 500 | Impossivel listar historico de manutencoes | Usar `maintenances get <key>` individual ou Aegro App |
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
 
-**Consequencia:** Apos cadastrar abastecimentos/manutencoes, guarde as chaves retornadas.
-Nao sera possivel listar posteriormente via CLI.
+**Resolvido:** `fuel-supplies list` e `maintenances list` (antigos bugs #3 e #4,
+HTTP 500) voltaram a responder 200 — confirmado em staging em 24/07/2026. Pode
+listar o historico normalmente.
 
 ## Formato de Resposta
 

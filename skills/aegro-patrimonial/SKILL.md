@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.3
+version: 0.6.4
 ---
 
 # Dominio Patrimonial
@@ -95,7 +95,7 @@ FARM (farm::5711512de4b0e15eb04da4d0)
 - `ASSET → FUEL_SUPPLY`: Um patrimonio tem N abastecimentos
 - `ASSET → MAINTENANCE`: Um patrimonio tem N manutencoes
 - `ASSET (WEATHER_STATION) → WEATHER_LOG`: Estacao tem N registros climaticos
-- `FUEL_SUPPLY/MAINTENANCE → stockLocationKey`: Evento pode referenciar local de estoque para baixa automatica de pecas/combustivel
+- `FUEL_SUPPLY/MAINTENANCE → stockLocationKey`: **obrigatorio na criacao** do evento; e dele que sai a baixa automatica de pecas/combustivel quando ha `inputs`
 
 ## Regras de Negocio
 
@@ -144,18 +144,21 @@ Consumo (L/h) = Litros abastecidos / (Horimetro atual - Horimetro anterior)
 
 ### 5. Inputs em eventos (abastecimento e manutencao)
 
-Tanto `fuel-supplies` quanto `maintenances` aceitam `inputs` — lista de insumos consumidos:
+Tanto `fuel-supplies` quanto `maintenances` aceitam `inputs` — lista de insumos
+consumidos. `quantity` e um **objeto** com `unit` e `magnitude` (numero solto e
+recusado pela CLI):
 
 ```json
 {
   "inputs": [
-    {"elementKey": "element::combustivel01", "quantity": 200},
-    {"elementKey": "element::filtro01", "quantity": 2}
+    {"elementKey": "element::combustivel01", "quantity": {"unit": "L", "magnitude": 200}},
+    {"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}
   ]
 }
 ```
 
-Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticamente no local indicado.
+A baixa de estoque sai do `stockLocationKey` do evento — que e **obrigatorio na
+criacao**, tenha `inputs` ou nao (ver anti-padrao 1).
 
 ### 6. Hodometro vs Horimetro em eventos
 
@@ -282,8 +285,8 @@ aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--output` |
-| `aegro fuel-supplies list` | Lista abastecimentos (BUG #3 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--observations`, `--inputs` (JSON) |
+| `aegro fuel-supplies list` | Lista abastecimentos | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
+| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--observations`, `--inputs` (JSON) |
 | `aegro fuel-supplies update <key>` | Atualiza abastecimento | mesmas flags do create |
 
 ```bash
@@ -294,7 +297,7 @@ aegro fuel-supplies create --farm "Fazenda Aegro" \
   --hourmeter 1550 \
   --stock-location-key "stockLocation::abc123" \
   --observations "Diesel S10 - 200L - Tanque sede" \
-  --inputs '[{"elementKey": "element::combustivel_diesel", "quantity": 200}]'
+  --inputs '[{"elementKey": "element::combustivel_diesel", "quantity": {"unit": "L", "magnitude": 200}}]'
 # {"key": "fuelSupply::67f4d5e6a7b8c9d0", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Registrar abastecimento de veiculo (com hodometro)
@@ -302,6 +305,7 @@ aegro fuel-supplies create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-13" \
   --odometer 15500 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Diesel S10 - 80L - Posto externo"
 
 # Buscar abastecimento especifico
@@ -320,8 +324,8 @@ aegro fuel-supplies update --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro maintenances get <key>` | Busca manutencao por chave | `--output` |
-| `aegro maintenances list` | Lista manutencoes (BUG #4 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key` |
+| `aegro maintenances list` | Lista manutencoes | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
+| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key` |
 | `aegro maintenances update <key>` | Atualiza manutencao | mesmas flags do create |
 
 ```bash
@@ -332,7 +336,7 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --hourmeter 1545 \
   --stock-location-key "stockLocation::abc123" \
   --observations "Revisao 500h - Troca filtros oleo/ar/combustivel + oleo motor 15W40" \
-  --inputs '[{"elementKey": "element::filtro_oleo01", "quantity": 1}, {"elementKey": "element::filtro_ar01", "quantity": 1}, {"elementKey": "element::oleo_motor01", "quantity": 18}]'
+  --inputs '[{"elementKey": "element::filtro_oleo01", "quantity": {"unit": "un", "magnitude": 1}}, {"elementKey": "element::filtro_ar01", "quantity": {"unit": "un", "magnitude": 1}}, {"elementKey": "element::oleo_motor01", "quantity": {"unit": "L", "magnitude": 18}}]'
 # {"key": "maintenance::67f5e6a7b8c9d0e1", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Manutencao corretiva de colheitadeira
@@ -340,22 +344,25 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::colheitadeira_case01" \
   --date "2026-03-10" \
   --hourmeter 318 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Troca correia do elevador - quebra em operacao" \
-  --inputs '[{"elementKey": "element::correia_elevador", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::correia_elevador", "quantity": {"unit": "un", "magnitude": 1}}]'
 
 # Manutencao de veiculo (usa hodometro)
 aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-11" \
   --odometer 15200 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Troca oleo + filtros - revisao 10.000km" \
-  --inputs '[{"elementKey": "element::oleo_motor_5w30", "quantity": 7}, {"elementKey": "element::filtro_oleo_hilux", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::oleo_motor_5w30", "quantity": {"unit": "L", "magnitude": 7}}, {"elementKey": "element::filtro_oleo_hilux", "quantity": {"unit": "un", "magnitude": 1}}]'
 
 # Manutencao com rateio para safra
 aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-08" \
   --hourmeter 1540 \
+  --stock-location-key "stockLocation::abc123" \
   --crop-prorate-group-key "prorateGroup::safra2526" \
   --observations "Reparo sistema hidraulico - rateado para safra 25/26"
 
@@ -365,37 +372,15 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 
 ## Bugs e Workarounds
 
-### Bug #3: `fuel-supplies/filter` retorna HTTP 500
+### Bugs #3 e #4 (`fuel-supplies/filter` e `maintenances/filter`, HTTP 500) — RESOLVIDOS
 
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/assets/fuel-supplies/filter`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `ca918f1c-3e1d-4f81-a1ca-77d092daa087`
+**Status:** corrigidos na API. `POST /pub/v1/assets/fuel-supplies/filter` e
+`POST /pub/v1/assets/maintenances/filter` voltaram a responder 200 — validado em
+staging em 24/07/2026, num fluxo em que a listagem foi justamente o que permitiu
+confirmar um abastecimento gravado.
 
-**Impacto:** O comando `aegro fuel-supplies list` retorna erro 500. Impossivel listar historico de abastecimentos por filtro.
-
-**O que funciona:**
-- `aegro fuel-supplies get <key>` — busca individual funciona
-- `aegro fuel-supplies create` — criacao funciona
-- `aegro fuel-supplies update <key>` — atualizacao funciona
-
-**Workaround:** Nao ha workaround para listagem. Se precisar do historico de abastecimentos, use o Aegro App (interface web). Para consultas individuais, use `fuel-supplies get` com a chave conhecida.
-
-### Bug #4: `maintenances/filter` retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/assets/maintenances/filter`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `fcdffc11-3ad3-4e77-83dc-c5141278fef2`
-
-**Impacto:** O comando `aegro maintenances list` retorna erro 500. Impossivel listar historico de manutencoes por filtro.
-
-**O que funciona:**
-- `aegro maintenances get <key>` — busca individual funciona
-- `aegro maintenances create` — criacao funciona
-- `aegro maintenances update <key>` — atualizacao funciona
-
-**Workaround:** Mesmo padrao do Bug #3. Nao ha workaround para listagem. Use o Aegro App para consultar historico. Para registros individuais, use `maintenances get` com a chave conhecida.
+`aegro fuel-supplies list` e `aegro maintenances list` funcionam normalmente. Nao
+recorra ao Aegro App para consultar historico, e nao evite a listagem.
 
 ### Bug #6: `weather-logs` POST retorna HTTP 500
 
@@ -410,17 +395,31 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 
 ## Anti-padroes
 
-### 1. Nao tente listar fuel-supplies ou maintenances
+### 1. Nao crie evento de patrimonio sem local de estoque
 
-Os endpoints de listagem (`fuel-supplies list`, `maintenances list`) retornam HTTP 500 (Bugs #3 e #4). Nao insista com retry — o erro e persistente no backend.
+`--stock-location-key` e obrigatorio no `create` de abastecimento **e** de
+manutencao, com ou sem `--inputs`: o servidor recusa qualquer evento sem local de
+estoque (422 `invalid.asset-event.stock-location.key.required`). Nao e "registro
+informativo" — e erro.
+
+A CLI passou a barrar isso localmente (exit 4, inclusive no `--dry-run`), mas
+versoes antigas so falhavam quando havia `--inputs`.
 
 ```bash
-# ERRADO - vai falhar com 500
-aegro fuel-supplies list --farm "Fazenda Aegro" --asset-key "asset::57d299c3e4b059f24e3f99b0"
+# ERRADO - vai falhar (422 no servidor, ou exit 4 na CLI atual)
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" --date "2026-03-13" --hourmeter 1550
 
-# CORRETO - use GET individual se tiver a chave
-aegro fuel-supplies get --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
+# CORRETO - descubra o local e passe a flag
+aegro stock locations --farm "Fazenda Aegro"
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" --date "2026-03-13" --hourmeter 1550 \
+  --stock-location-key "stockLocation::abc123"
 ```
+
+No `update` a flag nao e exigida: o PATCH e parcial e o evento herda o local ja
+gravado. Passe-a quando estiver trocando os `inputs`, para nao deixar a baixa de
+estoque implicita.
 
 ### 2. Nao use horimetro em veiculos
 
@@ -466,17 +465,19 @@ aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacture
 aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacturer "John Deere" --machine-type TRACTOR
 ```
 
-### 6. Nao misture inputs sem stockLocationKey
+### 6. Nao passe `quantity` como numero solto em `inputs`
 
-Se passar `inputs` em um evento de abastecimento ou manutencao, considere tambem passar `stockLocationKey`. Sem ele, os insumos sao registrados no evento mas **nao geram baixa automatica de estoque**.
+`quantity` e um objeto com `unit` e `magnitude`. Numero solto e recusado pela CLI
+antes de chegar na API (exit 4).
 
 ```bash
-# Inputs sem stockLocationKey = registro informativo apenas, sem baixa de estoque
-aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
-
-# Inputs com stockLocationKey = baixa automatica do estoque no local indicado
+# ERRADO - quantity como numero
 aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
   --stock-location-key "stockLocation::abc123" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
+
+# CORRETO - quantity com unidade e magnitude
+aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
+  --stock-location-key "stockLocation::abc123" \
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
 ```
