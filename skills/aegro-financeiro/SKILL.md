@@ -85,6 +85,14 @@ Relacionamentos-chave:
 
 5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API — correcao apenas pelo app.
 
+   **Known issue (ENTRADA-162, fix em andamento)**: com login OAuth (modo padrao de
+   humanos), `financial realize` e `financial installment <key>` (GET individual)
+   retornam **403 para qualquer usuario, inclusive admin** — os papeis de usuario nao
+   concedem os nomes de permissao que esses dois endpoints exigem. NAO e erro de perfil.
+   `financial installments` (lista) e `create-bill`/`update-bill` funcionam. Workaround
+   para baixar parcela via OAuth: `financial settle` (API interna) baixa uma parcela por
+   vez, inclusive sem ajuste. Com API key (CI/agents) o `realize` funciona normalmente.
+
 6. **Apropriacao de custo (financialApportion)**: ha DOIS tipos no produto —
    **direta** (lancamento aponta para 1+ safras) e **salva**
    (`cropProrateGroup`, rateio pre-definido com percentuais, ex.:

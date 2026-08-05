@@ -315,6 +315,11 @@ activities create-plan (planeja aplicacao com insumos)
 
 **Nota:** A realizacao no campo gera baixa automatica de estoque. Se o estoque nao baixou apos realizacao, verificar se a realizacao tem insumos vinculados.
 
+**Known issue (ENTRADA-162, fix em andamento):** via OAuth (login de usuario),
+`activities create-plan`/`update-plan`/`delete-*` retornam **403 para qualquer usuario,
+inclusive admin** — nao e erro de perfil. `create-realization`/`update-realization`
+funcionam. Com API key funciona tudo. Detalhes na skill `aegro-agronomo`.
+
 ```bash
 # 1. Planejar aplicacao
 aegro activities create-plan --farm "Fazenda Aegro" \

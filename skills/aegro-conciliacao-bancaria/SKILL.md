@@ -38,8 +38,8 @@ usuario deve conseguir avancar respondendo em uma palavra.
 | Conciliar | `bank-reconciliation confirm` | Vincula entrada(s) do extrato a movimento(s) interno(s). |
 | Ignorar | `bank-reconciliation ignore` | Marca entrada como IGNORADA. **Ultimo recurso** (§ guardrails). |
 | Desfazer | `bank-reconciliation undo` | Reverte uma conciliacao ja registrada. |
-| Baixar simples | `financial realize` | Baixa a parcela pelo valor/data **agendados** (API publica). Sem desconto/juros/data. |
-| Baixar ajustado | `financial settle` | Baixa UMA parcela com **data + desconto/juros** ajustados, sem alterar a despesa (§7). E o caminho quando o extrato difere do agendado. |
+| Baixar simples | `financial realize` | Baixa a parcela pelo valor/data **agendados** (API publica). Sem desconto/juros/data. **Known issue (ENTRADA-162)**: via OAuth retorna 403 para qualquer usuario ate o fix subir — use `settle` no lugar. |
+| Baixar ajustado | `financial settle` | Baixa UMA parcela com **data + desconto/juros** ajustados, sem alterar a despesa (§7). E o caminho quando o extrato difere do agendado — e o workaround do known issue acima (funciona via OAuth). |
 | Banda | (filtros) | Janela de valor (±%) e data (±dias) para achar candidatos de uma entrada. |
 
 **Resolucao de chave da conta (gotcha):** `accounts --farm-id <idLegado>` devolve o
@@ -227,7 +227,7 @@ Sem OFX nao ha movimentacoes externas, entao **nao ha conciliacao registrada**.
 2. Case contra parcelas com as mesmas bandas (§9), via `aegro financial
    installments` (skill `aegro-financeiro`).
 3. Em cada match, **baixe a parcela** na data do extrato (`financial realize` ou
-   `settle` se houver ajuste).
+   `settle` se houver ajuste; via OAuth use `settle` — known issue ENTRADA-162).
 
 Limitacoes (explicite): e **baixa assistida**, nao conciliacao com vinculo
 formal; toda entrada de PDF e 🟡/🔴 por padrao (revise item-a-item).

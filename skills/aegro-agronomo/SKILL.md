@@ -143,6 +143,14 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 | `activities delete-activity <key>` | posicional - **chave da atividade** → `DELETE /activities/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 | `activities delete-realization <key>` | posicional - **chave da realizacao** → `DELETE /activities/realizations/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 
+**Known issue (ENTRADA-162, fix em andamento):** com login OAuth (`aegro auth login`,
+o modo padrao de humanos), `create-plan`, `update-plan`, `delete-activity` e
+`delete-realization` retornam **403 para qualquer usuario, inclusive admin** — os papeis
+de usuario nao concedem os nomes de permissao que a API publica exige nessas operacoes.
+NAO e erro de perfil nem de comando; nao adianta trocar de usuario. `create-realization`
+e `update-realization` funcionam normalmente. Com API key (CI/agents) tudo funciona.
+Enquanto o fix nao sobe: planeje/edite/exclua planos pelo app Aegro.
+
 **ATENCAO exclusao (`delete-*`):**
 - `delete-activity <ACTIVITY_KEY>` remove a atividade **e, em cascata, seu plano e todas as realizacoes**, estornando o estoque vinculado.
 - `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
