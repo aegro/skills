@@ -109,9 +109,12 @@ Antes de marcar `novo`, confira as rodadas anteriores em
 vira ocorrencia do item existente, nao duplicata.
 
 Se nao houver rodada anterior no ambiente (maquina nova, `$AEGRO_LEARNING_DIR`
-vazio), **declare `dedupe: parcial`** no cabecalho do doc: sem historico nao da
-para afirmar que um item e `novo`, e a triagem precisa saber disso para nao
-priorizar duplicata.
+vazio), se a leitura do historico estiver incompleta ou indisponivel, ou se a
+rodada anterior mais recente ja declarar `dedupe: parcial` no proprio
+cabecalho, **declare `dedupe: parcial`** no cabecalho do doc: sem historico
+completo e legivel nao da para afirmar que um item e `novo`, e a triagem
+precisa saber disso para nao priorizar duplicata. Marque `dedupe: completo` so
+quando todo o historico necessario foi lido por inteiro.
 
 ### 4. Evidenciar com seguranca
 
