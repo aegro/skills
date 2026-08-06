@@ -197,13 +197,13 @@ Google Chat disponivel:
 Formato das mensagens (Chat aceita Markdown, mas **nao aceita tabela** - nada de
 `|`):
 
-```
+```text
 *Feedback de campo - <tema>* (AAAA-MM-DD)
 Fontes: N sessoes (DD/MM-DD/MM) | M itens apos dedupe | dedupe: completo|parcial
 Doc completo: <caminho local do .md>
 ```
 
-```
+```text
 *(i/N) <sintoma em uma linha>*
 status: novo | dono: CLI
 ocorrencias: N (cliente_a, cliente_b)
