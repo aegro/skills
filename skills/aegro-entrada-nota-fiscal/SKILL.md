@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.4.3
+version: 0.5.0
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -128,14 +128,15 @@ identificavel da nota escolhida (dados do `list`/`items` + dry-run):
 NF-e 9161610 - emitida 15/07/2026 - R$ 1.600.000,00
 Emitente: fornecedor_x (CNPJ **.***.**8/0001-**) - fornecedor resolvido no cadastro: SIM
 CFOP: 1949 (Outra entrada) - Tipo de operacao: ENTRADA/RETORNO
+Natureza da operacao: RETORNO DE COMODATO
 Itens: COLHEITADEIRA CR6.80 (1 un) - PLATAFORMA DE SOJA (1 un)
 Conferencia externa: https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx
   (colar a chave de acesso: 3526...  - 44 digitos)
 ```
 
 Sempre inclua: numero, datas, valor, emitente **mascarado** + "fornecedor
-resolvido: sim/nao", CFOPs com descricao, itens e o link de consulta publica da
-SEFAZ com a chave, para conferir fora do Aegro. Para ver o documento fiscal:
+resolvido: sim/nao", CFOPs com descricao, **natureza da operacao**, itens e o
+link de consulta publica da SEFAZ com a chave, para conferir fora do Aegro. Para ver o documento fiscal:
 `aegro received-fiscal-documents xml <doc> -o nota.xml` e `danfe <doc> -o nota.pdf`.
 
 ### 2. Verificar duplicidade
@@ -161,6 +162,23 @@ quase-lancamento de R$ 1,6M como receita). Recomendacao default, nesta ordem:
    — registro documental, sem parcelas), ou
 3. So lancar cheio se o usuario confirmar o efeito financeiro real.
 Nunca encaminhe lancamento cheio dessas notas sem alerta explicito.
+
+**Nota recebida com CFOP 59xx/69xx de remessa ou retorno: NAO e compra — nao
+monte conta a pagar.** O `launch-bill` **nao sinaliza** essas notas e montaria
+a conta normalmente (~R$ 827 mil em passivo falso quase lancado numa sessao —
+uma remessa para demonstracao 5912 e um retorno de deposito 5906 —, evitado so
+pela leitura manual da natureza). **O guard e da skill:** leia `cfopCode` +
+`natureOfOperation` no `items` ANTES de oferecer qualquer lancamento.
+
+- **Nao-compra (default: arquivar ou acionar a pessoa):** 5905/5906/5907
+  (deposito/armazem e retornos), 5912/5913 (demonstracao), 5901/5902
+  (industrializacao), 5915/5916 (conserto) — e os equivalentes interestaduais
+  69xx. Em 5949/6949 ("outra saida"), decida pela natureza da operacao.
+- **Nao confunda com os 59xx lancaveis:** 5929 (cupom->nota de abastecimento)
+  e 5922/5923 (faturamento/entrega futura) tem fluxo normal de lancamento.
+- **Devolucao** (grupos x2xx/x41x) segue **fora do recorte v1**: revisar na UI.
+- So siga para `launch-bill` se o usuario confirmar explicitamente o efeito
+  financeiro real, e registre essa confirmacao na conversa.
 
 ### 4. Conciliar entidades — por padrao, sempre
 
@@ -194,6 +212,25 @@ aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|pr
 Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`
 ("Combustivel" nao casa "Combustiveis e Lubrificantes"); a conta exige categoria
 **ANALYTIC** (folha) — sinteticas nao servem.
+
+**Conferencia do dry-run — 3 checagens obrigatorias antes do `--execute`:**
+
+1. **Nomes resolvidos no cadastro.** O dry-run **serializa localmente e NAO
+   valida no servidor**: categoria/tag/conta com typo passam batidas e so
+   estouram (ou entram erradas) no `--execute`. Resolva cada nome antes, via
+   listagem (`fin-categories list -s`, `elements list -s`, cadastros de
+   `/aegro-financeiro`) — nunca confie no dry-run para pegar nome errado.
+2. **Total da conta vs total da nota.** O `launch-bill` monta a conta pelo
+   `value` (soma dos produtos); quando o `totalValue` da nota e maior
+   (frete/impostos/acrescimos), a conta nasce **subvalorizada**. Compare os
+   dois no `items`; divergiu -> mostre a diferenca e confirme com o operador
+   qual valor vale antes do execute.
+3. **Quantidades do estoque plausiveis.** Confira `inputs[].amount` do dry-run
+   contra a quantidade da nota: distorcao tipo x1000 indica `conversionRate`
+   errado persistido na conciliacao (ex. fator 1000 com nota e elemento na
+   MESMA unidade, que deveria ser 1). Nesse caso, lance **sem**
+   `--stock-location` (a entrada de estoque sairia inflada; com a flag o
+   cost-apportion tende a dar 422) e reporte via `/aegro-feedback-dev`.
 
 Como **pedido de compra**: `launch-purchase-order <doc> --order-code <n> --dry-run`
 (depois `--execute`). Requer itens conciliados (itens sem conciliacao ficam fora
@@ -251,6 +288,12 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Fornecedor recem-criado demora a "aparecer" (consistencia eventual); o CLI contorna buscando por CNPJ. | Se falhar mesmo assim, aguarde ~10s e repita. |
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
+| `launch-bill` **nao sinaliza** NF que nao e compra (remessa/retorno 59xx/69xx) — montaria conta a pagar mesmo assim. | O guard e da skill: secao 3 (ler CFOP + natureza da operacao ANTES de oferecer lancamento). |
+| `launch-bill` usa o `value` (produtos), nao o `totalValue` da nota — conta pode nascer subvalorizada. | Checagem 2 da conferencia do dry-run (secao 5): compare e confirme com o operador. |
+| Conciliacao pode ter `conversionRate` errado persistido (ex. 1000 com nota e elemento na mesma unidade) — estoque sairia x1000; `--stock-location` -> 422 de cost-apportion. | Checagem 3 da conferencia do dry-run (secao 5): confira `inputs[].amount` vs quantidade da nota; distorcido -> lance sem `--stock-location` e reporte. |
+| `conciliate` grava `measuringUnit: "ENUM_NOT_FOUND"` quando a unidade da nota nao e reconhecida (ex. SC). | Confira o retorno do conciliate; vindo `ENUM_NOT_FOUND`, avise e nao use o item em fluxo com estoque/consumo. |
+| Dry-run serializa localmente e **nao valida nomes no servidor** (categoria/tag/conta com typo passam). | Checagem 1 da conferencia do dry-run (secao 5): resolva cada nome via listagem antes do execute. |
+| `items <numero>` ambiguo pede a key completa mas nao lista os candidatos. | Rode `list` com `--texto <numero>` (ou a janela de datas) para ver os candidatos e escolher a key. |
 
 ## Diario de sessao (modo interno / EV)
 
