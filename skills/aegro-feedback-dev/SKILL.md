@@ -179,12 +179,20 @@ Google Chat disponivel:
 3. **Monte as mensagens** (formato abaixo). Mensagem de Chat tem limite de tamanho:
    **nao concatene o doc inteiro numa mensagem** - ela chega truncada e a rodada
    volta a se perder. Cabecalho numa mensagem, **um item por mensagem**, todas na
-   **mesma thread** (reuse a thread devolvida pela primeira mensagem; se nao vier,
-   envie em sequencia com o prefixo `(i/N)`, que preserva a leitura).
+   **mesma thread** (reuse a thread devolvida pela primeira mensagem). Se o
+   conector **nao devolver uma thread reutilizavel**, nao envie em sequencia
+   avulsa numerada como substituto - mensagens sem thread real se espalham e a
+   leitura volta a fragmentar. Nesse caso, caia para o "Caminho 2 - formulario".
 4. **Confirme antes de enviar**: mostre o texto exato de todas as mensagens e envie
    somente com um "sim" explicito do usuario. Mensagem em nome de alguem nao sai
    sem confirmacao.
-5. **Depois de enviar**, mostre o que foi enviado e atualize `> Entrega:` no doc.
+5. **Se o envio falhar no meio** (cabecalho ou parte dos itens ja saiu, o resto
+   nao), marque `> Entrega: pendente - envio parcial (itens enviados: <lista>)`
+   no doc **antes** de tentar de novo - a proxima tentativa reenvia so o que
+   falta, nunca reenvia item ja confirmado (duplicaria mensagem na thread do
+   dono da triagem).
+6. **Depois de enviar tudo**, mostre o que foi enviado e atualize `> Entrega:`
+   no doc (`chat AAAA-MM-DD`).
 
 Formato das mensagens (Chat aceita Markdown, mas **nao aceita tabela** - nada de
 `|`):
