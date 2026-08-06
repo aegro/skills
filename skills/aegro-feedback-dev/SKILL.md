@@ -127,7 +127,15 @@ shape/agregado a dado bruto.
 
 Salve sempre em `$AEGRO_LEARNING_DIR/feedback-AAAA-MM-DD-<tema>.md` - o doc local
 e a fonte da entrega (mensagem no Chat ou campos do formulario) e o registro da
-rodada para o dedupe da proxima. Formato:
+rodada para o dedupe da proxima. Antes de montar o caminho, sanitize `<tema>`:
+normalize para um slug curto e seguro (letras, numeros, hifen), rejeite vazio,
+`/`, `\` e `..` - o valor pode vir do relato da sessao e nao e confiavel como
+esta. Se ja existir arquivo para o mesmo tema e data (segunda rodada no dia),
+acrescente a hora (`feedback-AAAA-MM-DD-HHmm-<tema>.md`) em vez de sobrescrever
+a rodada anterior. Se `$AEGRO_LEARNING_DIR` nao estiver definida, use
+`./feedback-AAAA-MM-DD-<tema>.md` (diretorio atual) como fallback e registre no
+doc que foi essa a pasta usada; se nem isso for possivel, nao siga em silencio -
+diga explicitamente que a rodada nao foi persistida. Formato:
 
 ```markdown
 # Feedback de campo - <tema> (AAAA-MM-DD)
@@ -273,7 +281,8 @@ anexado a uma issue existente** e exige autenticacao no Jira. Ou seja:
   investigacao, nao escolha uma.
 - Volume grande demais (>30 itens novos) -> agrupe por modulo e proponha priorizar
   com o time antes de detalhar tudo, para nao virar uma enxurrada de mensagens.
-- Sem `$AEGRO_LEARNING_DIR` no ambiente -> compile so com o relato da conversa,
+- Sem `$AEGRO_LEARNING_DIR` no ambiente -> use o fallback
+  `./feedback-AAAA-MM-DD-<tema>.md`, compile so com o relato da conversa,
   declare `dedupe: parcial` e siga; nao aborte a rodada.
 
 ## Comandos de referencia
