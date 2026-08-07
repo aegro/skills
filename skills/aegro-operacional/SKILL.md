@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.7.2
+version: 0.8.0
 ---
 
 # Dominio Operacional
@@ -191,24 +191,83 @@ aegro farms info --farm "Fazenda Aegro"
 | `aegro auth status` | Verifica autenticacao e fazenda ativa | `--env` |
 | `aegro auth logout` | Remove credenciais locais | — |
 
-### tags
+### tags (= Agrupadores)
+
+**"Agrupador" na tela e `tag` na API sao a MESMA entidade**: o que muda e o
+`relationType`. A tela Cadastros > Agrupadores tem uma aba por tipo. Quem chega
+pedindo "agrupador financeiro" quer `--relation-type BILL`, **nao**
+`fin-categories` (aquilo e plano de contas; ver skill `aegro-financeiro`).
+
+| Aba na tela "Agrupadores" | `--relation-type` |
+|---------------------------|-------------------|
+| Area | `GLEBE` |
+| Atividade | `ACTIVITY` |
+| Colheita | `HARVEST_TAG` |
+| Identificadores de colheita | `HARVEST_IDENTIFIER` |
+| **Financeiro** | **`BILL`** |
+| Pecuaria | `LIVESTOCK` |
+| Pedido de compra | `PURCHASE` |
+
+> Fonte canonica das abas: `TAGS_PAGE_GROUP_ROUTE_CONFIGURATION` em
+> `client-web/apps/aegroweb/src/app/presentation/page-groups/tags/tags-page-group.container.ts`.
+> Existem outros tipos validos sem aba propria (patrimonio, `OBSERVATION`,
+> `SCOUT_METHOD`, `SALE`, `LIVESTOCK_ACTIVITY`).
 
 | Comando | Descricao | Flags |
 |---------|-----------|-------|
-| `aegro tags get <tag-key>` | Busca tag por chave | `--output` |
-| `aegro tags list` | Lista tags com filtros | `--relation-type`, `--status`, `--search-text`, `--page`, `--output` |
-| `aegro tags create` | Cria nova tag | `--name` (obrig.), `--relation-type` (obrig.), `--status` |
+| `aegro tags relation-types` | **Lista completa** de tipos + aba da tela | `--output` |
+| `aegro tags get <tag-key>` | Busca agrupador por chave | `--output` |
+| `aegro tags list` | Lista agrupadores com filtros | `--relation-type`, `--relation-type-raw`, `--status`, `--search-text`, `--page`, `--output` |
+| `aegro tags create` | Cria agrupador | `--name` (obrig.), `--relation-type` (obrig.), `--status` |
+| `aegro tags update <tag-key>` | Atualiza (patch parcial: so o que muda) | `--name`, `--relation-type` |
+| `aegro tags archive <tag-key>` | Arquiva (sai da selecao, sem apagar historico) | `--dry-run`, `--execute` |
+| `aegro tags unarchive <tag-key>` | Desarquiva | `--dry-run`, `--execute` |
 
 ```bash
-# Criar tag para maquinas
-aegro tags create --farm "Fazenda Aegro" --name "Frota Principal" --relation-type MACHINE
-# {"key": "tag::67f1a2b3c4d5e6f7", "name": "Frota Principal", "relationType": "MACHINE", "status": "ACTIVE"}
+# A lista completa de tipos vem do proprio CLI - nao decore nem copie daqui
+aegro tags relation-types --output table
 
-# Listar tags de atividades
-aegro tags list --farm "Fazenda Aegro" --relation-type ACTIVITY --status ACTIVE
+# Criar agrupador FINANCEIRO (a aba "Financeiro" da tela)
+aegro tags create --farm "Fazenda Aegro" --name "Despesas a vista" --relation-type BILL --dry-run
+
+# Listar os agrupadores financeiros que ja existem (SEMPRE antes de criar em lote)
+aegro tags list --farm "Fazenda Aegro" --relation-type BILL --output table
 ```
 
-**Relation Types disponiveis:** `MACHINE`, `VEHICLE`, `WEATHER_STATION`, `IMMOBILIZED`, `PIVOT`, `GARNER`, `HARVEST_TAG`, `HARVEST_IDENTIFIER`, `BILL`, `OBSERVATION`, `SCOUT_METHOD`, `GLEBE`, `ACTIVITY`, `PURCHASE`
+**Tipo invalido morre no cliente:** `--relation-type` e validado localmente
+(exit 4, sem chamada HTTP) e a mensagem lista os validos com a aba de cada um.
+Para um tipo novo que o CLI ainda nao conhece, use `--relation-type-raw`.
+
+**Criacao em lote a partir de planilha:** nem a API nem o CLI recusam agrupador
+repetido - a deduplicacao e sua. Faca nesta ordem:
+
+1. **Deduplique a planilha.** A identidade de um agrupador e
+   `(relationType, nome normalizado)` na fazenda. Normalize o nome antes de
+   comparar: corte espaco das pontas, colapse espaco interno e compare
+   ignorando caixa e acento ("Adubos ", "adubos" e "ADUBOS" sao a MESMA linha).
+   Reduza a planilha a esse conjunto unico.
+2. **Liste o que ja existe** com `--relation-type <TIPO>` e subtraia, usando a
+   mesma normalizacao do passo 1.
+3. **Rode `--dry-run` e depois `--execute` so sobre o que sobrou** - o conjunto
+   unico e ainda inexistente no Aegro.
+
+Pular o passo 1 e o erro que passa pelo `--dry-run`: duas linhas iguais da
+planilha viram dois agrupadores iguais, porque cada uma e um `create` valido.
+
+Se criar errado, o desfazer e o arquivamento (nao existe `delete` no CLI):
+
+```bash
+aegro tags archive tag::abc --execute     # sai da selecao, historico preservado
+aegro tags unarchive tag::abc --execute   # reversivel
+```
+
+**`archive`/`unarchive` exigem login OAuth** (`aegro auth login`): a API publica
+nao expoe arquivamento, entao esses dois comandos usam a API interna. Fazenda
+autenticada por API key falha cedo com mensagem apontando o login.
+
+**Nao existe `--status` em `tags update`:** o PATCH da API publica nao aceita o
+campo, e a flag antiga nunca teve efeito (a mudanca era descartada em silencio).
+Use `aegro tags archive`.
 
 ### companies
 
