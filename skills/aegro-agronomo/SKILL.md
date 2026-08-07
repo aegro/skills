@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.5.2
+version: 0.5.3
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -148,6 +148,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 - `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
 - A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado retorna 404, indistinguivel de "nao existe".
 - E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
+- **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao (verificado em staging, 2026-08-05). Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
 - **Sem `AEGRO_SAFE_MODE=1` nao ha trava: `delete-*` sem flag nenhuma apaga na hora**, sem preview e sem confirmacao. Com `AEGRO_SAFE_MODE=1`, escrever exige `--execute` e `--farm` explicito (senao `SAFE_MODE_BLOCKED` / `IMPLICIT_FARM_BLOCKED`).
 - O `--dry-run` **so imprime a requisicao que seria enviada** - nao chama o servidor, entao nao confirma que a chave existe, que ela e daquela fazenda, nem quanta coisa a cascata vai levar junto. Para prever de verdade **o que sera apagado**, consulte antes: `activities get <ACTIVITY_KEY>` e `activities realizations --activity-key <ACTIVITY_KEY>`.
 
@@ -160,6 +161,15 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   `--body` apenas os campos a alterar, ex.: `--body '{"tag":"Aplicacao de Herbicida"}'`
   para trocar a Operacao. O `tag` (Operacao) e atributo da **atividade** — alterar num
   plano ou realizacao reflete na atividade inteira (plano + todas as realizacoes).
+
+**Maquina e horimetro (`machineHours`):**
+- Plano e realizacao aceitam o campo `machineHours` no corpo — lista de objetos
+  `{"machineKey": "asset::<id>", "hours": <n>, "startHourmeter": <n>, "endHourmeter": <n>}`.
+  `machineKey` e a chave do patrimonio (maquina — veja `aegro assets list --type MACHINE`).
+- **Via CLI so e setavel por `update-plan`/`update-realization --body`** (JSON Merge
+  Patch); `create-plan`/`create-realization` nao tem flag para maquina/horimetro. Para
+  lancar atividade com maquina: crie primeiro, depois atualize com o `--body`.
+- Na leitura (`get-plan`/`get-realization`) o campo volta como `machineHours`.
 
 ```bash
 aegro activities list --farm "<fazenda>" --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION
@@ -183,6 +193,11 @@ aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 
 # 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Vincular maquina + horimetro a uma realizacao (so via update --body; create nao tem flag)
+aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
+  --body '{"machineHours":[{"machineKey":"asset::abc123","hours":8,"startHourmeter":1200,"endHourmeter":1208}]}' \
+  --execute
 
 # Excluir apenas uma realizacao - chave com prefixo activityLog::, idem: confira antes
 aegro activities get-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul"
