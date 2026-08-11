@@ -77,7 +77,7 @@ PROVIDER             CLIENT
     /        |          \
 JA PAGO    A VENCER    SEM PAGAMENTO
 (baixa     (1..N parc)  (so custo/DRE)
-confirmada)
+confirmada)   |             |
    |          |             |
 PROMPT     INSTALLMENT   NO_PAYMENT
 parcela    parcelas em   sem parcela,
@@ -176,6 +176,7 @@ verificar que tudo foi criado corretamente.
    JA PAGA** automaticamente (vencimento = data do lancamento)
 2. **Isso equivale a um realize, que e irreversivel via API** (nao ha
    "unrealize") -- confirmar com o usuario que o pagamento de fato ocorreu
+   E que ele quer a parcela ja baixada
 3. Se a conta e "a vista" mas a baixa nao foi confirmada - vencimento futuro
    OU na propria data do lancamento - use `INSTALLMENT` com 1 parcela NOT_PAID
    e realize depois (padrao do time de Servicos: evita a baixa automatica e o

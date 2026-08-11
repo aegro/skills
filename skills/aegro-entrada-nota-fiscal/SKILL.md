@@ -86,9 +86,11 @@ Opcoes do `launch-bill` que replicam a UI web:
 - `--category` (obrigatoria na pratica — aceita nome, id ou key; exige folha `ANALYTIC`)
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
   `--prompt` (A Vista: 1 parcela **JA PAGA** - baixa automatica na criacao),
-  `--installments N` (A Prazo: N parcelas mensais em aberto); sem nenhum, usa as
-  duplicatas da propria nota. Antes de escolher, leia a traducao logo abaixo:
-  "a vista" dito pelo usuario **nao** vira `--prompt` automaticamente.
+  `--installments N` (A Prazo: parcelas em aberto - N=1 vence na data da nota,
+  N>1 sao mensais); sem nenhum, usa as duplicatas da propria nota (nota sem
+  duplicatas: o efeito e 1 parcela em aberto na data da nota). Antes de
+  escolher, leia a traducao logo abaixo: "a vista" dito pelo usuario **nao**
+  vira `--prompt` automaticamente.
 - `--currency USD --exchange-rate 5.42` (moeda estrangeira; parcelas acompanham)
 - `--create-company` (cria o fornecedor com os dados da nota) e
   `--company <nome|id|key>` (desambigua emitente com CNPJ duplicado)
@@ -98,18 +100,27 @@ Opcoes do `launch-bill` que replicam a UI web:
 ### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
 
 No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
-criacao, irreversivel via API publica). Quando o usuario diz que a nota "e a
-vista" - ou a nota vem sem duplicatas - ele normalmente descreve a **condicao
-de pagamento** (vencimento na data da nota), nao uma ordem para dar baixa.
+criacao, irreversivel via API - correcao so pelo app). Quando o usuario diz
+que a nota "e a vista" - ou a nota vem sem duplicatas - ele normalmente
+descreve a **condicao de pagamento** (vencimento na data da nota), nao uma
+ordem para dar baixa.
 Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
 31/07/2026 - ENTRADA-135):
 
 | O que foi dito / esta na nota | Flag | Efeito |
 |---|---|---|
 | "a vista" (condicao; baixa NAO confirmada) | `--installments 1` | 1 parcela **em aberto** com vencimento na data da nota; o produtor confirma o pagamento depois |
-| "a vista e o pagamento JA foi feito" (baixa confirmada) | `--prompt` | 1 parcela ja paga na data da nota |
-| "a prazo" / nota com duplicatas | sem flag (ou `--installments N`) | parcelas das duplicatas da nota (ou N mensais) |
+| "a vista", pagamento JA feito **e** baixa automatica desejada | `--prompt` | 1 parcela ja paga na data da nota |
+| Pagamento ja feito, mas o produtor prefere conferir antes de baixar | `--installments 1` | 1 parcela em aberto na data; apos a conferencia, `aegro financial realize` |
+| "a prazo" / nota com duplicatas | sem flag | parcelas das duplicatas (o cronograma real da nota) |
+| Sem duplicatas e parcelamento combinado | `--installments N` | N parcelas mensais em aberto |
 | Remessa / registro sem efeito de caixa | `--no-payment` | sem parcelas (ver secao 3) |
+
+Se a fala e o documento conflitam (usuario diz "a vista"/"ja paguei" mas a
+nota TEM duplicatas), as duplicatas sao o cronograma real: aponte a
+divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
+confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
+e registre os pagamentos com `financial realize` em seguida.
 
 **Nunca traduza "a vista" direto para `--prompt`** sem confirmar que o
 pagamento ja ocorreu **e** que a baixa automatica e desejada. O proprio time de

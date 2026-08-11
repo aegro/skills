@@ -113,17 +113,20 @@ Relacionamentos-chave:
     - `PROMPT` ("A Vista" da UI; baixa confirmada): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
       e marcada como paga na criacao. Como realize e irreversivel via API, **so
-      use PROMPT quando o pagamento de fato ja ocorreu**.
+      use PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
+      desejada**.
     - `INSTALLMENT` (parcelado): **exige `installments` nao-vazio** — sem elas a
       API retorna erro de validacao. Parcelas nascem NOT_PAID. Para conta a
       vencer com parcela unica ("a vista a vencer"), use INSTALLMENT com 1
       parcela, NAO use PROMPT.
     - **Traducao de "a vista"** (ENTRADA-135): na fala do usuario, "a vista" e
       a **condicao de pagamento** (vencimento imediato/na data da nota), nao
-      uma ordem de baixa. Sem confirmacao explicita de que o pagamento ja
-      ocorreu, traduza para INSTALLMENT com 1 parcela vencendo na data - padrao
-      do time de Servicos, que lanca nota com data a vista como "A Prazo" de 1
-      parcela na mesma data para o sistema nao marcar "pago" sozinho.
+      uma ordem de baixa. Pergunte se o pagamento ja aconteceu quando
+      possivel; sem confirmacao explicita, traduza para INSTALLMENT com 1
+      parcela vencendo na data da nota (ou do lancamento, quando nao ha nota)
+      - padrao do time de Servicos, que lanca nota com data a vista como
+      "A Prazo" de 1 parcela na mesma data para o sistema nao marcar "pago"
+      sozinho.
     - `NO_PAYMENT`/`UNKNOWN` (sem pagamento): nenhuma parcela e criada e a
       conta bancaria do lancamento e **descartada** — o lancamento existe para
       custo/relatorios, sem efeito no fluxo de caixa.
@@ -233,7 +236,8 @@ uma categoria ANALYTIC (ver regra 1).
 
 | Situacao                             | payment-method | installments               |
 |--------------------------------------|----------------|------------------------------|
-| Ja foi pago a vista                  | `PROMPT`       | omitir (gera 1 parcela PAGA) |
+| Ja foi pago a vista (baixa desejada) | `PROMPT`       | omitir (gera 1 parcela PAGA) |
+| Diz "a vista", baixa NAO confirmada  | `INSTALLMENT`  | 1 parcela vencendo na data (regra 11) |
 | A vencer (1 ou N parcelas)           | `INSTALLMENT`  | obrigatorio (JSON, NOT_PAID) |
 | Sem movimentacao (so custo/DRE)      | `NO_PAYMENT`   | nao gera parcela             |
 
@@ -636,7 +640,7 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 
 8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
 
-9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela — inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
+9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
 
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 
