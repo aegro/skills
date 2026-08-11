@@ -85,7 +85,7 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 Opcoes do `launch-bill` que replicam a UI web:
 - `--category` (obrigatoria na pratica — aceita nome, id ou key; exige folha `ANALYTIC`)
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
-  `--prompt` (A Vista: 1 parcela **JA PAGA** — baixa automatica na criacao),
+  `--prompt` (A Vista: 1 parcela **JA PAGA** - baixa automatica na criacao),
   `--installments N` (A Prazo: N parcelas mensais em aberto); sem nenhum, usa as
   duplicatas da propria nota. Antes de escolher, leia a traducao logo abaixo:
   "a vista" dito pelo usuario **nao** vira `--prompt` automaticamente.
@@ -99,10 +99,10 @@ Opcoes do `launch-bill` que replicam a UI web:
 
 No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
 criacao, irreversivel via API publica). Quando o usuario diz que a nota "e a
-vista" — ou a nota vem sem duplicatas — ele normalmente descreve a **condicao
+vista" - ou a nota vem sem duplicatas - ele normalmente descreve a **condicao
 de pagamento** (vencimento na data da nota), nao uma ordem para dar baixa.
 Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
-31/07/2026 — ENTRADA-135):
+31/07/2026 - ENTRADA-135):
 
 | O que foi dito / esta na nota | Flag | Efeito |
 |---|---|---|

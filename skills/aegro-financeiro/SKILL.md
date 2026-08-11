@@ -31,7 +31,7 @@ parcelas (installments), categorias financeiras, contas bancarias, empresas e or
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
 | Documento fiscal         | `fiscalNumber`         | Objeto aninhado com `code`, `fiscalNumberType` (CPF/CNPJ) e `countryCode`.                |
 | Item do lancamento       | `inputs`               | Insumo/produto dentro da bill. Cada item pode ter categoria financeira PROPRIA.            |
-| Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA — **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
+| Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA - **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
 | Produtor                 | (nao exposto)          | Empresa "produtor" que organiza lancamentos no produto. NAO existe na API publica.         |
 
 ---
@@ -110,7 +110,7 @@ Relacionamentos-chave:
 10. **Paginacao padrao**: Todos os endpoints de listagem usam `requiredPageNumber` e `maximumItemsPerPageCount: 50`. Use `--page` para navegar.
 
 11. **Semantica do paymentMethod**:
-    - `PROMPT` (a vista): se `installments` nao for enviado, a API **gera
+    - `PROMPT` ("A Vista" da UI; baixa confirmada): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
       e marcada como paga na criacao. Como realize e irreversivel via API, **so
       use PROMPT quando o pagamento de fato ja ocorreu**.
@@ -121,7 +121,7 @@ Relacionamentos-chave:
     - **Traducao de "a vista"** (ENTRADA-135): na fala do usuario, "a vista" e
       a **condicao de pagamento** (vencimento imediato/na data da nota), nao
       uma ordem de baixa. Sem confirmacao explicita de que o pagamento ja
-      ocorreu, traduza para INSTALLMENT com 1 parcela vencendo na data — padrao
+      ocorreu, traduza para INSTALLMENT com 1 parcela vencendo na data - padrao
       do time de Servicos, que lanca nota com data a vista como "A Prazo" de 1
       parcela na mesma data para o sistema nao marcar "pago" sozinho.
     - `NO_PAYMENT`/`UNKNOWN` (sem pagamento): nenhuma parcela e criada e a

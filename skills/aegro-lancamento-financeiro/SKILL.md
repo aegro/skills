@@ -88,7 +88,7 @@ PAGA       (NOT_PAID)    bancaria
 Atencao: `PROMPT` marca a parcela como **paga na criacao** (irreversivel via
 API). **"A vista" na fala do usuario descreve a condicao de pagamento
 (vencimento imediato), nao a baixa**: conta a vista cuja baixa NAO foi
-confirmada — mesmo com vencimento hoje ou na data da nota — e `INSTALLMENT`
+confirmada - mesmo com vencimento hoje ou na data da nota - e `INSTALLMENT`
 com 1 parcela (padrao do time de Servicos, para o sistema nao marcar "pago"
 sozinho; ENTRADA-135). `INSTALLMENT` exige `--installments`; `NO_PAYMENT` nao
 gera parcela nem movimenta caixa.
@@ -99,10 +99,10 @@ gera parcela nem movimenta caixa.
 
 Perguntar ao usuario:
 - Despesa (conta a pagar) ou receita (conta a receber)?
-- **O pagamento JA ACONTECEU ou esta a vencer?** ("a vista" NAO responde isso —
+- **O pagamento JA ACONTECEU ou esta a vencer?** ("a vista" NAO responde isso -
   e condicao de vencimento, nao baixa.) Define o payment-method: PROMPT (parcela
-  unica ja paga — so com baixa confirmada), INSTALLMENT (a vencer, 1..N
-  parcelas — inclusive conta a vista ainda nao paga: 1 parcela com vencimento
+  unica ja paga - so com baixa confirmada), INSTALLMENT (a vencer, 1..N
+  parcelas - inclusive conta a vista ainda nao paga: 1 parcela com vencimento
   na data) ou NO_PAYMENT (sem movimentacao de caixa).
 - Valor total e quantas parcelas?
 - Data de vencimento (ou primeira parcela)?
@@ -176,8 +176,8 @@ verificar que tudo foi criado corretamente.
    JA PAGA** automaticamente (vencimento = data do lancamento)
 2. **Isso equivale a um realize, que e irreversivel via API** (nao ha
    "unrealize") -- confirmar com o usuario que o pagamento de fato ocorreu
-3. Se a conta e "a vista" mas a baixa nao foi confirmada — vencimento futuro
-   OU na propria data do lancamento — use `INSTALLMENT` com 1 parcela NOT_PAID
+3. Se a conta e "a vista" mas a baixa nao foi confirmada - vencimento futuro
+   OU na propria data do lancamento - use `INSTALLMENT` com 1 parcela NOT_PAID
    e realize depois (padrao do time de Servicos: evita a baixa automatica e o
    produtor confirma o pagamento ao revisar)
 
