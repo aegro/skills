@@ -85,6 +85,11 @@ unica JA   --installments sem conta
 PAGA       (NOT_PAID)    bancaria
 ```
 
+**Regra do ramo "JA PAGO":** exige pagamento E baixa confirmados (os dois).
+Pagamento que ja ocorreu mas cuja baixa ainda NAO foi confirmada segue o ramo
+`A VENCER` (`INSTALLMENT` com 1 parcela) -- nunca `JA PAGO`/`PROMPT` so por
+causa do vencimento ja ter passado ou ser hoje.
+
 Atencao: `PROMPT` marca a parcela como **paga na criacao** (irreversivel via
 API). **"A vista" na fala do usuario descreve a condicao de pagamento
 (vencimento imediato), nao a baixa**: conta a vista cuja baixa NAO foi
