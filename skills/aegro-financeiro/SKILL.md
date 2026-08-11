@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.9.0
+version: 0.9.2
 ---
 
 # Aegro Financeiro
@@ -31,7 +31,7 @@ parcelas (installments), categorias financeiras, contas bancarias, empresas e or
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
 | Documento fiscal         | `fiscalNumber`         | Objeto aninhado com `code`, `fiscalNumberType` (CPF/CNPJ) e `countryCode`.                |
 | Item do lancamento       | `inputs`               | Insumo/produto dentro da bill. Cada item pode ter categoria financeira PROPRIA.            |
-| Metodo de pagamento      | `--payment-method`     | PROMPT (a vista, parcela unica JA PAGA), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
+| Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA — **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
 | Produtor                 | (nao exposto)          | Empresa "produtor" que organiza lancamentos no produto. NAO existe na API publica.         |
 
 ---
@@ -118,6 +118,12 @@ Relacionamentos-chave:
       API retorna erro de validacao. Parcelas nascem NOT_PAID. Para conta a
       vencer com parcela unica ("a vista a vencer"), use INSTALLMENT com 1
       parcela, NAO use PROMPT.
+    - **Traducao de "a vista"** (ENTRADA-135): na fala do usuario, "a vista" e
+      a **condicao de pagamento** (vencimento imediato/na data da nota), nao
+      uma ordem de baixa. Sem confirmacao explicita de que o pagamento ja
+      ocorreu, traduza para INSTALLMENT com 1 parcela vencendo na data — padrao
+      do time de Servicos, que lanca nota com data a vista como "A Prazo" de 1
+      parcela na mesma data para o sistema nao marcar "pago" sozinho.
     - `NO_PAYMENT`/`UNKNOWN` (sem pagamento): nenhuma parcela e criada e a
       conta bancaria do lancamento e **descartada** — o lancamento existe para
       custo/relatorios, sem efeito no fluxo de caixa.
@@ -630,7 +636,7 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 
 8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
 
-9. **Nao use PROMPT para conta a vencer.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela.
+9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela — inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
 
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 

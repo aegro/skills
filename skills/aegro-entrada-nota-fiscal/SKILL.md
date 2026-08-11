@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.5.0
+version: 0.6.0
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -85,13 +85,37 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 Opcoes do `launch-bill` que replicam a UI web:
 - `--category` (obrigatoria na pratica — aceita nome, id ou key; exige folha `ANALYTIC`)
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
-  `--prompt` (A Vista: 1 parcela paga), `--installments N` (A Prazo: N mensais);
-  sem nenhum, usa as duplicatas da propria nota.
+  `--prompt` (A Vista: 1 parcela **JA PAGA** — baixa automatica na criacao),
+  `--installments N` (A Prazo: N parcelas mensais em aberto); sem nenhum, usa as
+  duplicatas da propria nota. Antes de escolher, leia a traducao logo abaixo:
+  "a vista" dito pelo usuario **nao** vira `--prompt` automaticamente.
 - `--currency USD --exchange-rate 5.42` (moeda estrangeira; parcelas acompanham)
 - `--create-company` (cria o fornecedor com os dados da nota) e
   `--company <nome|id|key>` (desambigua emitente com CNPJ duplicado)
 - `--stock-location <key>` (baixa de estoque), `--apportion-crop "Safra X"` (rateio),
   `--asset <id>`, `--tag`, `--description`, `--producer`, `--force`.
+
+### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
+
+No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
+criacao, irreversivel via API publica). Quando o usuario diz que a nota "e a
+vista" — ou a nota vem sem duplicatas — ele normalmente descreve a **condicao
+de pagamento** (vencimento na data da nota), nao uma ordem para dar baixa.
+Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
+31/07/2026 — ENTRADA-135):
+
+| O que foi dito / esta na nota | Flag | Efeito |
+|---|---|---|
+| "a vista" (condicao; baixa NAO confirmada) | `--installments 1` | 1 parcela **em aberto** com vencimento na data da nota; o produtor confirma o pagamento depois |
+| "a vista e o pagamento JA foi feito" (baixa confirmada) | `--prompt` | 1 parcela ja paga na data da nota |
+| "a prazo" / nota com duplicatas | sem flag (ou `--installments N`) | parcelas das duplicatas da nota (ou N mensais) |
+| Remessa / registro sem efeito de caixa | `--no-payment` | sem parcelas (ver secao 3) |
+
+**Nunca traduza "a vista" direto para `--prompt`** sem confirmar que o
+pagamento ja ocorreu **e** que a baixa automatica e desejada. O proprio time de
+Servicos lanca nota com data a vista como "A Prazo" de 1 parcela na mesma data,
+justamente para o sistema nao marcar "pago" sozinho e o produtor poder revisar
+lancamentos retroativos.
 
 ## Fluxo de decisao
 
