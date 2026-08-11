@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.8.0
+version: 0.8.1
 ---
 
 # Dominio Operacional
@@ -49,6 +49,27 @@ aegro auth status
 # Remover credenciais locais
 aegro auth logout
 ```
+
+### Staging reseta diariamente — revalide a sessao antes de operar
+
+O ambiente de staging (`app.staging.aegro.io`) e **zerado todo dia**: dados sao
+apagados e sessoes/logins sao invalidados. Consequencia pratica: **toda sessao de
+trabalho em staging comeca verificando a autenticacao**, e refazer o login no dia
+seguinte e o fluxo normal.
+
+```bash
+# Sempre no inicio de uma sessao de staging
+aegro auth status --env staging
+
+# Se a sessao caiu (reset diario), refaca o login — comportamento esperado
+aegro auth login --env staging
+```
+
+**Erro 401 em staging no inicio do dia e comportamento esperado, NAO bug.** Nao
+gaste tempo diagnosticando nem reporte como falso positivo no feedback de dev —
+o reset diario ja e conhecido (registrado na rodada de feedback de 2026-08-10).
+So investigue um 401 de staging se ele persistir **depois** de um
+`aegro auth login --env staging` bem-sucedido na mesma sessao.
 
 ### Selecao de Fazenda Ativa
 
@@ -502,8 +523,8 @@ Um elemento participa de tres dominios simultaneamente:
 |---|----------|------------|-----------------|------------|
 | 1 | `glebes/filter` 500 | Alta | Talhoes | Usar `GET /glebes/{key}` individual se chave conhecida |
 | 2 | `crop-glebes/filter` 500 | Alta | Safra/Talhoes | Usar `GET /crop-glebes/{key}` individual |
-| 3 | `fuel-supplies/filter` 500 | Media | Patrimonial | **Sem workaround** para listagem. GET individual funciona |
-| 4 | `maintenances/filter` 500 | Media | Patrimonial | **Sem workaround** para listagem. GET individual funciona |
+| 3 | `fuel-supplies/filter` 500 | Baixa | Patrimonial | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar `list` normalmente; se 500, repetir a chamada |
+| 4 | `maintenances/filter` 500 | Media | Patrimonial | Tentar `list` primeiro (pode ter sido corrigido junto com o #3); se 500 persistente, GET individual |
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
 
@@ -520,7 +541,7 @@ Um elemento participa de tres dominios simultaneamente:
 | 500 | Erro interno do servidor | Retry automatico. Se persistir, verificar tabela de bugs conhecidos |
 | 422 | Erro de validacao | Verificar campos obrigatorios e formatos. Nao faz retry |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
-| 401 | Nao autenticado | Verificar API key com `aegro auth status` |
+| 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |
 | Timeout | Sem resposta em 30s | Retry automatico. API pode estar lenta |
 

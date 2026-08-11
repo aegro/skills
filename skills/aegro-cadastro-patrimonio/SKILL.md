@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.3
+version: 0.5.4
 ---
 
 # Cadastro de Patrimonio
@@ -126,12 +126,12 @@ aegro maintenances create --farm "<fazenda>" \
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
-| **#3** `fuel-supplies list` → HTTP 500 | Impossivel listar historico de abastecimentos | Usar `fuel-supplies get <key>` individual ou Aegro App |
-| **#4** `maintenances list` → HTTP 500 | Impossivel listar historico de manutencoes | Usar `maintenances get <key>` individual ou Aegro App |
+| **#3** `fuel-supplies list` → HTTP 500 | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar normalmente | Se o 500 voltar, repetir a chamada; Aegro App so se persistir |
+| **#4** `maintenances list` → HTTP 500 | Pode ter sido corrigido junto com o #3 (nao retestado) | Tentar primeiro; se 500 persistente, `maintenances get <key>` ou Aegro App |
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
 
-**Consequencia:** Apos cadastrar abastecimentos/manutencoes, guarde as chaves retornadas.
-Nao sera possivel listar posteriormente via CLI.
+**Nota:** `fuel-supplies list` voltou a funcionar (paginacao e filtros de data confirmados em
+producao). Guardar as chaves retornadas ao cadastrar continua sendo boa pratica.
 
 ## Formato de Resposta
 
