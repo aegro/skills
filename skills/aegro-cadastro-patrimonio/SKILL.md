@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.4
+version: 0.5.5
 ---
 
 # Cadastro de Patrimonio
@@ -126,7 +126,7 @@ aegro maintenances create --farm "<fazenda>" \
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
-| **#3** `fuel-supplies list` → HTTP 500 | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar normalmente | Se o 500 voltar, repetir a chamada; Aegro App so se persistir |
+| **#3** `fuel-supplies list` → HTTP 500 | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar normalmente | Se o 500 voltar, repetir ate 3 tentativas (1s/2s/4s); Aegro App so se persistir |
 | **#4** `maintenances list` → HTTP 500 | Pode ter sido corrigido junto com o #3 (nao retestado) | Tentar primeiro; se 500 persistente, `maintenances get <key>` ou Aegro App |
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
 

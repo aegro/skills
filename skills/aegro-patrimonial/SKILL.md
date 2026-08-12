@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.4
+version: 0.6.5
 ---
 
 # Dominio Patrimonial
@@ -374,7 +374,7 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 
 **Impacto:** Nenhum confirmado atualmente. Se o erro 500 voltar a ocorrer, tente novamente antes de assumir bloqueio.
 
-**O que fazer:** Use `aegro fuel-supplies list` normalmente. Se falhar com 500, repita a chamada (pode ser intermitente); so recorra ao Aegro App se o erro persistir apos algumas tentativas.
+**O que fazer:** Use `aegro fuel-supplies list` normalmente. Se falhar com 500, repita ate 3 tentativas com backoff de 1s/2s/4s (pode ser intermitente, mesma politica de retry documentada em aegro-operacional); so recorra ao Aegro App se o erro persistir apos as 3 tentativas.
 
 ### Bug #4: `maintenances/filter` retorna HTTP 500
 
@@ -390,7 +390,7 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 - `aegro maintenances create` — criacao funciona
 - `aegro maintenances update <key>` — atualizacao funciona
 
-**Workaround:** Tente `aegro maintenances list` primeiro — o endpoint irmao (`fuel-supplies/filter`, Bug #3) parou de reproduzir em 2026-08-10, e este pode ter sido corrigido junto (nao retestado ainda). Se falhar com 500 persistente, use o Aegro App para consultar historico e `maintenances get` com a chave conhecida para registros individuais.
+**Workaround:** Tente `aegro maintenances list` primeiro — o endpoint irmao (`fuel-supplies/filter`, Bug #3) parou de reproduzir em 2026-08-10, e este pode ter sido corrigido junto (nao retestado ainda). Se falhar com 500 apos 3 tentativas (1s/2s/4s), use o Aegro App para consultar historico e `maintenances get` com a chave conhecida para registros individuais.
 
 ### Bug #6: `weather-logs` POST retorna HTTP 500
 
@@ -407,7 +407,7 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 
 ### 1. Nao assuma bloqueio permanente em fuel-supplies list / maintenances list
 
-Os endpoints de listagem ja retornaram HTTP 500 persistente (Bugs #3 e #4), mas o Bug #3 nao reproduz desde 2026-08-10. Tente a listagem normalmente; se falhar com 500, repita antes de assumir bloqueio total.
+Os endpoints de listagem ja retornaram HTTP 500 persistente (Bugs #3 e #4), mas o Bug #3 nao reproduz desde 2026-08-10. Tente a listagem normalmente; se falhar com 500, repita ate 3 tentativas (1s/2s/4s) antes de assumir bloqueio total.
 
 ```bash
 # Tente primeiro - funcionava em 2026-08-10 (CLI v0.16.0)
@@ -484,7 +484,8 @@ Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abasteci
 # ERRADO - paralelismo gera 409 esporadico
 cat keys.txt | xargs -P 5 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
 
-# CORRETO - sequencial; se um 409 ocorrer mesmo assim, repetir a chamada isolada resolve
+# CORRETO - sequencial; se um 409 ocorrer mesmo assim, repita a chamada isolada ate 3 vezes (1s/2s/4s)
+# e pare para investigar se o erro persistir - repetir nao garante sucesso
 cat keys.txt | xargs -P 1 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
 ```
 
@@ -492,7 +493,7 @@ Sempre valide o payload com `--dry-run` em 1 registro antes de rodar o lote com 
 
 ### 8. Nao junte stdout e stderr ao capturar `--output json`
 
-Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning que, com `2>&1`, se mistura ao JSON e quebra o parse. Redirecione apenas o stdout.
+Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning que, com `2>&1`, se mistura ao JSON e quebra o parse. Redirecione apenas o stdout — mas isso reduz o risco, nao elimina: se o warning sair pelo proprio stdout (nao pelo stderr), o arquivo fica contaminado mesmo sem `2>&1`. Valide sempre o arquivo com um parser JSON antes de consumi-lo; se o parse falhar, descarte a resposta e repita a chamada.
 
 ```bash
 # ERRADO - warning de retry pode corromper o JSON
@@ -500,4 +501,7 @@ aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina
 
 # CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal
 aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
+
+# Sempre valide antes de consumir - 2>&1 reduz o risco mas nao garante JSON limpo
+python3 -c "import json,sys; json.load(open('pagina27.json'))" || echo "JSON invalido - descarte e repita"
 ```
