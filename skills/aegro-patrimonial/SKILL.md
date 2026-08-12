@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.5
+version: 0.6.6
 ---
 
 # Dominio Patrimonial
@@ -484,9 +484,27 @@ Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abasteci
 # ERRADO - paralelismo gera 409 esporadico
 cat keys.txt | xargs -P 5 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
 
-# CORRETO - sequencial; se um 409 ocorrer mesmo assim, repita a chamada isolada ate 3 vezes (1s/2s/4s)
-# e pare para investigar se o erro persistir - repetir nao garante sucesso
+# ERRADO tambem - "xargs -P 1" serializa mas nao interrompe o lote: se uma chave falhar,
+# xargs segue processando as chaves restantes e o erro se perde no meio de centenas de linhas
 cat keys.txt | xargs -P 1 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
+
+# CORRETO - loop sequencial que interrompe o lote no primeiro erro; a chamada isolada de
+# cada chave ainda pode repetir ate 3 vezes (1s/2s/4s) se um 409 ocorrer - repetir nao
+# garante sucesso, entao pare o lote para investigar se o erro persistir apos as 3 tentativas
+while IFS= read -r key; do
+  ok=""
+  for delay in 0 1 2 4; do
+    [ "$delay" -gt 0 ] && sleep "$delay"
+    if aegro fuel-supplies update "$key" --crop-prorate-group-key "..." --execute; then
+      ok=1
+      break
+    fi
+  done
+  if [ -z "$ok" ]; then
+    echo "Falhou apos 3 tentativas na chave $key - interrompendo o lote" >&2
+    exit 1
+  fi
+done < keys.txt
 ```
 
 Sempre valide o payload com `--dry-run` em 1 registro antes de rodar o lote com `--execute`.
@@ -499,10 +517,17 @@ Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning
 # ERRADO - warning de retry pode corromper o JSON
 aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json 2>&1
 
-# CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal
-aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
-
-# Sempre valide antes de consumir - separar os streams reduz o risco, nao elimina.
-# Use o parser JSON que existir na maquina (python3, python, node, jq) - nao assuma um
-python3 -c "import json; json.load(open('pagina27.json'))" || echo "JSON invalido - descarte e repita"
+# CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal;
+# valide com o parser JSON que existir na maquina (python3, python, node, jq) - nao
+# assuma um. Se a validacao falhar: descarte o arquivo, avise em stderr e pare -
+# nao siga com dado corrompido. Limite o retry da chamada a 3 tentativas.
+for tentativa in 1 2 3; do
+  aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
+  python3 -c "import json; json.load(open('pagina27.json'))" 2>/dev/null && break
+  rm -f pagina27.json
+  if [ "$tentativa" -eq 3 ]; then
+    echo "pagina27.json invalido apos 3 tentativas - abortando" >&2
+    exit 1
+  fi
+done
 ```
