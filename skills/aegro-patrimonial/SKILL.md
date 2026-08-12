@@ -502,6 +502,7 @@ aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina
 # CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal
 aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
 
-# Sempre valide antes de consumir - 2>&1 reduz o risco mas nao garante JSON limpo
-python3 -c "import json,sys; json.load(open('pagina27.json'))" || echo "JSON invalido - descarte e repita"
+# Sempre valide antes de consumir - separar os streams reduz o risco, nao elimina.
+# Use o parser JSON que existir na maquina (python3, python, node, jq) - nao assuma um
+python3 -c "import json; json.load(open('pagina27.json'))" || echo "JSON invalido - descarte e repita"
 ```
