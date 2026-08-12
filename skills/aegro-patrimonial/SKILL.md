@@ -489,11 +489,12 @@ cat keys.txt | xargs -P 5 -I {} aegro fuel-supplies update {} --crop-prorate-gro
 cat keys.txt | xargs -P 1 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
 
 # CORRETO - loop sequencial que interrompe o lote no primeiro erro; a chamada isolada de
-# cada chave ainda pode repetir ate 3 vezes (1s/2s/4s) se um 409 ocorrer - repetir nao
-# garante sucesso, entao pare o lote para investigar se o erro persistir apos as 3 tentativas
+# cada chave ainda pode repetir ate 3 vezes (esperando 1s e 2s entre elas) se um 409
+# ocorrer - repetir nao garante sucesso, entao pare o lote para investigar se o erro
+# persistir apos as 3 tentativas
 while IFS= read -r key; do
   ok=""
-  for delay in 0 1 2 4; do
+  for delay in 0 1 2; do
     [ "$delay" -gt 0 ] && sleep "$delay"
     if aegro fuel-supplies update "$key" --crop-prorate-group-key "..." --execute; then
       ok=1
