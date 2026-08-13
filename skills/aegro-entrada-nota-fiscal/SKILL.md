@@ -237,14 +237,17 @@ Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`
 2. **Total da conta vs total da nota.** O `launch-bill` monta a conta pelo
    `value` (soma dos produtos); quando o `totalValue` da nota e maior
    (frete/impostos/acrescimos), a conta nasce **subvalorizada**. Compare os
-   dois no `items`; divergiu -> mostre a diferenca e confirme com o operador
-   qual valor vale antes do execute.
+   dois no `items`; divergiu -> na v0.17.0+ o comando **para** e exige o valor
+   explicito: confirme com o operador qual vale e repita o `--dry-run`/
+   `--execute` com `--total <valor>`.
 3. **Quantidades do estoque plausiveis.** Confira `inputs[].amount` do dry-run
    contra a quantidade da nota: distorcao tipo x1000 indica `conversionRate`
    errado persistido na conciliacao (ex. fator 1000 com nota e elemento na
    MESMA unidade, que deveria ser 1). Nesse caso, lance **sem**
-   `--stock-location` (a entrada de estoque sairia inflada; com a flag o
-   cost-apportion tende a dar 422) e reporte via `/aegro-feedback-dev`.
+   `--stock-location` **nem** `--stock-harvest` (a mesma distorcao infla os
+   dois estoques; com a flag o cost-apportion tende a dar 422) — corrija com
+   `conciliate --unit`/`--conversion-rate`, rode um novo dry-run e so ai
+   execute, e reporte via `/aegro-feedback-dev`.
 
 Como **pedido de compra**: `launch-purchase-order <doc> --order-code <n> --dry-run`
 (depois `--execute`). Requer itens conciliados (itens sem conciliacao ficam fora
@@ -281,8 +284,10 @@ aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
 Tres coisas que fazem o comando parar antes de escrever — e o conserto:
 
 - **O silo e um `asset` do tipo GARNER**, id de 24 hex. Pegue em
-  `aegro assets list` (filtre GARNER); nome nao resolve aqui, e asset que nao
-  seja silo o comando recusa dizendo que nao existe nesta fazenda.
+  `aegro assets list --farm "<Fazenda>" --env <staging|prod> --type GARNER`
+  (sem `--farm`/`--env` o id pode vir da fazenda/ambiente errado); nome nao
+  resolve aqui, e asset que nao seja silo o comando recusa dizendo que nao
+  existe nesta fazenda.
 - **Todos os itens conciliados**, e o grao (item de categoria SEED) numa unidade
   **compativel com kg** (`kg`, `t`, `sc60`...). `un`/`L` nao convertem — o
   lancamento para e manda reconciliar com `conciliate --unit` /
@@ -292,7 +297,8 @@ Tres coisas que fazem o comando parar antes de escrever — e o conserto:
   nasce sem origem de producao. Nome de safra resolve normalmente.
 
 Depois do `--execute`, o comando **confere a movimentacao no servidor** — existe?
-no silo certo? no sentido certo? na quantidade e unidade certas? — e responde
+no silo certo? no sentido certo? na quantidade e unidade certas? na safra certa
+(o rateio com `--stock-harvest-crop` e conferido junto)? — e responde
 "saida de N conferida". Se nao conseguir conferir, o envelope sai `partial` com
 `stockUnverified`: **isso nao quer dizer que falhou**, quer dizer que ninguem
 confirmou. Confira na UI (Estq. Producao -> Movimentacoes) antes de cogitar
