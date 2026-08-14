@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.8.1
+version: 0.8.2
 ---
 
 # Dominio Operacional
@@ -457,7 +457,7 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --stock-location-key "stockLocation::abc123" \
   --hourmeter 1550 \
   --observations "Troca filtros + oleo - revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
 
 # 2. Gerar o lancamento do servico de manutencao
 # SEMPRE --dry-run primeiro; --execute so apos o usuario conferir o plano.
@@ -523,8 +523,8 @@ Um elemento participa de tres dominios simultaneamente:
 |---|----------|------------|-----------------|------------|
 | 1 | `glebes/filter` 500 | Alta | Talhoes | Usar `GET /glebes/{key}` individual se chave conhecida |
 | 2 | `crop-glebes/filter` 500 | Alta | Safra/Talhoes | Usar `GET /crop-glebes/{key}` individual |
-| 3 | `fuel-supplies/filter` 500 | Baixa | Patrimonial | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar `list` normalmente; se 500, repetir a chamada |
-| 4 | `maintenances/filter` 500 | Media | Patrimonial | Tentar `list` primeiro (pode ter sido corrigido junto com o #3); se 500 persistente, GET individual |
+| 3 | `fuel-supplies/filter` 500 | Baixa | Patrimonial | **Nao reproduz** (producao, 2026-08-14) — usar `list` normalmente; se 500, repetir a chamada |
+| 4 | `maintenances/filter` 500 | Baixa | Patrimonial | **Nao reproduz** (producao, 2026-08-14) — usar `list` normalmente; se 500, repetir a chamada |
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
 

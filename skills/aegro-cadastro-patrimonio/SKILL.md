@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.5
+version: 0.5.6
 ---
 
 # Cadastro de Patrimonio
@@ -106,10 +106,15 @@ aegro assets get --farm "<fazenda>" <asset_key_retornada>
 aegro fuel-supplies create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-13" --hourmeter 1550 \
   --stock-location-key <stock_location_key> \
-  --inputs '[{"elementKey": "element::combustivel", "quantity": 200}]'
+  --inputs '[{"elementKey": "element::combustivel", "quantity": {"unit": "L", "magnitude": 200}}]'
 ```
 
-Com `stockLocationKey`: baixa de estoque automatica. Sem ele: registro informativo apenas.
+`--stock-location-key` e **obrigatorio** na criacao, com ou sem `--inputs`: o
+servidor recusa o lancamento sem local de estoque (422
+`invalid.asset-event.stock-location.key.required`) e a CLI barra antes, com exit 4.
+Descubra os locais com `aegro stock locations`. Havendo `--inputs`, e desse local que
+sai a baixa — e `quantity` vai como objeto `{"unit": ..., "magnitude": ...}`, nunca
+numero solto.
 
 ## Sequencia: Registrar Manutencao
 
@@ -119,19 +124,22 @@ aegro maintenances create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
   --stock-location-key <stock_location_key> \
   --observations "Revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 1}}]'
 ```
+
+`--stock-location-key` tambem e obrigatorio aqui — vale para todo evento de
+patrimonio (abastecimento e manutencao).
 
 ## Limitacoes Atuais
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
-| **#3** `fuel-supplies list` → HTTP 500 | Nao reproduz desde 2026-08-10 (CLI v0.16.0) — usar normalmente | Se o 500 voltar, repetir ate 3 tentativas (1s/2s/4s); Aegro App so se persistir |
-| **#4** `maintenances list` → HTTP 500 | Pode ter sido corrigido junto com o #3 (nao retestado) | Tentar primeiro; se 500 persistente, `maintenances get <key>` ou Aegro App |
+| **#3** `fuel-supplies list` → HTTP 500 | **Nao reproduz** — 586 registros / 12 paginas em producao em 2026-08-14 | Se o 500 voltar, repetir ate 3 tentativas (1s/2s/4s) e reportar como regressao |
+| **#4** `maintenances list` → HTTP 500 | **Nao reproduz** — 170 registros / 4 paginas em producao em 2026-08-14 | Idem #3 |
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
 
-**Nota:** `fuel-supplies list` voltou a funcionar (paginacao e filtros de data confirmados em
-producao). Guardar as chaves retornadas ao cadastrar continua sendo boa pratica.
+**Nota:** as duas listagens voltaram a funcionar, com paginacao e filtros de data.
+Guardar as chaves retornadas ao cadastrar continua sendo boa pratica.
 
 ## Formato de Resposta
 
