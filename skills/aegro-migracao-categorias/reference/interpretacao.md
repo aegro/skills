@@ -81,6 +81,21 @@ porque, sem ele, o destino de `@element` escaparia dos guards do `resolve_map`,
 viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
 **aborta o lote inteiro**. Descobrir isso na conta 9.000 de 23.583 seria caro.
 
+### `revenue-item-apportioned-noop` — o segundo no-op medido
+
+Conta de **receita** com itens **e** rateio de safra: o PATCH publico responde
+**vazio** e nao grava nada. Medido 0 de 8, enquanto todas as combinacoes vizinhas
+gravaram (receita item sem rateio 3/3, receita no nivel da conta 12/12, despesa
+item com rateio 5/5 e sem rateio 15/15). `recurrence` era nulo nas 8, entao **nao
+e o FNC-184**.
+
+Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
+elas seriam contadas como migradas e so o `verify` descobriria depois. O bloqueio
+existe para que nem cheguem a ser escritas.
+
+Mesma conversa com a EV que o `recurrence`: nao e erro dela, e um conjunto que
+migra quando o backend consertar.
+
 ---
 
 ## 3. Classes no ledger (`<plano>.ledger.jsonl`)
@@ -116,62 +131,139 @@ e compara. Nao faz um GET por conta.
 | `naoTentados` | planejadas **sem linha no ledger** | **Nao e falha.** E o que falta aplicar. Depois de um canario de 20 em 64, esperar 44 aqui e o certo |
 | `falharam` | tentadas e ainda na antiga | Investigue pela classe no ledger |
 | `falhaSilenciosa` | ledger diz **ok** e a conta continua na antiga | **A mais grave.** O CLI culpa o FNC-184, mas existe uma segunda classe — ver secao 4.1. **Nao siga para o lote** |
-| `aindaNaCategoriaAntigaSemEstarNoPlano` | na antiga e fora do plano | Alguem mexeu por fora, ou a varredura achou algo que o plano nao tinha. Replaneje |
+| `aindaNaCategoriaAntigaSemEstarNoPlano` | **nao leia direto — o numero infla.** Ver 4.3 | desconte a cauda antes de concluir qualquer coisa |
 | `amostraConferida` | deep-diff campo a campo | Ver abaixo |
 | `alteracaoColateral` | amostras com `camposAlemDaCategoria` ou `divergenteDoPatch` | **Pare e investigue** |
 
 Sai com **codigo 1** quando algo tentado falhou.
 
-### 4.1 Existe um segundo no-op silencioso, e NAO e recorrencia
+### 4.1 Sao TRES as causas de `falhaSilenciosa`, e o CLI so nomeia uma
 
-Quando o `verify` acusa `falhaSilenciosa`, ele imprime que aquilo e "a assinatura
-do no-op silencioso (FNC-184)". **Nem sempre e.** Medido em staging, 2026-08-14:
+A mensagem do `verify` diz que `falhaSilenciosa` e "a assinatura do no-op
+silencioso (FNC-184)". Hoje isso esta errado em dois tercos dos casos conhecidos:
 
-- `recurrentInSweep: 0` no plano inteiro, e as contas afetadas **nao tem campo de
-  recorrencia nenhum**. Nao e o FNC-184.
-- **Determinismo confirmado em 3 rodadas** com os mesmos payloads: as mesmas
-  contas falham sempre, e as outras sempre passam.
-- Nao e latencia de indexacao (relidas muito depois, continuam na antiga), nem
-  concorrencia (falham igual com `--concurrency 1`), nem a categoria de destino
-  (o mesmo destino funciona para outras contas), nem fechamento financeiro
-  (`INACTIVE` nesta fazenda).
-- **Nao e a migracao.** Um `aegro financial update-bill <chave> --body
-  '{"financialCategoryKey":"..."}'` na mesma conta tambem devolve sucesso e nao
-  persiste. E a conta, nao o comando.
-- Unico correlato encontrado: **todas** as afetadas tem `financialApportion`
-  (rateio de custo) preenchido — mas so 31% das que passaram tem. Rateio e
-  condicao **necessaria e nao suficiente**; o gatilho exato segue desconhecido.
-- Taxa observada: **5 falhas em 41 escritas (12%)** em amostra estratificada.
+| Causa | Sintoma | O plano bloqueia? |
+|---|---|---|
+| **FNC-184** — bill recorrente | 200 com a bill antiga | sim (`recurrence`) |
+| **Receita com itens e rateio de safra** | resposta **vazia** | sim (`revenue-item-apportioned-noop`) |
+| **Rateio apontando para local de estoque FECHADO** | 200 com o corpo da conta | **nao ainda** — [tool-aegro-cli#100](https://github.com/aegro/tool-aegro-cli/issues/100) |
 
-O que isso muda na sua conduta:
+A terceira e a unica que ainda chega a ser escrita. Enquanto o guard nao subir, e
+com ela que voce tem de se preocupar.
 
-1. **`verify` nao e opcional, e `--sample` nao substitui.** A prova e a diferenca
-   de conjunto; sem ela, o ledger diz que 3 mil contas migraram e elas nao
-   migraram.
-2. **Nao repasse a explicacao do CLI como se fosse a causa.** Diga "N contas
-   nao persistiram; parte pode ser recorrencia (FNC-184) e parte e uma segunda
-   causa em aberto ligada a rateio de custo" — e cheque `recurrentInSweep` antes
-   de culpar recorrencia.
-3. **Nao adianta reaplicar.** E deterministico: a segunda tentativa falha igual.
-   Reaplicar so gasta tempo e polui o ledger.
-4. **Escale.** Uma conta afetada e reproducao completa: chave + PATCH minimo +
-   200 OK + nada gravado.
+**A regra, medida em staging 2026-08-14 com separacao perfeita em 23 contas:** o
+PATCH publico nao persiste quando `costApportionSummary.stockLocationEntries[]`
+referencia um **local de estoque fechado** — local que responde ao
+`stock location get` mas **nao aparece** no `stock locations list`.
 
-### 4.2 O canario de 20 pode nao ver nada disso
+- 15 de 15 contas apontando para o local fechado falharam;
+- 0 de 8 apontando para locais que aparecem na listagem falharam;
+- as falhas vao de 2023-08 a 2024-10, com 1 a 7 itens, em L/kg/un/m — **nenhuma**
+  dessas dimensoes separa, so o local.
 
-`--limit N` pega as **N primeiras do plano**, e a ordem do plano nao e aleatoria.
-Medido: num plano com 95,6% de contas com rateio, as sem rateio ficaram todas na
-frente — a primeira com rateio caiu no **indice 14**. Um `--limit 14` teria
-fechado 20/20 verde num lote que falha silenciosamente em ~12%.
+Naquela fazenda o local fechado havia sido **substituido por um novo de nome quase
+identico** (so sem um ponto). As contas antigas continuaram apontando para o
+fechado. Suspeite disso sempre que a fazenda tiver reorganizado o estoque.
 
-Enquanto o `apply` nao estratificar a amostra, **nao trate canario verde como
-prova**. Antes de liberar o lote:
+#### Como diagnosticar em 2 minutos
 
-- rode o `verify` do canario **e** confira se a amostra pegou as classes que
-  dominam o plano (rateio, nivel de item, receita);
-- se o canario so pegou conta simples, rode um segundo canario maior, ou
-  monte um plano so com `overrides` de contas escolhidas a dedo, uma por classe.
-  Foi assim que a segunda classe apareceu.
+```bash
+# 1. os locais ABERTOS da fazenda
+aegro stock locations --farm "<fazenda>" --env <env> -o json
+```
+
+Depois cruze: para cada `billKey` em `chavesQueFalharam`, pegue no `plano.jsonl` o
+`before.costApportionSummary.stockLocationEntries[].stockLocationKey` e veja se
+aquela chave esta na lista acima. Se **nao** estiver, e esta causa — confirmado,
+sem precisar de mais nenhuma escrita.
+
+**Cuidado:** o `stock locations` nao traz campo de status (vem tudo `None`); o
+sinal e a **ausencia na listagem**, nao um campo. Um `stock location get` na
+chave responde normalmente e nao prova nada.
+
+#### O que fazer com elas
+
+- **Nao reaplique.** E deterministico: confirmado em 3 rodadas com os mesmos
+  payloads, e tambem com `--concurrency 1`. Reaplicar so polui o ledger.
+- **A UI grava.** Medido: abrir a conta em
+  `<host>/farm/<farmId>?billId=<billId>#farm-finance`, trocar a categoria e salvar
+  funciona, e persiste. Para um punhado de contas, esse e o caminho hoje.
+- **Para muitas, espere o guard.** Migrar dezenas na mao pela UI e o problema
+  original de volta.
+- **Diga a EV o que aconteceu**, sem culpar recorrencia: "N contas nao gravaram
+  porque o rateio delas aponta para um local de estoque que foi fechado. E bug
+  conhecido do backend, ja registrado. As outras migraram normalmente."
+
+#### O que esta descartado (cada um com teste)
+
+Latencia de indexacao (relidas 1h depois), concorrencia, categoria de destino (o
+mesmo destino grava em outras contas), fechamento financeiro (`INACTIVE`), formato
+do payload (falha igual com `{"financialCategoryKey"}` minimo, que nao toca em
+rateio), quantidade de itens (26, 13, 9 e 2 gravam), data do lancamento (2024 tem
+falha e sucesso), e categoria oficial do elemento (mesmo elemento em falha e em
+sucesso).
+
+**Resto em aberto:** sobraram 3 falhas com rateio de **patrimonio** que esta regra
+nao explica (os patrimonios existem e estao normais). Se as chaves que falharam
+nao casarem com local fechado nenhum, e esse resto — anexe a amostra na issue #100
+em vez de tentar explicar.
+
+### 4.2 Canario verde NAO e prova. Estratifique voce mesmo
+
+`--limit N` pega as **N primeiras pendentes do plano**, e a ordem do plano nao e
+aleatoria. Medido: num plano com **95,6%** de contas com rateio, as sem rateio
+ficaram todas na frente — a primeira com rateio caiu no **indice 14**. O canario
+de 20 saiu 19 sem rateio + 1 com, e pegou o no-op por **uma posicao**. Um
+`--limit 14` teria fechado 20/20 verde e liberado o lote inteiro.
+
+Enquanto o `apply` nao estratificar, **monte a amostra voce**:
+
+1. Leia o `plano.jsonl` e agrupe os `planned` por
+   `(before.financialApportion.type, level, cashFlow)` — sao poucas combinacoes.
+2. **Mostre a composicao a EV**: "o plano e 90% ASSET_PRORATE/item, 4%
+   STOCK_INPUTS/item, 4% sem rateio, 2% CROP_PRORATE/conta".
+3. Escolha **2 a 3 contas de cada** combinacao e monte um de/para so com
+   `overrides` para elas (mais uma regra que nao casa com nada, porque `rules`
+   nao pode ser vazio — ex.
+   `{"when": {"descriptionContains": "zzz-nada-casa-zzz"}}`).
+4. `plan` -> `apply --execute` -> `verify`. Custa uma varredura, e e a unica forma
+   de canario verde significar alguma coisa.
+5. **So depois** rode o canario normal e o lote sobre o plano de verdade.
+
+Foi exatamente assim que a terceira causa apareceu. Se a EV achar o passo caro,
+compare com o custo de descobrir na conta 9.000 de 23.583.
+
+### 4.3 `aindaNaCategoriaAntigaSemEstarNoPlano` conta a cauda como se fosse colateral
+
+O campo compara a varredura contra **so as contas `planned`**. Entao todo
+`unresolved`, `kept` e `blocked` — que por desenho **continuam** na categoria
+antiga — entra nessa conta e parece alteracao por fora.
+
+**Medido:** um plano com `unresolved: 457` e `planned: 3163` devolveu
+`aindaNaCategoriaAntigaSemEstarNoPlano: 457`. Exatamente o `unresolved`. Zero
+colateral de verdade.
+
+Isso importa porque a leitura ingenua ("alguem mexeu por fora, replaneje") vira
+**laco infinito**: voce replaneja, a cauda continua sendo cauda, o numero volta
+igual.
+
+**Como ler de verdade:** desconte do valor os status que nao deviam ter saido, que
+estao no `counts` do `<plano>.meta.json`:
+
+```
+colateral real = aindaNaCategoriaAntigaSemEstarNoPlano
+                 - (counts.unresolved + counts.kept + counts.blocked)
+```
+
+- **Resultado 0 ou negativo** → nao houve colateral. Nao replaneje por causa
+  disso; o numero e a cauda, e a cauda e o trabalho que falta decidir.
+- **Resultado positivo** → aquilo sim e conta que o plano nunca viu. Ai
+  replanejar e o certo: apareceu lancamento novo na categoria antiga, ou alguem
+  editou pela UI durante a corrida.
+
+Ja esta reportado como bug de contagem no CLI. Enquanto nao subir, faca a
+subtracao **antes** de dizer qualquer coisa a EV — e diga o resultado da conta,
+nao o campo cru.
 
 Sobre `divergenteDoPatch`: e a checagem mais importante do nivel de item. Migrar
 item exige reenviar o array `inputs` inteiro, e o risco e atropelar o item que

@@ -32,11 +32,24 @@ cliente real.
 - **`nomes`** e so para **exibir**, e cobre chave que nao esta em `categorias`:
   - **categorias de origem**, que sao ARQUIVADAS (rode o `fin-categories list`
     tambem sem `--status`, ou com `--status ARCHIVED`);
-  - **fornecedores** dos clusters: `aegro companies get <company::key>` para cada
-    `companyKey` distinto (sao ~30, entao ~30 chamadas);
-  - **elementos** dos clusters: `aegro elements get <element::key>`.
+  - **fornecedores** e **elementos** dos clusters.
 
-  Vale o custo: um cartao que diz "CPFL PAULISTA" e decidivel; um que diz
+  **Use `list` paginado, nunca um `get` por chave.** A cauda real tinha 745
+  clusters, e a receita ingenua de um `get` por chave distinta deu **1.681
+  chamadas** (147 fornecedores + 1.534 elementos) — minutos de espera para
+  preencher rotulo:
+
+  ```bash
+  aegro companies list --farm "<fazenda>" --page N -o json   # 50/pagina
+  aegro elements  list --farm "<fazenda>" --page N -o json   # 50/pagina
+  ```
+
+  Pagine ate acabar, monte `{key: nome}` de uma vez, e reserve o `get` para as
+  poucas chaves que a listagem nao cobriu. Se a fazenda tiver catalogo grande e
+  isso ainda pesar, **exiba a chave crua** em vez de gastar minutos: rotulo faltando
+  atrasa uma decisao, varredura de nomes atrasa a sessao inteira.
+
+  Vale o esforco: um cartao que diz "CPFL PAULISTA" e decidivel; um que diz
   `company::64a0f1...` obriga a EV a sair da tela para descobrir de quem e.
 - **`grupos`** e o agregado que o `plan` imprimiu (campos `status`, `fromKeys`,
   `toKey`, `ruleIndex`, `why`, `reason`, `bills`, `totalAmount`). Se voce nao
