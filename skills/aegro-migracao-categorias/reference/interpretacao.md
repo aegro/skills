@@ -115,12 +115,63 @@ e compara. Nao faz um GET por conta.
 | `migrados` | saiu da categoria antiga | — |
 | `naoTentados` | planejadas **sem linha no ledger** | **Nao e falha.** E o que falta aplicar. Depois de um canario de 20 em 64, esperar 44 aqui e o certo |
 | `falharam` | tentadas e ainda na antiga | Investigue pela classe no ledger |
-| `falhaSilenciosa` | ledger diz **ok** e a conta continua na antiga | **A mais grave.** Assinatura do FNC-184. **Nao siga para o lote** |
+| `falhaSilenciosa` | ledger diz **ok** e a conta continua na antiga | **A mais grave.** O CLI culpa o FNC-184, mas existe uma segunda classe — ver secao 4.1. **Nao siga para o lote** |
 | `aindaNaCategoriaAntigaSemEstarNoPlano` | na antiga e fora do plano | Alguem mexeu por fora, ou a varredura achou algo que o plano nao tinha. Replaneje |
 | `amostraConferida` | deep-diff campo a campo | Ver abaixo |
 | `alteracaoColateral` | amostras com `camposAlemDaCategoria` ou `divergenteDoPatch` | **Pare e investigue** |
 
 Sai com **codigo 1** quando algo tentado falhou.
+
+### 4.1 Existe um segundo no-op silencioso, e NAO e recorrencia
+
+Quando o `verify` acusa `falhaSilenciosa`, ele imprime que aquilo e "a assinatura
+do no-op silencioso (FNC-184)". **Nem sempre e.** Medido em staging, 2026-08-14:
+
+- `recurrentInSweep: 0` no plano inteiro, e as contas afetadas **nao tem campo de
+  recorrencia nenhum**. Nao e o FNC-184.
+- **Determinismo confirmado em 3 rodadas** com os mesmos payloads: as mesmas
+  contas falham sempre, e as outras sempre passam.
+- Nao e latencia de indexacao (relidas muito depois, continuam na antiga), nem
+  concorrencia (falham igual com `--concurrency 1`), nem a categoria de destino
+  (o mesmo destino funciona para outras contas), nem fechamento financeiro
+  (`INACTIVE` nesta fazenda).
+- **Nao e a migracao.** Um `aegro financial update-bill <chave> --body
+  '{"financialCategoryKey":"..."}'` na mesma conta tambem devolve sucesso e nao
+  persiste. E a conta, nao o comando.
+- Unico correlato encontrado: **todas** as afetadas tem `financialApportion`
+  (rateio de custo) preenchido — mas so 31% das que passaram tem. Rateio e
+  condicao **necessaria e nao suficiente**; o gatilho exato segue desconhecido.
+- Taxa observada: **5 falhas em 41 escritas (12%)** em amostra estratificada.
+
+O que isso muda na sua conduta:
+
+1. **`verify` nao e opcional, e `--sample` nao substitui.** A prova e a diferenca
+   de conjunto; sem ela, o ledger diz que 3 mil contas migraram e elas nao
+   migraram.
+2. **Nao repasse a explicacao do CLI como se fosse a causa.** Diga "N contas
+   nao persistiram; parte pode ser recorrencia (FNC-184) e parte e uma segunda
+   causa em aberto ligada a rateio de custo" — e cheque `recurrentInSweep` antes
+   de culpar recorrencia.
+3. **Nao adianta reaplicar.** E deterministico: a segunda tentativa falha igual.
+   Reaplicar so gasta tempo e polui o ledger.
+4. **Escale.** Uma conta afetada e reproducao completa: chave + PATCH minimo +
+   200 OK + nada gravado.
+
+### 4.2 O canario de 20 pode nao ver nada disso
+
+`--limit N` pega as **N primeiras do plano**, e a ordem do plano nao e aleatoria.
+Medido: num plano com 95,6% de contas com rateio, as sem rateio ficaram todas na
+frente — a primeira com rateio caiu no **indice 14**. Um `--limit 14` teria
+fechado 20/20 verde num lote que falha silenciosamente em ~12%.
+
+Enquanto o `apply` nao estratificar a amostra, **nao trate canario verde como
+prova**. Antes de liberar o lote:
+
+- rode o `verify` do canario **e** confira se a amostra pegou as classes que
+  dominam o plano (rateio, nivel de item, receita);
+- se o canario so pegou conta simples, rode um segundo canario maior, ou
+  monte um plano so com `overrides` de contas escolhidas a dedo, uma por classe.
+  Foi assim que a segunda classe apareceu.
 
 Sobre `divergenteDoPatch`: e a checagem mais importante do nivel de item. Migrar
 item exige reenviar o array `inputs` inteiro, e o risco e atropelar o item que

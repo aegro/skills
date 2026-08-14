@@ -22,8 +22,8 @@ version: 0.1.0
 # Aegro Migracao de Categorias em Massa
 
 Skill para tirar milhares de lancamentos de categorias arquivadas e leva-los
-para a arvore nova, com a decisao humana concentrada em ~30 grupos em vez de
-espalhada por 20 mil lancamentos.
+para a arvore nova, com a decisao humana concentrada em dezenas de grupos em
+vez de espalhada por 20 mil lancamentos.
 
 O caso que originou isto: um cliente com **23.583 lancamentos em 67 categorias
 arquivadas**. Sete dessas categorias tem gemea ativa exata (2.944 lancamentos
@@ -36,8 +36,15 @@ julgamento humano** — as antigas eram planas e a arvore nova desdobrou
 > interna. Rode `aegro auth login [--env staging]`. Em modo API key o comando
 > falha com exit 2.
 >
-> **Requer aegro CLI >= 0.19.0.** Confira ANTES de qualquer coisa (secao 1).
-> Skill nova rodando contra CLI antigo fica **falsa em silencio**.
+> **Requer os comandos `financial migrate-category`.** Prove com `--help` antes
+> de qualquer coisa (secao 1) — a checagem e por capacidade, nao por numero de
+> versao.
+>
+> **Canario verde nao e prova.** O `apply --limit N` amostra as N primeiras do
+> plano, nao uma amostra representativa, e existe uma classe de escrita que
+> responde 200 sem gravar. Leia
+> [`reference/interpretacao.md`](reference/interpretacao.md) secoes 4.1 e 4.2
+> antes de liberar qualquer lote.
 >
 > **`--farm "<nome|farm::key>"` explicito em todo comando.** O `farms select`
 > grava state global por maquina; com varias sessoes abertas, a selecao de uma
@@ -58,16 +65,28 @@ aegro --version
 aegro financial migrate-category plan --help
 ```
 
-O segundo comando e o que importa: ele prova que a maquina de migracao existe
-neste CLI. Se `aegro --version` for **menor que 0.19.0**, ou se o `--help`
-falhar, **pare e diga isto ao usuario**, sem tentar contornar:
+**Quem decide e o `--help`, nao a versao.** Se o `--help` sair 0, a maquina de
+migracao existe neste CLI e voce pode seguir — qualquer que seja o numero da
+versao. Se o `--help` falhar, **pare e diga isto ao usuario**, sem contornar:
 
-> Esta skill precisa do `aegro` >= 0.19.0 (voce tem X). Atualize com
-> `uv tool upgrade aegro` (ou `pip install -U aegro`) e rode de novo.
+> Esta skill precisa dos comandos `financial migrate-category`, que este `aegro`
+> nao tem (voce esta na versao X). Atualize com `uv tool upgrade aegro` (ou
+> `pip install -U aegro`) e rode de novo.
 
-Por que falhar alto: a skill chega por `aegro skills sync`, que **nao** depende
-de release do CLI. Uma skill nova pode encontrar um CLI velho. Guard novo no CLI
-que a skill nao conhece produz plano que parece certo e nao e.
+A versao e **informativa**: abaixo de 0.19.0 com o `--help` funcionando, avise
+que o CLI e mais velho que a skill e que pode haver divergencia, e siga.
+
+Por que nao barrar por numero: build de desenvolvimento deriva a versao da
+ultima tag, entao um `0.17.1.dev2` **tem** os comandos enquanto um `0.18.0`
+publicado nao tinha. Medido: o gate numerico reprovava exatamente o binario que
+tinha a feature. Comparacao de versao responde a pergunta errada — a certa e "os
+comandos existem?", e so o `--help` responde isso.
+
+O risco que sobra e o inverso, e ele e real: a skill chega por `aegro skills
+sync`, que **nao** depende de release do CLI, entao skill nova pode encontrar CLI
+velho. Guard novo no CLI que a skill nao conhece produz plano que parece certo e
+nao e. Por isso o aviso de divergencia acima nao e decorativo: se algo na saida
+do CLI nao bater com o que esta escrito aqui, **acredite no CLI e relate**.
 
 ---
 
@@ -94,8 +113,13 @@ planilha da EV --> de/para JSON --> plan --> tela (aprovacao + cauda)
 ```
 
 Converge porque cada rodada so reapresenta o que ficou de fora, e `keep`
-aposenta o caso duvidoso em vez de traze-lo de volta. Cada `plan` custa segundos
-(~40 s para 15 mil lancamentos).
+aposenta o caso duvidoso em vez de traze-lo de volta.
+
+**O `plan` nao custa segundos — custa dezenas de minutos.** Medido: 3.620
+lancamentos em **14 a 23 min** (a estimativa antiga, de ~40 s para 15 mil, estava
+errada por uma ordem de grandeza). Isso muda a conversa: avise o usuario do
+tempo antes de rodar, nao prometa iteracao instantanea, e **confirme a leitura da
+planilha ANTES do `plan`** (secao 4) — refazer sai caro.
 
 ---
 
@@ -115,25 +139,46 @@ O CLI **nao emite palpite de LLM**. Voce pode acrescentar uma sugestao sua
 
 ---
 
-## 4. Planilha da EV -> arquivo de/para
+## 4. Planilha do usuario -> arquivo de/para
 
-Contrato completo em [`reference/planilha.md`](reference/planilha.md). Resumo:
+**Nao exija formato.** Voce e um compilador, nao um validador de schema: leia o
+que veio, infira o que significa, **confirme a leitura**, e so entao compile em
+regra deterministica. Passo a passo em
+[`reference/planilha.md`](reference/planilha.md) — leia antes de tocar em
+qualquer planilha.
 
-| Coluna | Obrigatoria | Vira |
-|---|---|---|
-| `de` | sim | `rules[].from` (nome ou `financialCategory::key`) |
-| `para` | sim | `rules[].to` (nome, key, ou `@element`) |
-| `quando_tag` | nao | `when.anyTags` (separado por `;`) |
-| `quando_fornecedor` | nao | `when.companyKeys` |
-| `quando_descricao` | nao | `when.descriptionFingerprint` |
-| `observacao` | nao | nada (so contexto para voce) |
+Por que isso importa: nenhum cliente vai adotar um padrao seu. Medido em campo,
+a planilha real nao tinha nenhuma das colunas que a primeira versao desta skill
+exigia — e mesmo assim estava **certa**, so falava outra lingua (o eixo era
+*conjunto de tags*, nao categoria).
 
-Aceite sinonimo de cabecalho (`origem`/`categoria antiga` = `de`;
-`destino`/`categoria nova` = `para`), normalize acento e caixa, e ignore linha
-vazia. Para ler `.xlsx` use a skill `xlsx`; `.csv` leia direto.
+O resumo do que muda na sua cabeca:
 
-**Nao invente destino.** Linha com `para` vazio nao vira regra — vira pergunta
-para a EV, ou espera a cauda resolver.
+| Nao faca | Faca |
+|---|---|
+| exigir colunas `de`/`para` | descobrir qual coluna identifica o lancamento e qual da o destino |
+| assumir que 1 valor = 1 tag | checar se o valor traz **varias** tags juntas -> `allTags` (E), nao `anyTags` (OU) |
+| deduzir pelo nome da coluna | cruzar os valores com `category-usage --group-by tag,company,element` |
+| resolver destino por nome | resolver por **codigo** contabil quando existir (nome duplica, codigo nao) |
+| exigir a planilha completa | migrar o que esta completo e **medir** o que falta (secao 4.1) |
+
+Voce pode ser flexivel na entrada porque a saida nao e: o `when` e uma whitelist
+fechada e o CLI recusa qualquer coisa fora dela.
+
+### 4.1 Planilha pela metade nao bloqueia nada
+
+Metade em branco e o estado **normal** (na planilha real: 896 de 1.777 linhas
+sem destino). Isso **nao** impede migrar as outras.
+
+1. Compile as linhas completas e rode com elas.
+2. Meca o que falta antes de perguntar: "faltam 896 linhas" e ruido; "faltam 12
+   grupos que somam 3.620 lancamentos, e 3 deles sao 2.900" e uma conversa.
+3. Pergunte **uma vez, em lote**, do maior para o menor.
+4. Siga. O que ficou sem destino vira `unresolved`, e `unresolved` **nunca e
+   escrito** — nao ha risco nenhum em migrar so uma parte.
+
+Diga isso ao usuario, porque ele provavelmente acha que precisa terminar a
+planilha antes de comecar. Ele nao precisa.
 
 Depois de escrever o JSON, **deixe o CLI validar**. Ele recusa com mensagem
 acionavel e exit 4: nome inexistente com sugestao de parecidos, nome ambiguo
@@ -185,7 +230,9 @@ aegro financial category-usage --farm "<fazenda>" --env staging \
   --from "Salarios (antigo)" --group-by tag,company,element,level -o table
 ```
 
-Responde "isto sao 12 grupos ou 800?" em segundos, com completude provada.
+Responde "isto sao 12 grupos ou 800?" com completude provada. Tambem custa
+minutos numa categoria grande (medido: 2 min para 3.620) — e o passo mais barato
+do fluxo, e o unico que responde o tamanho antes de qualquer compromisso.
 
 Depois:
 
@@ -260,8 +307,20 @@ Passos:
 
 ## 7. Decisoes -> regras
 
-**Prefira regra a override.** 800 bills viram ~30 regras; regra e auditavel e
-re-executavel, override e residuo. So use override quando o cluster nao tem
+**Prefira regra a override.** Regra e auditavel e re-executavel; override e
+residuo.
+
+**Mas confira quantas regras a cauda vai gerar antes de sair emitindo.** O CLI
+agrupa por fornecedor+descricao, e onde a descricao e quase unica por conta isso
+vira quase um cartao por lancamento: medido, 959 sem regra viraram **745
+clusters, 631 deles com um unico lancamento**. Emitir uma regra por cluster ali
+seria 745 regras — pior que os overrides que voce estava evitando.
+
+Quando o `unresolved.json` vier assim, **pare e reagrupe por outro eixo antes de
+levar a tela**: os mesmos 959 agrupados por **tag** dao 21 grupos. O CLI ainda
+nao tem `tag` como dimensao de cluster, entao esse reagrupamento e seu — cruze
+os `billKeys` da cauda com `category-usage --group-by tag`. Se nem tag colapsar,
+diga isso ao usuario em vez de despejar 745 cartoes na tela dele. So use override quando o cluster nao tem
 sinal nenhum (`by: "none"`) ou quando a decisao e `manter`.
 
 Expansao, por tipo de cluster:
@@ -327,8 +386,9 @@ aegro financial migrate-category verify --farm "<fazenda>" --env staging \
 - **Producao e decisao humana.** Nunca rode `--execute` em producao sem o
   usuario pedir naquele turno, com a fazenda nomeada. Repita o canario de 20 em
   producao e confira na UI antes do lote.
-- `--concurrency` 4 por padrao (~340 ms por escrita medidos). Acima de 8 sai
-  aviso.
+- `--concurrency` 4 por padrao (~340 ms por escrita medidos; 21 escritas em 25 s).
+  Acima de 8 sai aviso. **Concorrencia nao causa nem evita a falha silenciosa** —
+  medido com `--concurrency 1` e o resultado foi identico.
 - O ledger `<plano>.ledger.jsonl` e append-only: rodar de novo **retoma** de onde
   parou. Se o lote abortar, nao apague o ledger.
 
