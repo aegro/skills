@@ -40,10 +40,9 @@ julgamento humano** — as antigas eram planas e a arvore nova desdobrou
 > de qualquer coisa (secao 1) — a checagem e por capacidade, nao por numero de
 > versao.
 >
-> **Canario verde nao e prova.** O `apply --limit N` amostra as N primeiras do
-> plano, nao uma amostra representativa, e existem **tres** classes de escrita
-> que respondem 200 sem gravar — o `plan` bloqueia duas. Estratifique a amostra
-> (secao 8.1) e leia
+> **Canario sem `--stratify-by` nao e prova.** `--limit N` seco pega as N
+> primeiras do plano, nao uma amostra representativa. Sempre
+> `--limit N --stratify-by apportion,level,cashFlow` (secao 8.1), e leia
 > [`reference/interpretacao.md`](reference/interpretacao.md) 4.1 a 4.3 antes de
 > liberar qualquer lote.
 >
@@ -362,7 +361,8 @@ pega as N primeiras do plano, nao uma amostra representativa. A ordem:
 ```bash
 # 1. Canario de 20, em staging
 aegro financial migrate-category apply --farm "<fazenda>" --env staging \
-  --plan plano-salarios.jsonl --approve sha256:9f2c... --limit 20 --execute
+  --plan plano-salarios.jsonl --approve sha256:9f2c... \
+  --limit 20 --stratify-by apportion,level,cashFlow --execute
 
 # 2. Prova imediata
 aegro financial migrate-category verify --farm "<fazenda>" --env staging \
@@ -402,21 +402,28 @@ rateio ficaram todas na frente — a primeira com rateio caiu no **indice 14**. 
 canario de 20 pegou o no-op silencioso por **uma posicao**; `--limit 14` teria
 fechado 20/20 verde e liberado 3.163 escritas que nao gravariam.
 
-Ate o `apply` estratificar sozinho, **a amostra e sua**:
+**O CLI estratifica — e voce so precisa pedir:**
 
-1. **Meca a composicao** do plano: agrupe os `planned` do `plano.jsonl` por
-   `(before.financialApportion.type, level, cashFlow)`. Sao poucas combinacoes.
-2. **Mostre a composicao a EV** antes de qualquer escrita: *"o plano e 90%
-   ASSET_PRORATE/item, 4% STOCK_INPUTS/item, 4% sem rateio, 2%
-   CROP_PRORATE/conta"*. Ela precisa saber o que a amostra vai e nao vai cobrir.
-3. **Monte um de/para so com `overrides`** para 2–3 contas de cada combinacao.
-   `rules` nao pode ser vazio, entao inclua uma regra que nao casa com nada:
-   `{"from": "<antiga>", "to": "<qualquer ativa>", "when": {"descriptionContains": "zzz-nada-casa-zzz"}}`.
-4. `plan` → `apply --execute` → `verify` sobre esse plano pequeno.
-5. **So depois** siga para o canario e o lote do plano de verdade.
+```bash
+--limit 20 --stratify-by apportion,level,cashFlow
+```
 
-Custa uma varredura extra. Foi assim que a terceira causa de `falhaSilenciosa`
-apareceu — e o alternativo e descobrir na conta 9.000 de 23.583.
+A flag distribui as N do `--limit` pelas classes presentes no plano. As dimensoes
+sao exatamente essas tres, e dimensao desconhecida e **erro**, nao silencio.
+
+Duas coisas continuam sendo suas:
+
+1. **`--limit` sem `--stratify-by` imprime aviso** listando as classes que a
+   amostra deixou de fora. Nao engula esse aviso: repasse a EV, porque e a
+   diferenca entre canario verde que prova algo e canario verde que nao prova nada.
+2. **Mostre a composicao antes de escrever.** *"O plano e 90% ASSET_PRORATE/item,
+   4% STOCK_INPUTS/item, 4% sem rateio, 2% CROP_PRORATE/conta — o canario vai
+   pegar as quatro."* Ela aprova o hash sabendo o que a amostra cobre.
+
+Se algum dia o CLI nao tiver a flag, a versao manual e um de/para so com
+`overrides` (2–3 contas por combinacao) mais uma regra que nao casa com nada,
+porque `rules` nao pode ser vazio. Foi assim que a terceira causa de
+`falhaSilenciosa` apareceu, antes de existir `--stratify-by`.
 
 ---
 
@@ -430,8 +437,9 @@ Detalhe campo a campo em
 | `migrados` | saiu da categoria antiga — OK |
 | `naoTentados` | **nao e falha.** E o que falta aplicar (normal depois do canario) |
 | `falharam` | tentadas e ainda na antiga |
-| `falhaSilenciosa` | **a mais grave**: ledger diz OK e a conta continua na antiga. Sao **tres** causas conhecidas e o CLI nomeia so uma — ver [interpretacao.md](reference/interpretacao.md) 4.1 |
-| `aindaNaCategoriaAntigaSemEstarNoPlano` | **nao leia direto**: inclui toda a cauda, que por desenho fica na antiga. Subtraia `counts.unresolved + kept + blocked` antes de concluir (4.3) |
+| `falhaSilenciosa` | **a mais grave**: ledger diz OK e a conta continua na antiga. Com os guards atuais deve ser **0** — ver [interpretacao.md](reference/interpretacao.md) 4.1 |
+| `naCaudaAindaNaAntiga` | cauda, bloqueado e mantido: o plano sabe que ficam. **Informativo** |
+| `colateralDeVerdade` | conta que o plano nunca viu. **> 0 e o unico caso que pede replanejar** |
 | `alteracaoColateral` | mudou campo alem da categoria — **pare e investigue** |
 
 O `verify` sai com codigo 1 quando algo tentado falhou. **Criterio de pronto do
@@ -443,12 +451,13 @@ trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
 
 1. **Toda escrita e proposta, nunca silencio.** Mostre o agregado e peca
    confirmacao antes de cada `apply --execute`. A EV decide; voce conduz.
-2. **Escrita que responde 200 pode nao ter gravado.** Sao tres causas conhecidas
-   de no-op silencioso, e o `plan` bloqueia duas (`recurrence`,
-   `revenue-item-apportioned-noop`). A terceira — rateio apontando para local de
-   estoque **fechado** — ainda passa pela escrita, e so o `verify` pega. Por isso
-   `verify` nunca e opcional e canario verde nao e prova (8.1 e
-   [interpretacao.md](reference/interpretacao.md) 4.1).
+2. **Escrita que responde 200 pode nao ter gravado.** Sao **tres** causas
+   medidas de no-op silencioso, e o `plan` bloqueia as tres: `recurrence`,
+   `revenue-item-apportioned-noop` e `stock-location-closed`. Confira o numero por
+   motivo em `meta.blockedByReason`. `falhaSilenciosa > 0` num CLI atual significa
+   **guard faltando ou causa nova** — pare e investigue
+   ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
+   opcional.
 3. **Recorrente e bloqueado, nao migrado.** PATCH publico em bill recorrente e
    no-op silencioso (FNC-184, esperando fix do backend): responde 200 e nao
    salva. O plano bloqueia com `blockedReason: recurrence` **de proposito**.
@@ -488,8 +497,8 @@ trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
 | Comando | Params principais | Tipo |
 |---|---|---|
 | `financial category-usage` | `--from <cat>` (repetivel) `[--group-by tag,company,element,level]` `[--top N]` `[--start-date --end-date]` | leitura |
-| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--samples N]` | leitura |
-| `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--concurrency 4]` `[--max-failures 25]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
+| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--samples N]` `[--start-date --end-date]` | leitura |
+| `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--stratify-by apportion,level,cashFlow]` `[--concurrency 4]` `[--max-failures 25]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
 | `financial migrate-category verify` | `--plan <jsonl>` `[--sample 10]` | leitura |
 | `fin-categories list` | `[--status ACTIVE]` `[--type]` `[--operation-type]` `[--search-text]` `[--page N]` | leitura |
 | `auth login` | `[--env staging]` | — |
@@ -498,14 +507,16 @@ Todos aceitam `--farm`, `--env` e `-o json|table|csv`. Codigos de saida:
 **2** falta OAuth · **4** entrada invalida (de/para, hash, plano velho) ·
 **1** o lote abortou ou o `verify` achou falha.
 
-**`--start-date/--end-date` NAO recortam o `plan`.** Elas existem na varredura
-como atalho de caminhada, nao como filtro: a completude e provada contra a
-consulta **sem** janela, entao janela estreita deixa o coletado muito abaixo do
-total da categoria e o fallback pagina a raiz e reabre tudo. Medido: janela de um
-mes numa categoria de 3.620 devolveu **3.135 planejados, com lancamentos de 2024 e
-2025**, e `complete: false`. Nao use no `plan`. Em `category-usage` o mesmo efeito
-acontece, mas ali ninguem aprova hash — se usar, confira `varredura.window`
-contra o que voltou.
+**`--start-date/--end-date`: a janela e o universo.** Elas recortam de verdade —
+declaram o total contra o qual a completude e provada, e o `verify` reusa a mesma
+janela gravada no meta. **Preco explicito:** lancamento com **data nula** fica
+FORA de uma varredura com janela (sem janela ele continua sendo pego pela raiz).
+Se a base tiver data suspeita, rode sem janela.
+
+Isso mudou: antes o total autoritativo vinha sempre da consulta sem janela, entao
+janela estreita disparava o fallback e reabria a base — uma janela de um mes numa
+categoria de 3.620 devolvia 3.135 planejados com lancamentos de outros anos. Se
+voce ver esse sintoma, o CLI e anterior ao conserto: nao use janela nele.
 
 **Ao parsear a saida:** redirecione stdout e stderr **separados**. O CLI manda todo
 aviso para stderr (`aegro: ...`), entao `2>&1` mistura texto com o JSON e o parse

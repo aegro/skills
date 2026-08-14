@@ -54,6 +54,9 @@ cliente real.
 - **`grupos`** e o agregado que o `plan` imprimiu (campos `status`, `fromKeys`,
   `toKey`, `ruleIndex`, `why`, `reason`, `bills`, `totalAmount`). Se voce nao
   guardou o stdout, rode o `plan` de novo — e deterministico e nao escreve nada.
+  O painel de aprovacao deriva os bloqueados desses grupos, mas o **numero
+  autoritativo** por motivo esta em `meta.blockedByReason` (com o total em
+  `meta.blockedTotal`): se os dois divergirem, acredite no meta.
 - Voce **pode** acrescentar a um cluster um campo `sugestaoAssistente`:
   `{"toKey": "...", "evidence": "descricao diz 'CPFL', que e concessionaria de energia"}`.
   A tela renderiza como opcao propria, rotulada, e **nunca** pre-marcada.
