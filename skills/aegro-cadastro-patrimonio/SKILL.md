@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.3
+version: 0.5.4
 ---
 
 # Cadastro de Patrimonio
@@ -25,7 +25,13 @@ Carregue este domain skill antes de iniciar:
 
 - **`/aegro-patrimonial`** — vocabulario, modelo de dados, regras de negocio e comandos de patrimonio
 
-Fazenda deve estar selecionada.
+Fazenda dita em **cada comando** com `--farm "<Fazenda|farm::key>"` — nao por `farms select`.
+O estado do `farms select` e global por maquina, e uma sessao paralela troca o alvo
+da outra sem avisar: foi assim que, em 11/08/2026, a entrega de dois pedidos de
+compra foi gravada em producao na fazenda errada, deixando o estoque negativo e
+duas manutencoes custeadas em R$ 0,00 sem nenhuma mensagem de erro. Em sessao de
+agente, ligue tambem `AEGRO_SAFE_MODE=1`, que recusa escrita cuja fazenda nao veio
+de `--farm` (`IMPLICIT_FARM_BLOCKED`).
 
 ## Fluxo de Decisao - Tipo de Ativo
 
