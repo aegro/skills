@@ -29,25 +29,27 @@ cliente real.
   paginando ate acabar (50 por pagina). O nome esta em `description` (com
   fallback `name`). **Descarte `type: "SYNTHETIC"`** — sintetica e agrupadora e
   nao e lancavel; oferece-la seria oferecer uma falha garantida.
-- **`nomes`** e so para **exibir**, e cobre chave que nao esta em `categorias`:
-  - **categorias de origem**, que sao ARQUIVADAS (rode o `fin-categories list`
-    tambem sem `--status`, ou com `--status ARCHIVED`);
-  - **fornecedores** e **elementos** dos clusters.
+- **`nomes`** e so para **exibir**, e cobre chave que nao esta em `categorias`.
+  **Fornecedor e insumo ja vem prontos do CLI**: o `unresolved.json` traz um
+  bloco `labels` com `{"companies": {...}, "elements": {...}}`. Copie os dois
+  para dentro de `nomes` e pronto.
 
-  **Use `list` paginado, nunca um `get` por chave.** A cauda real tinha 745
-  clusters, e a receita ingenua de um `get` por chave distinta deu **1.681
-  chamadas** (147 fornecedores + 1.534 elementos) — minutos de espera para
-  preencher rotulo:
+  Falta so a **categoria de origem**, que e ARQUIVADA e por isso nao aparece no
+  `fin-categories list --status ACTIVE`:
 
   ```bash
-  aegro companies list --farm "<fazenda>" --page N -o json   # 50/pagina
-  aegro elements  list --farm "<fazenda>" --page N -o json   # 50/pagina
+  aegro fin-categories list --farm "<fazenda>" --status ARCHIVED --page N -o json
   ```
 
-  Pagine ate acabar, monte `{key: nome}` de uma vez, e reserve o `get` para as
-  poucas chaves que a listagem nao cobriu. Se a fazenda tiver catalogo grande e
-  isso ainda pesar, **exiba a chave crua** em vez de gastar minutos: rotulo faltando
-  atrasa uma decisao, varredura de nomes atrasa a sessao inteira.
+  Chave que nao estiver em `nomes` a tela exibe crua — **e isso e o certo**.
+  Nunca invente nome para uma chave que nao resolveu.
+
+  *Se o CLI for anterior a `--labels`* (SKILL.md 1.1), voce resolve fornecedor e
+  insumo. **Um `get` por chave CITADA na cauda**, e nao a listagem do catalogo:
+  parece a recomendacao errada e nao e. Medido em campo: a cauda citava **116
+  chaves**, enquanto `companies list` paginado (2.254 fornecedores) somado a
+  `elements list` **estourou o teto de 10 minutos sem terminar**. Rotulo faltando
+  atrasa uma decisao; varredura de catalogo atrasa a sessao inteira.
 
   Vale o esforco: um cartao que diz "CPFL PAULISTA" e decidivel; um que diz
   `company::64a0f1...` obriga a EV a sair da tela para descobrir de quem e.
@@ -183,6 +185,9 @@ main{max-width:1080px;margin:0 auto;padding:16px 16px 96px}
 .chip.danger{background:var(--danger-bg);color:var(--danger)}
 .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
 .muted{color:var(--muted)}
+/* O cabecalho declarativo: frases, nao numeros soltos. */
+.resumo{font-size:15px;line-height:1.7}
+.resumo b{font-size:17px}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);
   vertical-align:top}
@@ -263,32 +268,90 @@ const dia = s => /^\d{4}-\d{2}-\d{2}/.test(s || '') ? s.slice(0,10).split('-').r
 const nome = k => NOMES[k] || (catPorChave[k] || {}).nome || k || '';
 const nomeCat = k => nome(k) || '(sem destino)';
 
+/* Motivo de bloqueio -> o que significa, dito para quem nao le codigo. Motivo
+   sem entrada aqui aparece cru na tela, e isso e um bug DESTA tela: se o CLI
+   ganhar um motivo novo, acrescente a explicacao junto. */
 const MOTIVOS = {
-  'recurrence': 'Lancamento recorrente. O PATCH publico e no-op silencioso (FNC-184): responde 200 e nao salva. Bloqueado de proposito; migra depois, com o mesmo comando.',
-  'operation-type-mismatch': 'Receita apontada para categoria devedora (ou o contrario). O servidor recusaria.',
-  'account-and-items': 'A categoria antiga aparece na conta E nos itens. Dado legado incoerente: precisa de olhar humano.',
-  'input-without-category': 'Item sem categoria propria. Nao da para saber o que trocar.',
-  'element-without-category': 'Regra @element, mas o elemento nao tem categoria oficial cadastrada. Nao se chuta.',
-  'element-rule-on-account-level': 'Regra @element numa conta sem itens. @element so vale no nivel de item.',
-  'element-category-not-postable': 'A categoria oficial do elemento esta arquivada ou e sintetica. Escreve-la daria 422 e abortaria o lote.'
+  'recurrence': ['Lancamento recorrente',
+    'O Aegro responde "salvo" e nao salva. Bloqueado de proposito; migra depois, com o mesmo comando e sem retrabalho.'],
+  'settled-recurrence-inputs': ['Recorrente com parcela ja paga',
+    'O Aegro recusa alterar os itens desse lancamento. A categoria da conta inteira ainda poderia ser trocada.'],
+  'revenue-item-apportioned-noop': ['Receita com itens e rateio de safra',
+    'Medido: o Aegro responde vazio e nao grava. Bloqueado antes da escrita para nao contar como migrado.'],
+  'stock-location-closed': ['Rateio aponta para local de estoque fechado',
+    'Medido: o Aegro responde "salvo" e nao grava. Reabrir o local (ou corrigir o rateio) resolve.'],
+  'override-multi-source': ['Lancamento com duas categorias antigas',
+    'Ele tem itens de DUAS categorias antigas diferentes, e a decisao conta a conta so tem um destino — os dois itens iriam para o mesmo lugar. Decida por regra (que separa item a item) em vez de conta a conta.'],
+  'operation-type-mismatch': ['Receita apontada para categoria de despesa',
+    'Ou o contrario. O Aegro recusaria a gravacao.'],
+  'account-and-items': ['Categoria antiga na conta E nos itens',
+    'Dado legado incoerente: nao ha uma alteracao que arrume as duas pontas de uma vez. Precisa de olhar humano.'],
+  'input-without-category': ['Item sem categoria propria',
+    'Nao da para saber o que trocar nesse item.'],
+  'element-without-category': ['Insumo sem categoria oficial cadastrada',
+    'A regra manda usar a categoria do insumo, e esse insumo nao tem uma. Nao se chuta.'],
+  'element-rule-on-account-level': ['Regra de insumo num lancamento sem itens',
+    'A regra manda usar a categoria do insumo, mas este lancamento nao tem itens.'],
+  'element-category-not-postable': ['Categoria oficial do insumo nao aceita lancamento',
+    'Ela esta arquivada ou e so agrupadora. Usa-la faria o lote inteiro parar.']
 };
-const FONTES = {
-  precedent: ['A propria base do cliente responde', 'ok'],
-  element: ['Categoria oficial do elemento', 'ok'],
-  lexical: ['Nome equivalente — confira', 'warn'],
-  none: ['Sem sinal na base', 'danger'],
-  assistant: ['Palpite do assistente — sem precedente na base', 'warn']
+
+/* ---------- dicionario: nada de jargao chega na tela ----------
+   Todo valor cru do CLI passa por aqui antes de aparecer. A tela foi rejeitada
+   em campo por falar `planned`/`unresolved`/`cluster`/`override`/
+   `by: company+fingerprint` — vocabulario do modelo interno do CLI, varios em
+   ingles. Se voce acrescentar algo novo, acrescente a traducao junto. */
+const T = {
+  status: {
+    planned:   'vai mudar de categoria',
+    unresolved:'ainda sem destino definido',
+    kept:      'fica como esta, de proposito',
+    blocked:   'recusado pelo sistema'
+  },
+  /* O que os lancamentos do grupo tem em comum — a frase entra sozinha num
+     chip, sem prefixo ("agrupados por agrupador" ficava redundante). */
+  eixo: {
+    tags:                 'mesmo agrupador',
+    'company+fingerprint':'mesmo fornecedor e descricao',
+    company:              'mesmo fornecedor',
+    fingerprint:          'mesma descricao',
+    element:              'mesmo insumo',
+    none:                 'sem pista em comum'
+  },
+  /* De onde veio o palpite -> [texto na tela, cor]. E a forca da sugestao, e e
+     por isso que a EV confia ou desconfia dela. Dicionario UNICO: nao crie
+     outro mapa de fonte em lugar nenhum. */
+  fonte: {
+    precedent:['A propria base do cliente ja usa essa categoria', 'ok'],
+    element:  ['Categoria oficial cadastrada no insumo', 'ok'],
+    lexical:  ['O nome e quase igual ao de uma categoria ativa — confira', 'warn'],
+    none:     ['Nenhuma pista encontrada na base', 'danger'],
+    assistant:['Palpite do assistente, sem precedente na base — confira', 'warn']
+  }
 };
+const FONTES = T.fonte;
+const traduzEixo   = v => T.eixo[v]   || v;
+const traduzStatus = v => T.status[v] || v;
 
 /* ---------- painel de aprovacao ---------- */
 function rotuloGrupo(g){
   const de = (g.fromKeys || []).map(nome).join(', ') || '(?)';
-  if (g.status === 'planned')
-    return de + ' → ' + nomeCat(g.toKey) +
-      (g.ruleIndex ? ' (regra #' + g.ruleIndex + ')' : '');
-  if (g.status === 'blocked') return 'BLOQUEADO · ' + de;
-  if (g.status === 'kept') return 'MANTIDO · ' + de;
-  return 'SEM REGRA · ' + de;
+  if (g.status === 'planned') return de + ' → ' + nomeCat(g.toKey);
+  return de;
+}
+
+/* Uma frase declarativa no lugar dos numeros soltos. "planned: 36" era a
+   primeira coisa que a EV lia, e nao significava nada para ela. */
+function frasePainel(c, valorPlanejado){
+  const linha = (n, texto, extra) => !n ? '' :
+    '<div><b>' + n + '</b> ' + texto + (extra || '') + '</div>';
+  return '<div class="resumo">' +
+    linha(c.planned || 0, 'lancamento(s) vao mudar de categoria',
+          valorPlanejado ? ' (' + brl(valorPlanejado) + ')' : '') +
+    linha(c.unresolved || 0, 'ainda sem destino — decida abaixo') +
+    linha(c.kept || 0, 'ficam como estao, de proposito') +
+    linha(c.blocked || 0, 'o sistema recusou; nao serao tocados') +
+    '</div>';
 }
 
 function pintaAprovacao(){
@@ -301,7 +364,7 @@ function pintaAprovacao(){
     bloq[r].n += grupo.bills || 0;
     bloq[r].v += grupo.totalAmount || 0;
   }
-  let html = '<h2>Antes de aprovar</h2>';
+  let html = '<h2>O que este plano faz</h2>';
 
   if (sweep.complete === false){
     html += '<div class="banner danger"><b>A varredura nao fechou.</b> ' +
@@ -309,62 +372,107 @@ function pintaAprovacao(){
       esc(sweep.uniqueCollected) + '. ' + esc(JSON.stringify(sweep.issues || [])) +
       '<br>Nao aprove: parte da categoria pode ter ficado de fora do plano.</div>';
   }
-  html += '<div class="row" style="margin-bottom:10px">' +
-    ['planned','unresolved','kept','blocked'].map(s =>
-      '<span class="chip">' + s + ': <b>' + (c[s] || 0) + '</b></span>').join('') +
-    '<span class="chip">gerado em ' + esc(meta.generatedAt || '?') + '</span></div>';
+  const valorPlanejado = g.filter(x => x.status === 'planned')
+    .reduce((s, x) => s + (x.totalAmount || 0), 0);
+  html += frasePainel(c, valorPlanejado) +
+    '<div class="muted" style="margin:6px 0 12px">Plano gerado em ' +
+    esc(meta.generatedAt || '?') + '.</div>';
 
   if (meta.recurrentInSweep){
     html += '<div class="banner warn"><b>' + meta.recurrentInSweep +
-      '</b> lancamento(s) recorrente(s) na varredura; <b>' +
-      (meta.recurrentBlocked || 0) + '</b> bloqueado(s) pelo plano. ' +
-      'Recorrente nao e escrito enquanto o FNC-184 nao subir — nao e erro, e um ' +
-      'conjunto que migra depois, com o mesmo comando.</div>';
+      '</b> lancamento(s) recorrente(s) neste recorte; <b>' +
+      (meta.recurrentBlocked || 0) + '</b> ficam de fora desta rodada. ' +
+      'O Aegro ainda nao grava essa alteracao em lancamento recorrente — nao e ' +
+      'erro seu nem dado errado. Eles migram depois, com o mesmo comando e sem ' +
+      'refazer nada.</div>';
   }
 
-  if (g.length){
-    html += '<div class="scroll"><table><thead><tr><th>Grupo</th>' +
-      '<th class="num">Lancamentos</th><th class="num">Valor</th><th>Por que</th>' +
-      '</tr></thead><tbody>' + g.map(x =>
-        '<tr><td>' + esc(rotuloGrupo(x)) + '</td>' +
-        '<td class="num">' + (x.bills || 0) + '</td>' +
-        '<td class="num">' + brl(x.totalAmount) + '</td>' +
-        '<td class="muted">' + esc(x.why || x.reason || '') + '</td></tr>').join('') +
-      '</tbody></table></div>';
-  }
+  /* Tres blocos com titulo, e nao uma tabela unica com prefixo em caixa alta no
+     meio do texto. A EV perguntou, olhando a tabela antiga: "o que sao aqueles
+     grupos ali, sao os que ja foram, os que foram resolvidos, os que nao
+     foram?" — e a tela nao respondia. Cada bloco abre dizendo o que ele e. */
+  const tabela = (linhas, colunaPorque) =>
+    '<div class="scroll"><table><thead><tr><th>Grupo</th>' +
+    '<th class="num">Lancamentos</th><th class="num">Valor</th>' +
+    '<th>' + colunaPorque + '</th></tr></thead><tbody>' +
+    linhas.map(x =>
+      '<tr><td>' + esc(rotuloGrupo(x)) + '</td>' +
+      '<td class="num">' + (x.bills || 0) + '</td>' +
+      '<td class="num">' + brl(x.totalAmount) + '</td>' +
+      '<td class="muted">' + esc(x.why || x.reason || '') + '</td></tr>').join('') +
+    '</tbody></table></div>';
+
+  const bloco = (titulo, frase, linhas, colunaPorque) => !linhas.length ? '' :
+    '<h2 style="margin-top:16px">' + titulo + '</h2>' +
+    '<p class="muted" style="margin:2px 0 8px">' + frase + '</p>' +
+    tabela(linhas, colunaPorque);
+
+  html += bloco('O que vai mudar',
+    'Estes lancamentos saem da categoria antiga e vao para a nova assim que ' +
+    'voce aprovar.',
+    g.filter(x => x.status === 'planned'), 'Por que este destino');
+
+  html += bloco('O que fica como esta',
+    'Decisoes conscientes: alguem marcou para nao mexer.',
+    g.filter(x => x.status === 'kept'), 'Por que fica');
+
+  html += bloco('O que ainda nao tem destino',
+    'Nenhuma das regras que voce definiu alcancou estes lancamentos. Eles nao ' +
+    'serao tocados — e os grupos mais abaixo nesta pagina sao onde voce decide ' +
+    'o que fazer com eles.',
+    g.filter(x => x.status === 'unresolved'), 'O que faltou');
 
   const motivos = Object.keys(bloq);
   if (motivos.length){
-    html += '<h2 style="margin-top:14px">Nao vai migrar</h2><div class="scroll">' +
+    html += '<h2 style="margin-top:16px">O que o sistema recusou</h2>' +
+      '<p class="muted" style="margin:2px 0 8px">O Aegro nao aceita (ou nao ' +
+      'grava) esta alteracao nestes lancamentos. Nao e erro seu nem dado ' +
+      'corrompido, e nada sera escrito neles.</p><div class="scroll">' +
       '<table><thead><tr><th>Motivo</th><th class="num">Lancamentos</th>' +
       '<th class="num">Valor</th><th>O que significa</th></tr></thead><tbody>' +
-      motivos.map(m =>
-        '<tr><td class="mono">' + esc(m) + '</td><td class="num">' + bloq[m].n +
+      motivos.map(m => {
+        const info = MOTIVOS[m];
+        return '<tr><td>' + esc(info ? info[0] : m) +
+        '</td><td class="num">' + bloq[m].n +
         '</td><td class="num">' + brl(bloq[m].v) + '</td><td class="muted">' +
-        esc(MOTIVOS[m] || 'Sem explicacao cadastrada.') +
-        '</td></tr>').join('') + '</tbody></table></div>';
+        esc(info ? info[1] : 'Motivo novo, ainda sem explicacao nesta tela (' +
+          m + ') — pergunte ao time antes de aprovar.') +
+        '</td></tr>';
+      }).join('') + '</tbody></table></div>';
   }
   document.getElementById('aprovacao').innerHTML = html;
 }
 
 /* ---------- cauda ---------- */
 function tituloDe(cl){
+  if (cl.by === 'tags') return 'agrupador ' + (cl.tags || []).join(' + ');
   if (cl.by === 'company+fingerprint') return cl.fingerprint + ' — ' + nome(cl.companyKey);
   if (cl.by === 'company') return nome(cl.companyKey) + ' (sem descricao util)';
   if (cl.by === 'fingerprint') return cl.fingerprint;
-  if (cl.by === 'element') return 'elemento ' + (cl.elementKeys || []).map(nome).join(', ');
-  return 'sem sinal nenhum';
+  if (cl.by === 'element') return 'insumo ' + (cl.elementKeys || []).map(nome).join(', ');
+  return 'sem pista nenhuma';
 }
 
+/* O que vai acontecer se ela escolher isto — em portugues, nao no nome do
+   campo do arquivo de/para. */
 function previa(cl, d){
   const n = (cl.fromKeys || []).length || 1;
-  if (!d || d.acao === 'adiar') return 'Nada muda no de/para. Volta na proxima rodada.';
-  if (d.acao === 'manter') return cl.count + ' override(s) com keep:true.';
-  if (cl.by === 'none') return cl.count + ' override(s) por billKey — sem sinal para virar regra.';
-  const when = {'company+fingerprint':'companyKeys + descriptionFingerprint',
-    'company':'companyKeys', 'fingerprint':'descriptionFingerprint',
-    'element':'elementKeys'}[cl.by];
-  return n + ' regra(s) (uma por categoria de origem), when: ' + when + '.';
+  if (!d || d.acao === 'adiar') return 'Nada muda agora. Este grupo volta na proxima rodada.';
+  if (d.acao === 'manter')
+    return 'Estes ' + cl.count + ' lancamento(s) ficam na categoria antiga, de proposito.';
+  if (cl.by === 'none')
+    return 'Sem pista para virar regra: a decisao vale conta a conta, ' +
+      'nos ' + cl.count + ' lancamento(s) deste grupo.';
+  const criterio = {
+    'tags':'terem os mesmos agrupadores',
+    'company+fingerprint':'serem do mesmo fornecedor e terem a mesma descricao',
+    'company':'serem do mesmo fornecedor',
+    'fingerprint':'terem a mesma descricao',
+    'element':'terem o mesmo insumo'
+  }[cl.by];
+  return 'Vira ' + (n > 1 ? n + ' regras' : 'uma regra') +
+    ' que alcanca lancamentos por ' + criterio +
+    ' — inclusive os que aparecerem depois.';
 }
 
 function cartao(cl, i){
@@ -378,12 +486,14 @@ function cartao(cl, i){
     '<div class="row"><b>#' + (i+1) + '</b> <span>' + esc(tituloDe(cl)) + '</span>' +
     '<span class="grow"></span><span class="chip">' + cl.count + ' lancamentos</span>' +
     '<span class="chip">' + brl(cl.totalAmount) + '</span>' +
-    '<span class="chip mono">' + esc(cl.by) + '</span></div>' +
+    '<span class="chip">' + esc(traduzEixo(cl.by)) + '</span></div>' +
 
     opcoes.map(o => {
       const f = FONTES[o.src] || FONTES.none;
-      return '<div class="evid"><span class="chip ' + f[1] + '">' + esc(o.src) +
-        ' — ' + esc(f[0]) + '</span><div class="muted" style="margin-top:4px">' +
+      /* A FONTE em portugues, nao o rotulo cru (`precedent`, `lexical`). E ela
+         que diz a forca do palpite, e e por isso que a EV confia ou nao. */
+      return '<div class="evid"><span class="chip ' + f[1] + '">' + esc(f[0]) +
+        '</span><div class="muted" style="margin-top:4px">' +
         esc(o.ev || '') + '</div></div>';
     }).join('') +
     (opcoes.length ? '' : '<div class="evid muted">' + esc(s.evidence || '') + '</div>') +
@@ -392,7 +502,7 @@ function cartao(cl, i){
     opcoes.map(o => '<label class="opt"><input type="radio" name="d' + i + '" value="' +
       o.v + '"' + (o.pre ? ' checked' : '') + '><span>' + o.rot + '</span></label>').join('') +
     '<label class="opt"><input type="radio" name="d' + i + '" value="outra">' +
-      '<span>Outra categoria</span></label>' +
+      '<span>Escolher outra categoria da lista</span></label>' +
     '<div style="padding-left:26px;display:none" data-campo="outra">' +
       '<input type="text" data-filtro placeholder="filtrar..." size="22"> ' +
       '<select data-select><option value="">— escolha —</option></select></div>' +
@@ -407,9 +517,13 @@ function cartao(cl, i){
 
     '<details style="margin-top:6px"><summary>' + (cl.samples || []).length +
     ' amostra(s) · origem: ' + esc((cl.fromKeys || []).map(nome).join(', ')) + '</summary>' +
-    '<div class="scroll"><table><thead><tr><th>Data</th><th>Descricao</th>' +
-    '<th class="num">Valor</th></tr></thead><tbody>' +
+    '<div class="scroll"><table><thead><tr><th>Data</th><th>Fornecedor</th>' +
+    '<th>Descricao</th><th class="num">Valor</th></tr></thead><tbody>' +
+    /* Fornecedor por LINHA, e nao no cabecalho do grupo: agrupado por
+       agrupador, um cartao junta dezenas de fornecedores diferentes, e e aqui
+       que a EV ve de quem e cada um. */
     (cl.samples || []).map(a => '<tr><td>' + esc(dia(a.entryDate)) + '</td><td>' +
+      esc(a.companyKey ? nome(a.companyKey) : '') + '</td><td>' +
       esc(a.description) + '</td><td class="num">' + brl(a.totalAmount) +
       '</td></tr>').join('') + '</tbody></table></div></details></section>';
 }
@@ -492,8 +606,9 @@ document.getElementById('hEnv').textContent = meta.env || '(env?)';
 document.getElementById('hHash').textContent =
   (meta.planHash || '').slice(0, 22) + ((meta.planHash || '').length > 22 ? '...' : '');
 document.getElementById('hHash').title = meta.planHash || '';
-document.getElementById('tituloCauda').textContent =
-  'A cauda — ' + clusters.length + ' grupo(s) sem regra';
+document.getElementById('tituloCauda').textContent = clusters.length
+  ? clusters.length + ' grupo(s) que ainda nao tem destino'
+  : 'Nada aqui: todo lancamento ja tem destino ou decisao';
 pintaAprovacao();
 document.getElementById('cauda').innerHTML = clusters.map(cartao).join('');
 

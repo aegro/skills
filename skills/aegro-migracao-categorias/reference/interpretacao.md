@@ -46,6 +46,24 @@ diferentes no `meta.json`, de proposito:
 Recorrente que nao casa com regra nenhuma fica `unresolved`, nao `blocked`.
 Somar os dois infla a evidencia — nao some.
 
+### `override-multi-source` — a decisao conta a conta nao alcanca duas origens
+
+O lancamento tem itens em **duas ou mais categorias de origem diferentes**, e o
+override e decisao por CONTA: um destino unico seria escrito em todos os itens,
+colapsando duas categorias antigas numa so — com status `planned` e ninguem
+percebendo.
+
+**Como isso aparece na pratica:** quando a cauda vira override em massa. Em
+campo (14/08/2026), o contorno para recortar por data de pagamento gerou **305
+overrides**, e a verificacao de que nenhum deles tinha itens em mais de uma
+origem foi feita **a mao, conta a conta**. Naquele recorte deu zero; numa base
+onde ocorra, seria valor gravado errado em silencio.
+
+**Caminho:** troque o override por **regra**, que decide item a item (a regra
+cuja origem e a categoria daquele item). Nao contorne com mais override, e nao
+peca para o CLI ignorar: o bloqueio existe porque a intencao e ambigua, e
+chutar qual das duas origens vence e exatamente o que esta migracao nao faz.
+
 ### `operation-type-mismatch`
 
 Receita apontada para categoria devedora (ou despesa para credora). O servidor
@@ -167,6 +185,11 @@ Sai com **codigo 1** quando algo tentado falhou.
 As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
 `blocked` e **nao** em `falhaSilenciosa`. Confira o numero por motivo em
 `meta.blockedByReason`.
+
+> **`override-multi-source` nao entra nesta lista, e a diferenca importa.** Ele
+> nao e um no-op da API: a escrita **funcionaria** — e e justamente esse o
+> problema, porque gravaria o destino errado em metade dos itens. Nao procure
+> sintoma na resposta do servidor; a causa esta no arquivo de/para (secao 2).
 
 **Se `falhaSilenciosa` vier > 0 mesmo assim**, e uma destas duas coisas — e a
 distincao importa:
