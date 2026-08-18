@@ -342,6 +342,22 @@ function rotuloGrupo(g){
 
 /* Uma frase declarativa no lugar dos numeros soltos. "planned: 36" era a
    primeira coisa que a EV lia, e nao significava nada para ela. */
+/* O CLI carimba em UTC (`2026-08-18T06:47:29+00:00`), que e o certo para
+   guardar e o errado para mostrar: sao 03:47 no relogio da EV, e nenhum
+   escritorio le ISO. Converte para o horario de Brasilia e escreve o fuso —
+   hora sem fuso e a que faz alguem achar que o plano e de outro dia. */
+function quando(iso){
+  if (!iso) return '?';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  const p = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit',
+    year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {});
+  return p.day + '/' + p.month + '/' + p.year + ' as ' + p.hour + ':' + p.minute +
+    ' (horario de Brasilia)';
+}
+
 function frasePainel(c, valorPlanejado){
   const linha = (n, texto, extra) => !n ? '' :
     '<div><b>' + n + '</b> ' + texto + (extra || '') + '</div>';
@@ -376,7 +392,7 @@ function pintaAprovacao(){
     .reduce((s, x) => s + (x.totalAmount || 0), 0);
   html += frasePainel(c, valorPlanejado) +
     '<div class="muted" style="margin:6px 0 12px">Plano gerado em ' +
-    esc(meta.generatedAt || '?') + '.</div>';
+    esc(quando(meta.generatedAt)) + '.</div>';
 
   if (meta.recurrentInSweep){
     html += '<div class="banner warn"><b>' + meta.recurrentInSweep +

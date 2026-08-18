@@ -16,7 +16,7 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.2.0
+version: 0.2.1
 ---
 
 # Aegro Migracao de Categorias em Massa
@@ -195,7 +195,7 @@ Duas coisas que mudaram o custo e a conversa:
 | custo era funcao do **intervalo de datas** (varredura bissectava desde ~2000, uma conta perdida em 2011 pagava a arvore inteira) | custo e **1 requisicao por pagina de 100**; a bisseccao so entra como reparo se a contagem nao fechar |
 | falha no minuto 55 devolvia **zero** | a varredura tem checkpoint (`<plano>.sweep.jsonl`): retoma de onde parou |
 | token de ~1h vencia no meio e matava a corrida | renova sozinho dentro da sessao |
-| recorte pela data da tela **nao existia** | `--effective-start/--effective-end`, e ele custa 1 requisicao mais 1 leitura por conta-alvo |
+| recorte pela data da tela **nao existia** | `--effective-start/--effective-end`, e ele custa 1 requisicao mais 1 leitura por conta-alvo (compare com paginar antes de escolher — secao 5) |
 
 Se voce estiver num CLI que **nao** tem essas flags (secao 1.1), assuma a pior
 hipotese antiga — varredura sem recorte custa dezenas de minutos — e **nunca
@@ -356,6 +356,23 @@ explicito, e a EV precisa saber qual esta pagando:
 | nenhum | nada | — |
 | `--effective-*` | conta **sem parcela** (a vista sem pagamento / sem condicao): ela nao tem data efetiva | **sim**, conta quantas sao no stderr e grava em `meta.sweep.semParcelaForaDoRecorte` |
 | `--start-date/--end-date` | conta com **data de lancamento nula** | nao — sem janela ela entra; com janela, nao |
+
+**O recorte pela data da tela nem sempre e o mais barato.** Ele custa 1
+enumeracao **mais 1 leitura por conta-alvo**; paginar custa 1 requisicao por
+**cada 100** contas. Medido em staging (18/08/2026, FAZENDAS RAIZES AGRO):
+
+| | Contas | Requisicoes |
+|---|---|---|
+| paginar a categoria inteira | 150 | 2 |
+| recortar pela data da tela | 79 | 81 |
+
+Ou seja: o recorte ganha quando a fatia e **pequena diante da categoria** —
+grosso modo abaixo de ~10%. Numa fatia grande (por exemplo "as contas de 2026"
+numa categoria com 20 mil), ele custa **milhares** de requisicoes contra
+algumas centenas de paginas. O CLI agora anuncia as duas partes do preco
+("achados em 1 requisicao. Agora 1 leitura por conta: mais N requisicoes"):
+**leia essa linha e repasse**, e se N passar de algumas centenas, ofereca a
+alternativa de rodar sem recorte antes de deixar correr.
 
 Gera **tres** arquivos e imprime o hash:
 
