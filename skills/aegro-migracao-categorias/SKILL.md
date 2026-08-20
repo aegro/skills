@@ -16,7 +16,7 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.3.0
+version: 0.3.1
 ---
 
 # Aegro Migracao de Categorias em Massa
@@ -496,7 +496,7 @@ O que a tela cobre:
    `planHash` com botao de copiar, as contagens por status, o agregado por
    regra, os **bloqueados por motivo**, e aviso alto se a varredura nao fechou.
    A EV precisa ver o que **nao** vai migrar antes de liberar o hash — aprovar
-   sem olhar os `blocked` e o ponto cego do FNC-184.
+   sem olhar os `blocked` e o ponto cego que o FNC-184 criou.
 2. **A cauda**: um cartao por cluster, do maior para o menor, com contagem,
    valor, amostras de descricao, os sinais que formaram o grupo, e a sugestao
    com **fonte e evidencia a vista**.
@@ -792,12 +792,23 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
    **guard faltando ou causa nova** — pare e investigue
    ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
    opcional.
-3. **Recorrente e bloqueado, nao migrado.** PATCH publico em bill recorrente e
-   no-op silencioso (FNC-184, esperando fix do backend): responde 200 e nao
-   salva. O plano bloqueia com `blockedReason: recurrence` **de proposito**.
-   Explique isso a EV sem assustar: nao e erro dela nem dado corrompido, e um
-   conjunto que migra depois **com o mesmo comando e sem codigo novo**. O numero
-   de bloqueados e a evidencia que prioriza o fix — reporte-o.
+3. **Recorrente e bloqueado por default — e o motivo MUDOU.** O no-op silencioso
+   do FNC-184 **foi corrigido** (serv-core#5304) e o fix esta em **producao desde
+   a release `v2026.08.17-114950`** (17/08/2026), em staging desde 13/08. Conferido
+   por conteudo de branch no serv-core, e a gravacao **provada** em staging:
+   recorrente migrado com `--allow-recurrent`, releitura direta confirmando a
+   categoria nova.
+   O default continua bloqueando por um motivo diferente e menor: **o CLI nao tem
+   como saber a versao do servidor que esta chamando**. Entao:
+   - **pergunte a EV** se ela quer incluir os recorrentes, dizendo que o Aegro ja
+     grava isso desde 17/08;
+   - com o sim, rode `plan --allow-recurrent`, e **canario pequeno + verify antes
+     do lote** — nao pelo FNC-184, mas porque nenhuma escrita em massa aqui vai sem
+     canario;
+   - sobra o 422 de recorrente **com parcela paga** no nivel do item, que segue
+     bloqueado como `settled-recurrence-inputs`. No nivel da conta ele migra.
+
+   Nao repita "o Aegro nao grava recorrente" — era verdade e nao e mais.
 4. **Nunca chute destino.** Sem regra e sem override, o lancamento fica
    `unresolved` e **nao e escrito**. Isso e feature.
 5. **Destino obvio pode ser sintetico.** A ativa "Manutencao de Maquinas e

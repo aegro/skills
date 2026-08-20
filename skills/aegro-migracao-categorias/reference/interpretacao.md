@@ -22,12 +22,22 @@ chuta. O trabalho e transformar `unresolved` em `planned` ou em `kept` pela tela
 
 ## 2. Motivos de bloqueio
 
-### `recurrence` — o unico que espera backend
+### `recurrence` — CORRIGIDO no servidor; o bloqueio agora e precaucao
 
-O lancamento e recorrente. O PATCH da API publica em bill recorrente **responde
-200 e nao salva** (FNC-184: `updateBillWithRecurrences` devolve a bill antiga do
+O lancamento e recorrente. O PATCH da API publica em bill recorrente **respondia
+200 e nao salvava** (FNC-184: `updateBillWithRecurrences` devolvia a bill antiga do
 banco). Numa base de folha isso significaria "migrei 3 mil contas" com zero
 persistido.
+
+**Isso foi corrigido** por serv-core#5304 (commit `cf73a8dff5`), e o fix esta em
+**producao desde a release `v2026.08.17-114950`** (17/08/2026), em staging desde
+13/08 — conferido por conteudo de branch, e a gravacao provada em staging por
+releitura direta de um recorrente migrado.
+
+O `plan` **continua bloqueando por default**, e a razao mudou: o CLI nao sabe a
+versao do servidor que esta chamando. Com `--allow-recurrent` os recorrentes
+migram; e o que fica de fora e o recorrente **com parcela paga** no nivel do item
+(`settled-recurrence-inputs`).
 
 O plano bloqueia de proposito, em vez de mandar uma escrita que a gente sabe que
 nao persiste. **Como dizer a EV:**
@@ -163,7 +173,7 @@ pula o que tem `ok: true`.
 |---|---|---|
 | `ok` | Escreveu | — |
 | `structural` | 422 de payload malformado (`financial-category.with-inputs`, `input-order.required`, `cost-apportion`, `financial-category.not-found`, `financial-category.type`) | **O lote aborta no primeiro.** E bug de plano: conserte o de/para e replaneje. Nao suba `--max-failures` |
-| `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Assinatura do FNC-184. Rode o `verify` |
+| `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Era a assinatura do FNC-184, hoje corrigido; num servidor atualizado isto aponta para a quarta causa, sem causa conhecida (4.1). Rode o `verify` |
 | `financial-close` | Fechamento financeiro recusou | Inesperado: o guard so reprova mudanca de saldo, e trocar categoria nao muda saldo. Reporte |
 | `not-found` | 404 | A conta sumiu entre o plano e a escrita. Replaneje |
 | `server` | 5xx | Ja teve retry com backoff. Se persistir, pare |
@@ -198,7 +208,7 @@ Sai com **codigo 1** quando algo tentado falhou.
 
 | Causa | Sintoma na API | `blockedReason` |
 |---|---|---|
-| **FNC-184** — bill recorrente | 200 com a bill antiga | `recurrence` |
+| **FNC-184** — bill recorrente (**corrigido no servidor**, em producao desde 17/08/2026; o bloqueio segue por default porque o CLI nao sabe a versao do servidor) | 200 com a bill antiga | `recurrence` |
 | Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
 | Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
 

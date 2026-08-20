@@ -492,9 +492,9 @@ function pintaAprovacao(){
     html += '<div class="banner warn"><b>' + meta.recurrentInSweep +
       '</b> lancamento(s) recorrente(s) neste recorte; <b>' +
       (meta.recurrentBlocked || 0) + '</b> ficam de fora desta rodada. ' +
-      'O Aegro ainda nao grava essa alteracao em lancamento recorrente — nao e ' +
-      'erro seu nem dado errado. Eles migram depois, com o mesmo comando e sem ' +
-      'refazer nada.</div>';
+      'Eles ficam de fora por precaucao, nao por defeito: o Aegro passou a gravar ' +
+      'essa alteracao em lancamento recorrente, e quem roda pode incluir na ' +
+      'proxima rodada — com o mesmo comando e sem refazer nada.</div>';
   }
 
   /* Blocos com titulo, e nao uma tabela unica com prefixo em caixa alta no meio
