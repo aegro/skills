@@ -12,7 +12,7 @@ verdade e um conjunto que migra depois.
 |---|---|---|
 | `planned` | Casou com regra ou override; o payload esta pronto | sim, no `apply` |
 | `unresolved` | Nenhuma regra casou | **nao** — vai para a cauda |
-| `kept` | Override com `keep: true`: fica na antiga de proposito | **nao** |
+| `kept` | Override com `keep: true`: fica na antiga de proposito — inclusive o que a tela chama "resolver manualmente", que vai para o relatorio final | **nao** |
 | `blocked` | Nao deve ser escrito; ver secao 2 | **nao** |
 
 `unresolved` **nao e erro**. E o desenho: sem regra e sem override, o CLI nunca
@@ -128,6 +128,26 @@ incluindo o que foi descartado, na secao 4.1.
 `farmKey`. O discriminante e "aparece na listagem?", uma inferencia, nao um
 contrato da API. Se o endpoint um dia expuser status, o guard muda.
 
+### `apportion-per-item` — recusa limpa, e nao no-op
+
+Conta com `apportionMode = PER_ITEM` tem o custo apropriado item por item, e a API
+**recusa alterar `inputs`** com 422 explicito:
+
+> O campo 'inputs' nao pode ser alterado neste lancamento: ele possui apropriacao
+> de custo por item (apportionMode=PER_ITEM) vinculada aos itens atuais. Edite os
+> itens na tela do Aegro.
+
+Diferente dos tres no-ops: aqui a API **diz** que recusou, e nada e corrompido. O
+bloqueio existe para nao gastar a escrita e, sobretudo, para essa recusa nao
+aparecer no meio de mil escritas confundida com falha de verdade.
+
+**So vale no nivel do ITEM.** No nivel da conta o payload nao toca `inputs`, e a
+mesma conta migra normalmente.
+
+Medido: **1 lancamento em 1.272** (19/08/2026), encontrado pelo canario
+estratificado — um `--limit 50` seco nao o tocaria. Para a EV: *"esse tem o custo
+dividido item por item, e o Aegro so deixa mexer nele pela tela"*.
+
 Caso classico: o local foi **substituido por um novo de nome quase identico** e as
 contas antigas continuaram apontando para o fechado. Suspeite sempre que a fazenda
 tiver reorganizado o estoque.
@@ -181,6 +201,12 @@ Sai com **codigo 1** quando algo tentado falhou.
 | **FNC-184** — bill recorrente | 200 com a bill antiga | `recurrence` |
 | Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
 | Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
+
+E existe uma **quarta**, sem causa identificada: 38 de 1.234 contas (19/08/2026)
+responderam 200 e nao gravaram, sendo estruturalmente identicas a centenas que
+gravaram. Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e
+o `verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
+lista com link.
 
 As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
 `blocked` e **nao** em `falhaSilenciosa`. Confira o numero por motivo em

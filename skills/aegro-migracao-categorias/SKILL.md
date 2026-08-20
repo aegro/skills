@@ -16,7 +16,7 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.2.2
+version: 0.3.0
 ---
 
 # Aegro Migracao de Categorias em Massa
@@ -98,6 +98,10 @@ chega por `aegro skills sync` (sem release do CLI) e pode encontrar CLI velho:
 | `--labels/--no-labels` | o `unresolved.json` vem sem nomes; resolva voce (secao 6) |
 | `--resume/--no-resume`, `--sweep-concurrency` | varredura sem retomada; falha no meio custa a corrida inteira |
 | `--stratify-by` | canario manual (secao 8.1) |
+| `sources` no de/para | categoria de origem SEM regra nao e varrida, e os lancamentos dela **desaparecem** do plano (95 deles em campo). Sem a flag, use uma regra sentinela por categoria: `{"from": "<antiga>", "to": "<qualquer ativa>", "when": {"allTags": ["__NAO_CASA__"]}}` |
+| `--only-bill` no `apply` | para reaplicar um subconjunto, monte um de/para dedicado com overrides e rode um `plan` inteiro |
+| `--max-transient-failures` | 429 conta como falha e aborta o lote por `--max-failures`: baixe `--concurrency` para 2 antes de comecar |
+| `<plano>.verify.json` | `chavesQueFalharam` vem cortado em 20; para a lista inteira, releia conta a conta (custa minutos) |
 
 O risco que sobra e real: guard novo no CLI que a skill nao conhece produz plano
 que parece certo e nao e. Se algo na saida do CLI nao bater com o que esta
@@ -184,6 +188,22 @@ O que fazer com essa linha:
   a alternativa de recorte (secao 1.2);
 - abaixo disso, informe e siga.
 
+**No recorte por data efetiva sao DUAS linhas, e repassar so a segunda mente.**
+A primeira diz quantos lancamentos o RECORTE tem; a segunda, como o CLI vai
+busca-los — e o numero dela e o da **categoria inteira**, porque paginar a
+categoria costuma ser a rota mais barata:
+
+```
+aegro: recorte por data efetiva 2025-12-01..2026-08-19: 1.432 lancamento(s) nas
+categorias de origem, achados em 1 requisicao.
+aegro: 1.301 contas a buscar numa categoria de 21.691: paginar custa 217
+requisicoes contra 1.301 lendo uma a uma. Lendo por paginas.
+```
+
+Em campo eu repassei so "21.691 lancamentos, 217 paginas" e o Antonio corrigiu:
+*"nao tem 21 mil lancamentos de dezembro para ca"*. Ele estava certo — o recorte
+era 1.432. **Diga o numero do recorte primeiro**, e o da rota como custo.
+
 Durante a corrida o CLI emite progresso a cada poucos segundos. **Repasse o
 essencial**: silencio de dezenas de minutos foi lido em campo como "travou", e
 custou corridas abortadas na mao.
@@ -260,6 +280,15 @@ O resumo do que muda na sua cabeca:
 
 Voce pode ser flexivel na entrada porque a saida nao e: o `when` e uma whitelist
 fechada e o CLI recusa qualquer coisa fora dela.
+
+**Tres erros da planilha real que so aparecem na hora de escrever** (medidos em
+19/08/2026, planilha de 1.777 linhas):
+
+| Erro | Como aparece | O que fazer |
+|---|---|---|
+| **codigo contabil desatualizado com nome certo** | "Venda Pecuaria 3.1.2", mas a lancavel e a 3.1.2.1 | resolver por codigo falha e por nome funciona — quando os dois discordam, **confirme com a EV** e prefira o nome |
+| **destino de natureza oposta** | aporte que ENTRA apontado para categoria de investimento (saida); despesa com agrupador `VENDA DE MILHO` apontada para receita | o `when` **nao tem** dimensao de fluxo de caixa, entao regra nao separa: a saida e override por conta. Foram 11 contas |
+| **conjunto de agrupadores contido em outro** | 84 pares em que o conjunto de uma regra esta contido no de outra, com destino diferente | emitir da **mais especifica para a mais geral** e obrigatorio (secao 7). **Meca e reporte esses pares antes de aplicar** — e o erro que muda destino sem ninguem ver |
 
 ### 4.1 Planilha pela metade nao bloqueia nada
 
@@ -384,6 +413,44 @@ nao a rota, que muda so o custo. E a garantia que sustenta isso: o conjunto e
 reconciliado **por chave** no fim, e todo alvo que a rota escolhida nao trouxe e
 lido individualmente e contado — rota nunca perde conta em silencio.
 
+### 5.1 Declare o escopo da corrida (`sources`)
+
+**Categoria de origem que nao tem regra tem que estar em `sources`, ou os
+lancamentos dela desaparecem.** Em campo (19/08/2026) a migracao foi dividida em
+11 lotes de categorias; nos lotes onde parte das categorias nao tinha regra, elas
+nao foram varridas, e seus lancamentos nao apareceram nem como "sem destino" —
+**95 lancamentos**, achados so porque alguem comparou a contagem entre duas
+rodadas.
+
+```json
+{
+  "version": 1,
+  "sources": ["Manutencao de Maquinas ANTIGA", "Taxas ANTIGA"],
+  "rules": [{"from": "Taxas ANTIGA", "to": "Taxas e Emolumentos"}]
+}
+```
+
+Aqui a "Manutencao" e varrida sem ter regra: os lancamentos dela entram como
+**sem destino** e aparecem na tela para a EV decidir. O `plan` avisa alto, com
+nome, e grava `sourcesWithoutRule` no meta. Regra de bolso: **toda categoria que
+a EV mencionou nesta rodada vai em `sources`**, tenha regra ou nao.
+
+### 5.2 Fazenda grande: lotes por categoria
+
+Para fazenda com dezenas de milhares de lancamentos, divida o de/para em lotes de
+categorias, com teto de ~2.500 lancamentos por lote. Isso resolveu tres coisas de
+uma vez em campo:
+
+- **504 de paginacao profunda.** A varredura das 67 categorias juntas (21.691
+  lancamentos, 217 paginas) falhou **cinco vezes na mesma ultima pagina** — offset
+  ~21.600, sempre 504, com timeout de 30 s e de 120 s. As 216 anteriores passam
+  sempre. Nenhum lote pagina tao fundo, e os 11 fecharam de primeira.
+- **retomada barata**: refazer um lote custa minutos, nao a corrida.
+- **429 diluido**: menos pressao de cota por corrida.
+
+Custa mais comandos, e exige o `sources` de cada lote (5.1). Diga isso a EV: e
+uma escolha de robustez, nao um contorno improvisado.
+
 Gera **tres** arquivos e imprime o hash:
 
 | Arquivo | Conteudo |
@@ -493,7 +560,7 @@ reagrupamento volta a ser seu: cruze os `billKeys` da cauda com
 — se nem por tag colapsar, diga isso ao usuario.
 
 Use override so quando o cluster nao tem sinal nenhum (`by: "none"`) ou quando a
-decisao e `manter`.
+decisao e "resolver manualmente".
 
 Expansao, por tipo de cluster:
 
@@ -505,7 +572,7 @@ Expansao, por tipo de cluster:
 | `fingerprint` | regra | `{"descriptionFingerprint": fingerprint}` |
 | `element` | regra | `{"elementKeys": elementKeys}` |
 | `none` | **override por billKey** | — |
-| acao `manter` (qualquer `by`) | **override `keep: true` por billKey**, com `why` | — |
+| acao `manual` (qualquer `by`) | **override `keep: true` por billKey** — e a conta entra no relatorio final (secao 9.2). O `why` da tela e opcional; se vier vazio, use "resolver manualmente" | — |
 | acao `adiar` | nada — volta na proxima rodada | — |
 
 Tres coisas que quebram silenciosamente se voce nao cuidar:
@@ -604,6 +671,16 @@ Se algum dia o CLI nao tiver a flag, a versao manual e um de/para so com
 porque `rules` nao pode ser vazio. Foi assim que a terceira causa de
 `falhaSilenciosa` apareceu, antes de existir `--stratify-by`.
 
+**Evidencia nova, e mais forte que a anterior** (19/08/2026): um plano de 1.272
+lancamentos tinha 7 classes, e uma delas tinha **1 unico lancamento** — justamente
+o que a API recusa por apropriacao de custo por item. O canario de 55
+estratificado o encontrou; um `--limit 50` seco tinha ~4% de chance de toca-lo.
+Classe de 1 em 1.272 e exatamente o que estratificar existe para achar.
+
+**Como distribuir entre lotes:** proporcional ao tamanho do lote, mas **nunca
+menos que o numero de classes daquele lote** — abaixo disso a estratificacao nao
+tem vaga para distribuir e o CLI avisa que a amostra deixou classes de fora.
+
 ---
 
 ## 9. Ler o `verify`
@@ -623,6 +700,84 @@ Detalhe campo a campo em
 
 O `verify` sai com codigo 1 quando algo tentado falhou. **Criterio de pronto do
 trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
+
+A lista completa de cada categoria (quem falhou, quem nao foi tentada, quem
+mudou colateral) esta em **`<plano>.verify.json`** — o stdout corta em 20 de
+proposito. E desse arquivo que sai o relatorio da secao 9.2.
+
+### 9.1 Quando o Aegro nao grava e ninguem sabe por que: PERGUNTE
+
+Existem duas coisas que acontecem na escrita, sao **excecao**, e **nao tem causa
+identificada**:
+
+| O que acontece | Medido em campo (19/08/2026) |
+|---|---|
+| **Nao gravou em silencio.** A API responde 200, o ledger registra OK, a conta continua na categoria antiga. Nao e nenhuma das causas conhecidas: reproduzivel com concorrencia 1, releitura minutos depois confirma, e as contas sao identicas a centenas que gravaram | **38 de 1.234** (3,1%) |
+| **Gravou, e o total da conta mudou 1 centavo** — para cima ou para baixo. A soma dos itens continua certa; e o total que o servidor recalcula ao regravar `inputs` | **26 de 783** de nivel item (3,3%); nenhuma de nivel conta |
+
+**Nao invente causa e nao bloqueie por palpite** (secao 10, item 8). E **nao
+decida sozinho o que fazer**: as duas coisas mexem em como o cliente fecha o mes,
+e isso e decisao dela, nao sua. Traga assim, com o numero na mao:
+
+> Das 1.234 contas, **38 o Aegro respondeu que salvou e nao salvou** — nao ha
+> causa conhecida, o time ja tem as chaves e nada foi corrompido. E **26** de
+> nivel item migraram com **1 centavo** de diferenca no total da conta.
+> Como voce prefere: eu arrumo essas 64 na mao agora, deixo para depois do
+> lote inteiro, ou paro tudo aqui?
+
+E pergunte especificamente sobre o centavo: **em fechamento contabil, centavo e
+divergencia** — quem sabe se importa e ela.
+
+### 9.2 O relatorio final: uma linha por conta, com link
+
+**Toda migracao termina com um relatorio.** Nao um resumo: uma **linha por conta
+que nao migrou ou que migrou com ressalva, com link direto** para ela no Aegro. E
+o unico artefato com que a pessoa consegue trabalhar depois — sem ele, "38 contas
+falharam" e uma informacao que nao se pode usar.
+
+Monte a partir de tres fontes, todas locais:
+
+| Fonte | O que tira dela |
+|---|---|
+| `<plano>.verify.json` | as listas INTEIRAS: `chavesQueFalharam`, `chavesComFalhaSilenciosa`, `chavesNaoTentadas`, `chavesColaterais` |
+| `plano.jsonl` | de cada chave: data, descricao, fornecedor, valor, categoria de origem e destino, nivel, rateio, e o `blocked_reason` de quem o plano recusou |
+| `arrumar-na-mao-<plano>.md` (baixado da tela) | as que a EV marcou como "resolver manualmente" |
+
+Formato — o que funcionou em campo:
+
+```markdown
+# Contas com problema na migracao de categorias — <FAZENDA>
+
+**<ambiente>, <data>.** <N> lancamentos no plano, **<M> migrados e provados**.
+
+> Arquivo local com dado de cliente — nao versionar, nao publicar.
+
+| Problema | Contas | Valor | O que fazer |
+|---|---:|---:|---|
+| Nao gravou em silencio (causa desconhecida) | 38 | R$ ... | aguardar o time; nada foi corrompido |
+| Recusado: rateio aponta para local fechado | 16 | R$ ... | corrigir o dado apontado, migrar depois |
+| Recusado: itens travados por apropriacao por item | 1 | R$ ... | editar os itens na tela do Aegro |
+| Migrou, mas o total mudou 1 centavo | 26 | R$ ... | conferir se importa ao fechamento |
+
+## <um bloco por problema>
+
+| Data | Descricao | De | Para | Nivel | Valor | Link |
+```
+
+Quatro regras que o relatorio tem que respeitar:
+
+1. **Um link por conta**, no ambiente onde a migracao rodou:
+   `https://app.aegro.com.br/farm/{farmId}?billId={billId}#farm-finance`
+   (`app.staging.aegro.io` em staging). O `farmId` vem de `meta.farmKey`.
+2. **Agrupado por problema, com o que fazer em cada um.** "Falhou" nao diz se ela
+   espera o time, corrige um cadastro, ou edita na tela.
+3. **Ordenado por valor, decrescente.** Se ela so tiver tempo para dez, que sejam
+   as dez que importam.
+4. **Local, e dito no proprio arquivo.** Descricao, fornecedor e valor de cliente
+   real: nao versione, nao publique, nao mande para servico externo.
+
+Se o ensaio foi em staging, **escreva o ambiente no relatorio**: a chave e a mesma
+de producao, entao o link abre a conta real e alguem pode achar que ja foi mexido.
 
 ---
 
@@ -651,7 +806,29 @@ trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
 6. **Nao edite `plano.jsonl`, `.meta.json` nem o ledger a mao.** Todos os tres
    sao registro. Mudou de ideia? Muda o de/para e roda `plan`.
 7. **Um erro estrutural aborta o lote** e isso e correto: e bug do plano.
-   Corrija o de/para e replaneje — nao suba `--max-failures`.
+   Corrija o de/para e replaneje — nao suba `--max-failures`. Cota (429) e 5xx
+   **nao** contam nesse teto (tem o proprio, `--max-transient-failures`): se o
+   lote parar por eles, a resposta e baixar `--concurrency` para 2, nao subir teto.
+8. **Nao bloqueie em massa por correlacao parcial.** O erro de julgamento mais
+   caro da sessao de campo: com **5 casos** eu concluí que a causa do no-op era
+   "rateio de patrimonio + desconto" e **bloqueei 32 lancamentos** com esse motivo
+   escrito no plano. Ao desbloquear, **20 dos 22 gravaram normalmente**.
+   Hipotese de causa exige o **2x2 completo** (com e sem cada condicao) e um teste
+   que tente **derruba-la**, nao confirma-la. Enquanto a causa nao fecha, o certo e
+   **tentar e deixar o `verify` acusar**: falha silenciosa nao corrompe nada, e
+   bloquear por palpite custa migracao que funcionaria.
+9. **Um processo por fazenda, sempre.** Duas corridas de `plan`/`apply` ao mesmo
+   tempo **se invalidam na rotacao do token OAuth**, e o sintoma sao 401
+   intermitentes que parecem instabilidade do servidor. Perdi cerca de uma hora
+   nisso: parei um script e o **loop filho continuou rodando**, processando lotes
+   em paralelo com o script novo. Ao matar um script, **confirme que o processo
+   filho morreu** antes de comecar outro. O CLI avisa ("sessao usada em outro
+   processo"), mas a mensagem se perde no meio dos 429.
+10. **Staging reseta de madrugada: gere e aplique na mesma janela.** O reset
+   apaga as credenciais do ambiente (`FARM_NOT_FOUND` do nada) e restaura a base,
+   entao plano da noite anterior nao vale — e o `apply` recusaria plano com mais de
+   24 h de todo jeito. As **decisoes** da EV nao se perdem (sao locais); as
+   varreduras, sim.
 
 ---
 
@@ -661,8 +838,13 @@ trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
 - NAO pre-marcar sugestao `assistant` ou `lexical`, por mais obvia que pareca.
 - NAO transformar a cauda inteira em `overrides` por billKey porque e mais
   rapido — vira residuo que ninguem consegue auditar depois.
-- NAO usar `keep` como "nao sei": `keep` significa "fica na antiga de proposito",
-  e exige `why`. "Nao sei" e `adiar` (volta na proxima rodada).
+- NAO usar "resolver manualmente" como "nao sei": ele significa "essa eu arrumo
+  na tela do Aegro", e a conta entra no relatorio final. "Nao sei" e `adiar`
+  (volta na proxima rodada).
+- NAO terminar a migracao sem entregar o relatorio de conta a conta (secao 9.2).
+  "38 contas falharam" sem a lista com link e uma informacao inutilizavel.
+- NAO decidir sozinho o que fazer com o no-op silencioso nem com o centavo
+  (secao 9.1): os dois mexem no fechamento do cliente. Pergunte.
 - NAO publicar a tela como artifact hospedado nem mandar `unresolved.json` para
   fora da maquina.
 - NAO rodar `--execute` em producao por iniciativa propria.
@@ -684,8 +866,8 @@ trabalho inteiro:** `category-usage --from "<antiga>"` devolver **0**.
 |---|---|---|
 | `financial category-usage` | `--from <cat>` (repetivel) `[--group-by tag,company,element,level]` `[--top N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--sweep-concurrency N]` | leitura |
 | `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--no-labels]` `[--samples N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--resume/--no-resume]` `[--sweep-concurrency N]` | leitura |
-| `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--stratify-by apportion,level,cashFlow]` `[--concurrency 4]` `[--max-failures 25]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
-| `financial migrate-category verify` | `--plan <jsonl>` `[--sample 10]` | leitura |
+| `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--stratify-by apportion,level,cashFlow]` `[--only-bill <chave>]` `[--concurrency 4]` `[--max-failures 25]` `[--max-transient-failures 200]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
+| `financial migrate-category verify` | `--plan <jsonl>` `[--sample 10]` — grava `<plano>.verify.json` com as listas inteiras | leitura |
 | `fin-categories list` | `[--status ACTIVE]` `[--type]` `[--operation-type]` `[--search-text]` `[--page N]` | leitura |
 | `auth login` | `[--env staging]` | — |
 
