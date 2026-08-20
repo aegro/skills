@@ -640,8 +640,15 @@ function cartao(i){
   const s = cl.suggestion || {}, sa = cl.sugestaoAssistente;
   const d = decisoes[cl.cluster];
   const opcoes = [];
+  /* Pre-marcar e a tela DERIVAR, nao confiar no metadado: `prechecked` vem do
+     JSON, e sugestao fraca (`lexical`, `none`, `assistant`) marcada por engano
+     viraria decisao exportada sem ninguem clicar — o bootstrap chama `leCartao`.
+     A garantia "nao pre-marca decisao fraca" fica valendo mesmo com dado
+     estranho na entrada. */
+  const FORTES = ['precedent', 'element'];
   if (s.toKey) opcoes.push({v:'sugestao', rot:'Aplicar sugestao: <b>' + esc(nomeCat(s.toKey)) +
-    '</b>', src:s.source || 'none', ev:s.evidence, pre:!!s.prechecked});
+    '</b>', src:s.source || 'none', ev:s.evidence,
+    pre: !!s.prechecked && FORTES.indexOf(s.source) !== -1});
   if (sa && sa.toKey) opcoes.push({v:'assistente', rot:'Palpite do assistente: <b>' +
     esc(nomeCat(sa.toKey)) + '</b>', src:'assistant', ev:sa.evidence, pre:false});
   /* Ja decidido: o radio nasce onde a decisao esta, e nao no default. Sem isto,
@@ -987,7 +994,10 @@ atualiza();
 - **Nao escreve na API.** Ela produz um arquivo de decisoes. Toda escrita passa
   pelo `apply`, sobre um plano aprovado por hash.
 - **Nao pre-marca `lexical`, `none` nem `assistant`.** Decisao fraca nao nasce
-  aceita (D7). Se voce mexer no template, mantenha isso.
+  aceita (D7). E a tela DERIVA isso da fonte da sugestao em vez de confiar no
+  campo `prechecked` do JSON: sugestao fraca que chegasse marcada por engano
+  viraria decisao exportada sem ninguem clicar, porque o bootstrap le os cartoes.
+  Se voce mexer no template, mantenha a derivacao — nao volte a confiar no campo.
 - **Nao deixa baixar sem a caixa "revisei" marcada.** A caixa e a razao de o
   painel de aprovacao estar na mesma tela: aprovar o hash sem olhar os
   bloqueados e como a migracao silenciosamente fica pela metade.
