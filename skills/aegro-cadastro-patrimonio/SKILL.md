@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.6
+version: 0.5.7
 ---
 
 # Cadastro de Patrimonio
@@ -119,7 +119,7 @@ numero solto.
 ## Sequencia: Registrar Manutencao
 
 ```bash
-# Preventiva com pecas (adicionar --crop-prorate-group-key para ratear na safra)
+# Preventiva com pecas (para apropriar o custo a uma safra, ver a secao abaixo)
 aegro maintenances create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
   --stock-location-key <stock_location_key> \
@@ -129,6 +129,30 @@ aegro maintenances create --farm "<fazenda>" \
 
 `--stock-location-key` tambem e obrigatorio aqui — vale para todo evento de
 patrimonio (abastecimento e manutencao).
+
+## Apropriar o custo a uma safra (ou a parte dela)
+
+Vale para abastecimento e manutencao:
+
+| Quero... | Flags |
+|---|---|
+| Custo na safra inteira (rateio por area) | `--crop-key crop::C` |
+| Custo so em alguns talhoes da safra | `--crop-key crop::C` + `--crop-glebe "<nome ou chave>"` e/ou `--glebe-tag "<agrupador>"` |
+| Desfazer a restricao por talhao | `--clear-crop-glebes` (no `update`) |
+| Conferir onde o custo caiu | `get <key> --apportionment` |
+
+```bash
+# Custo apenas nos talhoes do agrupador "Estancia" (exige login OAuth e uma safra so)
+aegro maintenances create --farm "<fazenda>" \
+  --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
+  --stock-location-key <stock_location_key> \
+  --crop-key <crop_key> --glebe-tag "Estancia" --execute
+```
+
+**Nao use `--crop-prorate-group-key` para apontar talhoes.** Grupo de rateio tem cota
+de plano (1 grupo na maioria, 2 no Avancado) e serve para um conjunto de safras
+reutilizado entre lancamentos — gastar o unico slot da fazenda por lancamento estoura
+a cota. Detalhes e modos de falha em `/aegro-patrimonial`.
 
 ## Limitacoes Atuais
 
@@ -149,5 +173,6 @@ Sugerir proximos passos: primeiro abastecimento, manutencao preventiva.
 ## Proximos Workflows
 
 - **Controlar estoque de pecas/combustivel** → `/aegro-reconciliacao-estoque`
-- **Ratear manutencao para safra** → `/aegro-analise-rentabilidade`
+- **Apropriar custo de manutencao a safra ou a talhoes** → `/aegro-patrimonial`
+- **Analisar a rentabilidade por safra** → `/aegro-analise-rentabilidade`
 - **Visao geral da fazenda** → `/aegro-visao-geral`
