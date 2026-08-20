@@ -896,7 +896,11 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
 | `fin-categories list` | `[--status ACTIVE]` `[--type]` `[--operation-type]` `[--search-text]` `[--page N]` | leitura |
 | `auth login` | `[--env staging]` | — |
 
-Todos aceitam `--farm`, `--env` e `-o json|table|csv`. Codigos de saida:
+Todos aceitam `--farm`, `--env` e `-o json|table|csv`. **Passe `--farm` sempre**,
+em todo comando, inclusive nos de leitura: a fazenda do `state.json` e global por
+maquina, e outra sessao trocando de fazenda muda o alvo desta sem avisar. Num
+trabalho que dura horas e roda em paralelo com outros, isso e o suficiente para
+conferir a categoria de uma fazenda e migrar a de outra. Codigos de saida:
 **2** falta OAuth · **4** entrada invalida (de/para, hash, plano velho) ·
 **1** o lote abortou ou o `verify` achou falha.
 

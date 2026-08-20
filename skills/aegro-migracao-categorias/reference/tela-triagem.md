@@ -962,10 +962,46 @@ document.getElementById('btMassaLimpar').onclick = () => {
 };
 
 document.getElementById('revisei').addEventListener('change', atualiza);
-document.getElementById('btCopiarHash').onclick = () =>
-  navigator.clipboard.writeText(meta.planHash || '');
-document.getElementById('btCopiar').onclick = () =>
-  navigator.clipboard.writeText(payload());
+
+/* `navigator.clipboard` exige contexto seguro, e esta tela abre como `file://`,
+   que nao e um. La a propriedade e `undefined` e o botao lancava TypeError sem
+   copiar nada — justamente no passo em que a EV leva o hash para o comando do
+   `apply`. Ordem: API quando existe, `execCommand` como queda, e por ultimo um
+   prompt de onde da para copiar com Ctrl+C. Copiar nunca falha em silencio. */
+function copia(texto, botao){
+  const avisa = ok => {
+    if (!botao) return;
+    const antes = botao.textContent;
+    botao.textContent = ok ? 'copiado' : 'copie manualmente';
+    setTimeout(() => { botao.textContent = antes; }, 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(texto).then(() => avisa(true), () => copiaNaMao(texto, avisa));
+    return;
+  }
+  copiaNaMao(texto, avisa);
+}
+
+function copiaNaMao(texto, avisa){
+  const campo = document.createElement('textarea');
+  campo.value = texto;
+  campo.setAttribute('readonly', '');
+  campo.style.position = 'fixed';
+  campo.style.left = '-9999px';
+  document.body.appendChild(campo);
+  campo.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.body.removeChild(campo);
+  if (ok) { avisa(true); return; }
+  avisa(false);
+  window.prompt('Copie com Ctrl+C:', texto);
+}
+
+document.getElementById('btCopiarHash').onclick = ev =>
+  copia(meta.planHash || '', ev.currentTarget);
+document.getElementById('btCopiar').onclick = ev =>
+  copia(payload(), ev.currentTarget);
 function baixa(texto, arquivo, tipo){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([texto], {type:tipo}));
