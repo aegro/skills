@@ -34,10 +34,11 @@ persistido.
 13/08 — conferido por conteudo de branch, e a gravacao provada em staging por
 releitura direta de um recorrente migrado.
 
-O `plan` **continua bloqueando por default**, e a razao mudou: o CLI nao sabe a
-versao do servidor que esta chamando. Com `--allow-recurrent` os recorrentes
-migram; e o que fica de fora e o recorrente **com parcela paga** no nivel do item
-(`settled-recurrence-inputs`).
+Desde 20/08/2026 o `plan` **migra recorrente por default**. `--no-allow-recurrent`
+volta a bloquear, e serve para um caso so: servidor mais antigo que aquela release
+(o CLI nao sabe a versao do que esta chamando). O que fica de fora e o recorrente
+**com parcela paga E itens** (`settled-recurrence-inputs`); no nivel da conta ele
+migra, e a maioria e de nivel conta.
 
 O plano bloqueia de proposito, em vez de mandar uma escrita que a gente sabe que
 nao persiste. **Como dizer a EV:**
@@ -208,7 +209,7 @@ Sai com **codigo 1** quando algo tentado falhou.
 
 | Causa | Sintoma na API | `blockedReason` |
 |---|---|---|
-| **FNC-184** — bill recorrente (**corrigido no servidor**, em producao desde 17/08/2026; o bloqueio segue por default porque o CLI nao sabe a versao do servidor) | 200 com a bill antiga | `recurrence` |
+| **FNC-184** — bill recorrente (**corrigido no servidor**, em producao desde 17/08/2026; desde 20/08 o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
 | Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
 | Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
 

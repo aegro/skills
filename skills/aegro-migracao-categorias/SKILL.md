@@ -16,7 +16,7 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.3.1
+version: 0.3.2
 ---
 
 # Aegro Migracao de Categorias em Massa
@@ -792,23 +792,23 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
    **guard faltando ou causa nova** — pare e investigue
    ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
    opcional.
-3. **Recorrente e bloqueado por default — e o motivo MUDOU.** O no-op silencioso
-   do FNC-184 **foi corrigido** (serv-core#5304) e o fix esta em **producao desde
-   a release `v2026.08.17-114950`** (17/08/2026), em staging desde 13/08. Conferido
-   por conteudo de branch no serv-core, e a gravacao **provada** em staging:
-   recorrente migrado com `--allow-recurrent`, releitura direta confirmando a
-   categoria nova.
-   O default continua bloqueando por um motivo diferente e menor: **o CLI nao tem
-   como saber a versao do servidor que esta chamando**. Entao:
-   - **pergunte a EV** se ela quer incluir os recorrentes, dizendo que o Aegro ja
-     grava isso desde 17/08;
-   - com o sim, rode `plan --allow-recurrent`, e **canario pequeno + verify antes
-     do lote** — nao pelo FNC-184, mas porque nenhuma escrita em massa aqui vai sem
-     canario;
-   - sobra o 422 de recorrente **com parcela paga** no nivel do item, que segue
-     bloqueado como `settled-recurrence-inputs`. No nivel da conta ele migra.
-
-   Nao repita "o Aegro nao grava recorrente" — era verdade e nao e mais.
+3. **Recorrente MIGRA por default — isso mudou em 20/08/2026.** O no-op silencioso
+   do FNC-184 foi corrigido (serv-core#5304) e esta em **producao desde a release
+   `v2026.08.17-114950`** (17/08/2026), em staging desde 13/08 — conferido por
+   conteudo de branch no serv-core e **provado por releitura** em staging.
+   O que voce precisa fazer com isso:
+   - **nao repita "o Aegro nao grava recorrente"**. Era verdade e nao e mais; a
+     tela tambem foi corrigida.
+   - o `plan` **avisa** quantos recorrentes entraram, nomeando a release. Repasse:
+     e escrita que antes nao acontecia.
+   - `--no-allow-recurrent` e o escape, e serve para um caso so: **servidor mais
+     antigo que aquela release** (serv-core local desatualizado, por exemplo). O
+     CLI nao tem como saber a versao — quem sabe e quem roda.
+   - sobra o 422 de recorrente **com parcela paga E itens**, bloqueado como
+     `settled-recurrence-inputs`. No nivel da conta a mesma conta migra, e a maioria
+     e de nivel conta: medido, 22 com parcela paga e **zero** barradas.
+   - canario + verify continuam obrigatorios, **nao** por causa do FNC-184, e sim
+     porque nenhuma escrita em massa aqui vai sem canario.
 4. **Nunca chute destino.** Sem regra e sem override, o lancamento fica
    `unresolved` e **nao e escrito**. Isso e feature.
 5. **Destino obvio pode ser sintetico.** A ativa "Manutencao de Maquinas e
@@ -876,7 +876,7 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
 | Comando | Params principais | Tipo |
 |---|---|---|
 | `financial category-usage` | `--from <cat>` (repetivel) `[--group-by tag,company,element,level]` `[--top N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--sweep-concurrency N]` | leitura |
-| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--no-labels]` `[--samples N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--resume/--no-resume]` `[--sweep-concurrency N]` | leitura |
+| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--no-labels]` `[--samples N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--resume/--no-resume]` `[--no-allow-recurrent]` `[--sweep-concurrency N]` | leitura |
 | `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--stratify-by apportion,level,cashFlow]` `[--only-bill <chave>]` `[--concurrency 4]` `[--max-failures 25]` `[--max-transient-failures 200]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
 | `financial migrate-category verify` | `--plan <jsonl>` `[--sample 10]` — grava `<plano>.verify.json` com as listas inteiras | leitura |
 | `fin-categories list` | `[--status ACTIVE]` `[--type]` `[--operation-type]` `[--search-text]` `[--page N]` | leitura |
