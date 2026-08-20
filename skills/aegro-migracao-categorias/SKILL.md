@@ -16,7 +16,7 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.3.2
+version: 0.3.3
 ---
 
 # Aegro Migracao de Categorias em Massa
@@ -579,18 +579,32 @@ Tres coisas que quebram silenciosamente se voce nao cuidar:
 
 1. **Uma regra tem um `from` so.** Cluster com varios `fromKeys` vira **uma
    regra por fromKey**, mesmo `when` e mesmo `to`.
-2. **Ordem importa: da regra mais especifica para a mais geral.** Emita nesta
-   ordem — `company+fingerprint`, depois `tags`, depois `fingerprint`, depois
-   `element`, depois `company` — e **acrescente ao fim** das regras que ja
-   existem no de/para. Uma regra `{"companyKeys": [c1]}` posta antes de
+2. **Ordem importa: da regra mais especifica para a mais geral — e a ordem e da
+   lista INTEIRA, nao das novas.** Emita nesta ordem — `company+fingerprint`,
+   depois `tags`, depois `fingerprint`, depois `element`, depois `company` — e
+   depois **reordene o de/para todo**, pondo o especifico antes do geral para o
+   mesmo `from`; entre regras de mesma especificidade, preserve a ordem que veio
+   da planilha. Acrescentar ao fim e o erro: se ja existe uma regra geral daquele
+   `from`, ela casa primeiro e a regra nova nasce inalcancavel — os lancamentos
+   que voce acabou de decidir vao para o destino geral, `planned`, gravados, sem
+   aviso nenhum. Uma regra `{"companyKeys": [c1]}` antes de
    `{"companyKeys": [c1], "descriptionFingerprint": "..."}` engole o grupo
-   especifico sem avisar ninguem.
+   especifico do mesmo jeito.
+   No eixo de agrupador vale a mesma coisa por outro motivo: `allTags` casa por
+   SUBCONJUNTO, entao `{SALARIO}` antes de `{SALARIO, SAFRA 26}` leva as contas do
+   segundo grupo. Os cartoes ja chegam numa ordem segura de transcrever de cima
+   para baixo (o `plan` publica superconjunto antes de subconjunto); se voce
+   reordenar a tela por conta, e sua a responsabilidade de nao inverter isso.
 3. **Override numa conta com itens de origens diferentes e recusado.** Override
    e decisao por CONTA e escreve o mesmo destino em todo item que esteja em
    categoria de origem; numa conta que mistura duas origens, isso colapsaria as
-   duas num destino so. O CLI bloqueia com `override-multi-source` — e a saida e
-   **regra**, que decide item a item. Se voce ver esse motivo no plano, nao
-   tente contornar com mais override.
+   duas num destino so. O CLI bloqueia com `override-multi-source`.
+   A saida **nao** e "usar regra para decidir item a item": `when` nao tem
+   dimensao de conta, e regra e ancorada em `from`, logo atinge todas as contas
+   daquela origem. O que resta e uma **rodada por origem** (um de/para com uma
+   origem de cada vez, e a mesma conta migra em duas passadas) ou ajustar os itens
+   na tela do Aegro antes. Nao tente contornar com mais override, e nao prometa a
+   quem decide uma regra que resolve so aquela conta.
 
 Depois de escrever, **rode o `plan` de novo** e compare: a cauda tem que
 encolher. Se um cluster que a EV decidiu continuar aparecendo em `unresolved`, a

@@ -45,7 +45,7 @@ resposta compila para um `when` diferente.
 | O que a coluna parece ser | Como reconhecer | Compila para |
 |---|---|---|
 | Categoria antiga | os valores batem com nomes/codigos de categoria da fazenda | `rules[].from` direto, sem `when` |
-| **Tag unica** (na tela: *Agrupador*) | os valores batem com tags existentes (`aegro tags list --relation-type BILL`) | `when.anyTags: [tag]` |
+| **Tag unica** (na tela: *Agrupador*) | os valores batem com tags existentes (`aegro tags list --farm "<fazenda>" --relation-type BILL`) | `when.anyTags: [tag]` |
 | **Conjunto de tags** | um valor traz **varias** tags juntas | `when.allTags: [t1, t2, ...]` |
 | Fornecedor | nomes de empresa | `when.companyKeys` (resolva o nome antes) |
 | Elemento / produto | nomes do catalogo de elementos | `when.elementKeys` |
@@ -87,7 +87,9 @@ planilha esta dizendo "conta que tem essas quatro tags vai para Venda Soja".
 **Separar os tokens:** o unico separador confiavel e a **virgula**, porque as
 proprias tags contem `/` e ` - ` (`AGR COMPRA/VENDA SOJA`, `CPF - LEANDRO
 TENORIO`). Nunca quebre por esses. Depois de quebrar por virgula, **valide cada
-token contra a lista real de tags** (`aegro tags list --relation-type BILL`): token que nao existe
+token contra a lista real de tags** (`aegro tags list --farm "<fazenda>" --relation-type BILL`
+— sempre com `--farm`, porque a fazenda do `state.json` e global por maquina e
+outra sessao pode ter trocado): token que nao existe
 como tag e sinal de que voce quebrou errado ou de que a tag foi renomeada — leve
 ao usuario em vez de emitir a regra.
 
@@ -117,6 +119,11 @@ use-a: codigo e unico, nome nao e. Resolva codigo -> chave voce mesmo e emita a
 ```bash
 aegro fin-categories list --farm "<fazenda>" --status ACTIVE --page N -o json
 ```
+
+Percorra **todas** as paginas (`--page` ate `totalPages`) antes de concluir que um
+codigo nao existe: destino que mora na pagina 3 e indistinguivel de destino
+inexistente para quem olhou so a 1, e o resultado dessa confusao e criar categoria
+duplicada.
 
 Isso mata de uma vez o problema de nome duplicado (nesta base existe "Outros
 Custos Agricolas" arquivada **e** ativa com o mesmo nome) sem precisar da

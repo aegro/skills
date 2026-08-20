@@ -70,8 +70,21 @@ cliente real.
 ### 1.2 Substitua no template
 
 Serialize o objeto acima e troque `__DADOS_JSON__` (secao 3) por ele.
-**Escape `<` como `<` na string JSON** antes de substituir — descricao de
-lancamento e texto de cliente, e um `</script>` acidental quebraria a pagina.
+
+**Escape todo `<` como `\u003c`** antes de substituir. O JSON entra num elemento
+`<script>`, que e texto CRU: descricao de lancamento e texto de cliente, e uma
+descricao que contenha `</script>` fecha o elemento antes do `JSON.parse` — a
+pagina quebra
+e o resto do texto do cliente passa a ser interpretado como marcacao. O `esc()`
+da tela nao protege este ponto: ele roda depois, na renderizacao.
+
+```js
+const dadosJson = JSON.stringify(dados).replace(/</g, '\\u003c');
+// e este `dadosJson` que substitui __DADOS_JSON__
+```
+
+`\u003c` dentro de uma string JSON e lido como `<` pelo `JSON.parse`, entao o dado
+chega intacto — o que muda e so o que o navegador ve antes de parsear.
 
 Escreva o resultado ao lado do plano, ex.
 `triagem-plano-salarios.html`, e abra:
@@ -454,6 +467,13 @@ function frasePainel(c, valorPlanejado){
     '</div>';
 }
 
+/* Ausencia de metadado conta como NAO fechou. "Nao sei se a varredura fechou" e
+   indistinguivel de "faltou parte da categoria" para quem esta a um clique de
+   aprovar 15 mil escritas, e o unico default seguro e o que trava. */
+function varreduraFechou(){
+  return !!(meta.sweep && meta.sweep.complete === true);
+}
+
 function pintaAprovacao(){
   const c = meta.counts || {}, sweep = meta.sweep || {}, g = D.grupos || [];
   const bloq = {};
@@ -466,11 +486,16 @@ function pintaAprovacao(){
   }
   let html = '<h2>O que este plano faz</h2>';
 
-  if (sweep.complete === false){
+  if (!varreduraFechou()){
+    const semMeta = !meta.sweep || meta.sweep.complete === undefined;
     html += '<div class="banner danger"><b>A varredura nao fechou.</b> ' +
-      'Declarado ' + esc(sweep.declaredTotal) + ', coletado ' +
-      esc(sweep.uniqueCollected) + '. ' + esc(JSON.stringify(sweep.issues || [])) +
-      '<br>Nao aprove: parte da categoria pode ter ficado de fora do plano.</div>';
+      (semMeta
+        ? 'O plano nao disse se fechou (metadado de varredura ausente). '
+        : 'Declarado ' + esc(sweep.declaredTotal) + ', coletado ' +
+          esc(sweep.uniqueCollected) + '. ' +
+          esc(JSON.stringify(sweep.issues || [])) + ' ') +
+      '<br>Nao aprove: parte da categoria pode ter ficado de fora do plano. ' +
+      'O download esta travado ate isto se resolver.</div>';
   }
   /* Categoria de origem no escopo da corrida SEM regra: os lancamentos dela
      entram como "sem destino" e aparecem abaixo. Dito aqui porque o silencio
@@ -836,8 +861,10 @@ function atualiza(){
     .reduce((a, d) => a + (d.count || 0), 0);
   document.getElementById('fResumo').textContent = n + ' decisao(oes)' +
     (naMao ? ' · ' + naMao + ' para arrumar na mao' : '');
+  /* Tres condicoes, e a primeira nao e do humano: varredura que nao fechou nao
+     produz decisao aplicavel, porque o que faltou nem chegou a virar cartao. */
   document.getElementById('btBaixar').disabled =
-    !document.getElementById('revisei').checked || n === 0;
+    !varreduraFechou() || !document.getElementById('revisei').checked || n === 0;
   pintaParaMao();
 }
 
@@ -964,6 +991,10 @@ atualiza();
 - **Nao deixa baixar sem a caixa "revisei" marcada.** A caixa e a razao de o
   painel de aprovacao estar na mesma tela: aprovar o hash sem olhar os
   bloqueados e como a migracao silenciosamente fica pela metade.
+- **Nao deixa baixar quando a varredura nao fechou** — nem quando o plano nao
+  disse se fechou. Antes o painel avisava e o botao liberava, o que e um guard que
+  so fala: decisao tomada sobre plano incompleto e decisao sobre uma cauda que nao
+  esta toda ali.
 - **Nao oferece categoria sintetica nem arquivada** — desde que voce filtre
   `SYNTHETIC` e use `--status ACTIVE` ao montar `categorias`. Esse filtro e seu.
 - **Nao resolve o NOME de cada insumo da conta.** Mostra quantos itens sao, e
