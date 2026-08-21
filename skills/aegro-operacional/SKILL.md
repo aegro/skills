@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.8.0
+version: 0.8.1
 ---
 
 # Dominio Operacional
@@ -500,12 +500,13 @@ Um elemento participa de tres dominios simultaneamente:
 
 | # | Endpoint | Severidade | Dominio Afetado | Workaround |
 |---|----------|------------|-----------------|------------|
-| 1 | `glebes/filter` 500 | Alta | Talhoes | Usar `GET /glebes/{key}` individual se chave conhecida |
-| 2 | `crop-glebes/filter` 500 | Alta | Safra/Talhoes | Usar `GET /crop-glebes/{key}` individual |
-| 3 | `fuel-supplies/filter` 500 | Media | Patrimonial | **Sem workaround** para listagem. GET individual funciona |
-| 4 | `maintenances/filter` 500 | Media | Patrimonial | **Sem workaround** para listagem. GET individual funciona |
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
+
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
+
+> A numeracao tem buracos de proposito: os numeros sao compartilhados entre
+> as skills deste repo, entao renumerar aqui quebraria as referencias de la.
 
 ### Logica de Retry
 
