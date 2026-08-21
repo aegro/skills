@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.5.3
+version: 0.5.4
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -366,10 +366,10 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 
 | Bug | Sintoma | Workaround |
 |-----|---------|------------|
-| **#1** `glebes list` | `POST /glebes/filter` → HTTP 500 | Usar `glebes get <key>` individual. Obter chaves via `crops glebes <crop_key>`. |
-| **#2** `crop-glebes list` | `POST /crops/{k}/crop-glebes/filter` → 500 | Usar `crop-glebes get <key>` individual. Ou `crops glebes <crop_key>` com `--glebe-key`. |
 | **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
 | **#6** `weather create` | `POST /weather-logs` → 500 | Registrar clima pela interface web. Leitura funciona normal. |
+
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 **Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
 Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).
