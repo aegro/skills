@@ -1,7 +1,7 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.6.0
+version: 0.6.1
 ---
 
 # Aegro Estoquista
@@ -206,7 +206,10 @@ aegro elements financial-categories --farm "<fazenda>" revenue \
 
 **Anexo no elemento** (bula, ficha tecnica, foto):
 `aegro files attach --entity element --key element::<id> --file ./bula.pdf --execute`
-(exige OAuth; releitura de conferencia inclusa).
+(exige OAuth; releitura de conferencia inclusa). **Elemento antigo, cadastrado
+antes do conceito de catalogo, nao aceita anexo**: o servidor recusa qualquer
+re-save dele, e o CLI avisa isso antes de subir o arquivo — nesse caso, anexe
+pela tela do app.
 
 ### 4.3 catalogs (catalogos de referencia)
 

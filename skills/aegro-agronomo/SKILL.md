@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.6.0
+version: 0.6.1
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -181,6 +181,11 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 - Se o vinculo falhar DEPOIS do upload, o stderr traz o comando de retry com
   `--url` — reanexar a mesma chave S3 e no-op (dedup); repetir com `--file`
   sobe o arquivo de novo e cria uma SEGUNDA copia.
+- Limite de 100 MB por arquivo; PDF, imagem, planilha e documento em geral
+  funcionam (validado em campo). Depois de `create-realization --file` e de
+  `update-realization --file` o CLI **rele a realizacao** e mostra os anexos
+  gravados — a resposta crua da API nao traz o campo `files`, entao e a
+  releitura que confirma.
 
 **Maquina e horimetro (`machineHours`):**
 - Plano e realizacao aceitam o campo `machineHours` no corpo — lista de objetos

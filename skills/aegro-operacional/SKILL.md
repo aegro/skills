@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.9.0
+version: 0.9.1
 ---
 
 # Dominio Operacional
@@ -204,12 +204,15 @@ com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
 | `aegro files attach` | Vincula arquivo(s) a uma entidade existente | `--entity`, `--key`, `--file/-f` (sobe e vincula) ou `--url` (vincula chave S3 ja subida), `--execute` |
 | `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
 
-Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
-`realization` (`activityLog::`), `bill`, `purchase-order`,
-`purchase-requisition`, `harvest-log`, `shipment` (`shipping::`), `asset`,
-`element`, `bank-transfer`, `livestock-lot`. So a `realization` tem rota
-publica (vincular `--url` funciona ate com API key); as demais usam a API
-interna e exigem OAuth sempre.
+Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses), todas
+validadas ao vivo em 24/08/2026: `realization` (`activityLog::`), `bill`,
+`purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
+`bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
+(vincular `--url` funciona ate com API key); as demais usam a API interna e
+exigem OAuth sempre.
+
+Tamanho: o limite e **100 MB** por arquivo (recusado localmente acima disso,
+sem gastar rede). Arquivo grande funciona — 50 MB sobem em ~40 s.
 
 Regras que evitam retrabalho:
 
@@ -223,10 +226,14 @@ Regras que evitam retrabalho:
   `activities create-realization`/`update-realization`. Em falha parcial
   (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
   repita o create** (duplicaria o registro).
-- **Nao tem anexo** (o CLI recusa com o motivo): planejamento de atividade
-  (so a realizacao ganhou o campo), abastecimento/manutencao (`fuel-supply`/
-  `maintenance` — o servidor descarta anexo vindo de cliente nao-web; aguarda
-  correcao no serv-core) e livestock-loss/transfer/weighing (API sem update).
+- **Nao da para anexar** (o CLI recusa explicando, sem gastar upload):
+  planejamento de atividade (so a realizacao ganhou o campo);
+  abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
+  anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
+  re-save com erro generico na maioria dos registros); livestock-loss/
+  transfer/weighing (API sem update); e **elemento antigo sem catalogo**
+  (cadastro anterior ao conceito de catalogo — o servidor recusa qualquer
+  re-save dele). Nesses casos, anexe pela tela do app.
 
 ### tags (= Agrupadores)
 
