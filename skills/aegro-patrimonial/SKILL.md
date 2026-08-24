@@ -187,6 +187,10 @@ Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticam
 
 ### assets
 
+> **`--farm "<Fazenda|farm::key>"` e obrigatorio em todo comando de escrita desta
+> tabela** (`create-*`, `update-*`, `delete-*`), e nao esta repetido linha a linha.
+> Ver "Fazenda explicita em toda escrita" no topo.
+
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro assets get <key>` | Busca patrimonio por chave | `--output` |
