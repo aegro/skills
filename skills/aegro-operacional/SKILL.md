@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.9.1
+version: 0.9.2
 ---
 
 # Dominio Operacional
@@ -216,10 +216,14 @@ sem gastar rede). Arquivo grande funciona — 50 MB sobem em ~40 s.
 
 Regras que evitam retrabalho:
 
-- **Idempotencia por chave S3**: reanexar a mesma `--url` e no-op (dedup).
-  Repetir `--file` sobe o arquivo DE NOVO e cria uma segunda copia. Se o
-  vinculo falhar depois do upload, o stderr traz o comando de retry com
-  `--url` — use ele, nunca repita o `--file`.
+- **Idempotencia por chave S3**: reanexar a mesma `--url` nao grava nada (a
+  saida traz `saved: false` e o registro nem e tocado). Repetir `--file` sobe
+  o arquivo DE NOVO e cria uma segunda copia. Se o vinculo falhar depois do
+  upload, o stderr traz o comando de retry com `--url` — use ele, nunca
+  repita o `--file`.
+- **`totalAttachments: null` nao e zero**: significa que o anexo foi gravado
+  mas a releitura de conferencia nao pode ser lida. Confira com
+  `files list-attachments` antes de concluir qualquer coisa.
 - Comandos de escrita tem acucar para anexar na mesma invocacao: `--attach`
   em `financial create-bill`/`update-bill`, `purchase-orders create/update` e
   `purchase-requisitions create/update`; `--file` em

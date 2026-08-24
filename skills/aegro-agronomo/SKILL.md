@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.6.1
+version: 0.6.2
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -139,7 +139,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 | `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
 | `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel), `--file` (anexo, repetivel — exige OAuth) |
 | `activities update-plan <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
-| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar; `--file` (anexo, repetivel — SUBSTITUI a lista de anexos) |
+| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar; `--file` (anexo, repetivel — ACRESCENTA aos existentes) |
 | `activities delete-activity <key>` | posicional - **chave da atividade** → `DELETE /activities/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 | `activities delete-realization <key>` | posicional - **chave da realizacao** → `DELETE /activities/realizations/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 
@@ -171,10 +171,12 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   no proprio create — realizacao e anexo persistem juntos. O upload usa a API
   interna, entao `--file` **exige login OAuth** (`aegro auth login`); com API
   key o comando falha antes de criar qualquer coisa (exit 2).
-- `update-realization --file` **substitui** a lista de anexos (semantica de
-  merge-patch). Para **acrescentar** preservando os existentes, use
-  `aegro files attach --entity realization --key activityLog::<id> --file f.pdf --execute`
-  (faz GET -> append -> PATCH -> releitura de conferencia).
+- `update-realization --file` **acrescenta** aos anexos existentes: o comando
+  le a realizacao antes e reenvia a lista completa, porque o PATCH substitui
+  `files` por inteiro (mandar so os novos apagaria os antigos). Para trocar a
+  lista, passe `files` explicitamente no `--body`. `aegro files attach
+  --entity realization` faz o mesmo append e serve quando voce nao quer mexer
+  em mais nada.
 - Consultar: `aegro files list-attachments --entity realization --key activityLog::<id>`
   (funciona ate com API key; a leitura e publica). Cada item traz `url` (chave
   S3) e o nome derivado dela.
