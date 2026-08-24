@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.4
+version: 0.7.0
 ---
 
 # Dominio Patrimonial
@@ -276,6 +276,13 @@ aegro assets list --farm "Fazenda Aegro" --type MACHINE --machine-type TRACTOR
 # Listar todos os veiculos
 aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
+
+**Anexo no patrimonio** (foto, nota de compra):
+`aegro files attach --entity asset --key asset::<id> --file ./foto.jpg --execute`
+(exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
+serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
+`--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
+servidor — anexe pela tela do app enquanto isso).
 
 ### fuel-supplies
 

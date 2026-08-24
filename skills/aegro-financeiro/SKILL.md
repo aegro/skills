@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.8.0
+version: 0.9.0
 ---
 
 # Aegro Financeiro
@@ -151,13 +151,28 @@ Relacionamentos-chave:
 | `installment <key>`    | GET      | `installment_key` (argumento)                              | `--output`                                                                           |
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
-| `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--dry-run`, `--execute`                                                             |
-| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--farm-key`, `--entry-date`, `--currency`, `--env`, `--complete`, `--dry-run` |
+| `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
+| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
 > nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
 > `installments`) e sao pagas via `realize`.
+
+**Anexos (nota fiscal, comprovante, boleto):**
+- `create-bill --attach ./nota.pdf` (repetivel) cria a conta e anexa o arquivo
+  na mesma invocacao. `--attach` **exige login OAuth** (o upload usa a API
+  interna); com API key o comando falha ANTES de criar qualquer coisa.
+- Em conta existente, prefira `aegro files attach --entity bill --key bill::<id>
+  --file ./nota.pdf --execute` (append com releitura de conferencia) a um
+  `update-bill --attach` (que tambem funciona, mas mistura duas mutacoes).
+- Consultar: `aegro files list-attachments --entity bill --key bill::<id>`.
+- **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
+  com `--url` — rode ELE; repetir o create duplicaria a conta.
+- Transferencia bancaria tambem aceita anexo:
+  `aegro files attach --entity bank-transfer --key bankTransfer::<id> ...`
+  (re-save dentro de periodo financeiro FECHADO falha com erro de validacao,
+  por design).
 
 **Exemplos reais:**
 

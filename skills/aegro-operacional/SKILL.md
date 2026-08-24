@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.8.1
+version: 0.9.0
 ---
 
 # Dominio Operacional
@@ -190,6 +190,43 @@ aegro farms info --farm "Fazenda Aegro"
 | `aegro auth login` | Setup interativo de credenciais | — |
 | `aegro auth status` | Verifica autenticacao e fazenda ativa | `--env` |
 | `aegro auth logout` | Remove credenciais locais | — |
+
+### files (anexos de arquivo)
+
+Upload generico de imagem/documento para o S3 da Aegro e vinculo do arquivo a
+uma entidade, com releitura de conferencia apos o save. O upload usa a policy
+assinada da API interna, entao **exige login OAuth** (`aegro auth login`) —
+com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
+
+| Comando | Descricao | Flags |
+|---------|-----------|-------|
+| `aegro files upload` | Sobe um arquivo e devolve `url` (chave S3) e `urlFull` (download) | `--file/-f`, `--content-type`, `--execute` |
+| `aegro files attach` | Vincula arquivo(s) a uma entidade existente | `--entity`, `--key`, `--file/-f` (sobe e vincula) ou `--url` (vincula chave S3 ja subida), `--execute` |
+| `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
+
+Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
+`realization` (`activityLog::`), `bill`, `purchase-order`,
+`purchase-requisition`, `harvest-log`, `shipment` (`shipping::`), `asset`,
+`element`, `bank-transfer`, `livestock-lot`. So a `realization` tem rota
+publica (vincular `--url` funciona ate com API key); as demais usam a API
+interna e exigem OAuth sempre.
+
+Regras que evitam retrabalho:
+
+- **Idempotencia por chave S3**: reanexar a mesma `--url` e no-op (dedup).
+  Repetir `--file` sobe o arquivo DE NOVO e cria uma segunda copia. Se o
+  vinculo falhar depois do upload, o stderr traz o comando de retry com
+  `--url` — use ele, nunca repita o `--file`.
+- Comandos de escrita tem acucar para anexar na mesma invocacao: `--attach`
+  em `financial create-bill`/`update-bill`, `purchase-orders create/update` e
+  `purchase-requisitions create/update`; `--file` em
+  `activities create-realization`/`update-realization`. Em falha parcial
+  (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
+  repita o create** (duplicaria o registro).
+- **Nao tem anexo** (o CLI recusa com o motivo): planejamento de atividade
+  (so a realizacao ganhou o campo), abastecimento/manutencao (`fuel-supply`/
+  `maintenance` — o servidor descarta anexo vindo de cliente nao-web; aguarda
+  correcao no serv-core) e livestock-loss/transfer/weighing (API sem update).
 
 ### tags (= Agrupadores)
 
