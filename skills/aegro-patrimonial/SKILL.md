@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.8
+version: 0.7.2
 ---
 
 # Dominio Patrimonial
@@ -343,6 +343,13 @@ aegro assets list --farm "Fazenda Aegro" --type MACHINE --machine-type TRACTOR
 aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
 
+**Anexo no patrimonio** (foto, nota de compra):
+`aegro files attach --entity asset --key asset::<id> --file ./foto.jpg --execute`
+(exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
+serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
+`--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
+servidor — anexe pela tela do app enquanto isso).
+
 ### fuel-supplies
 
 | Comando | Descricao | Flags Principais |
@@ -492,27 +499,7 @@ aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --a
 
 ## Bugs e Workarounds
 
-### Bugs #3 e #4 (`fuel-supplies/filter` e `maintenances/filter`, HTTP 500) — NAO REPRODUZEM
-
-**Severidade:** Baixa (rebaixada — ver status)
-**Endpoints:** `POST /pub/v1/assets/fuel-supplies/filter` e `POST /pub/v1/assets/maintenances/filter`
-**Correlation IDs (ocorrencias originais):** `ca918f1c-3e1d-4f81-a1ca-77d092daa087` (#3), `fcdffc11-3ad3-4e77-83dc-c5141278fef2` (#4)
-
-**Status:** os dois voltaram a responder 200. Historico da revalidacao:
-
-| Quando | O que foi medido |
-|---|---|
-| 2026-07-24 | `fuel-supplies list` respondeu em staging — foi a listagem que permitiu confirmar um abastecimento gravado apos um 504 |
-| 2026-08-10 | ~35 chamadas de `fuel-supplies list` em staging e producao (27 paginas / 1314 registros), com e sem filtro de data |
-| 2026-08-14 | **os dois** em producao: `fuel-supplies list` 586 registros / 12 paginas, `maintenances list` 170 registros / 4 paginas |
-
-**Impacto:** nenhum. Use `aegro fuel-supplies list` e `aegro maintenances list`
-normalmente — inclusive para conferir historico, sem recorrer ao Aegro App.
-
-**Se um 500 voltar a aparecer:** repita ate 3 tentativas com backoff de 1s/2s/4s
-(pode ser intermitente; mesma politica de retry documentada em `aegro-operacional`).
-So trate como bloqueio se persistir depois disso, e reporte — seria regressao, nao o
-bug antigo.
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 ### Bug #6: `weather-logs` POST retorna HTTP 500
 

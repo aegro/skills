@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.8.2
+version: 0.10.2
 ---
 
 # Dominio Operacional
@@ -211,6 +211,59 @@ aegro farms info --farm "Fazenda Aegro"
 | `aegro auth login` | Setup interativo de credenciais | — |
 | `aegro auth status` | Verifica autenticacao e fazenda ativa | `--env` |
 | `aegro auth logout` | Remove credenciais locais | — |
+
+### files (anexos de arquivo)
+
+Upload generico de imagem/documento para o S3 da Aegro e vinculo do arquivo a
+uma entidade, com releitura de conferencia apos o save. O upload usa a policy
+assinada da API interna, entao **exige login OAuth** (`aegro auth login`) —
+com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
+
+| Comando | Descricao | Flags |
+|---------|-----------|-------|
+| `aegro files upload` | Sobe um arquivo e devolve `url` (chave S3) e `urlFull` (download) | `--file/-f`, `--content-type`, `--execute` |
+| `aegro files attach` | Vincula arquivo(s) a uma entidade existente | `--entity`, `--key`, `--file/-f` (sobe e vincula) ou `--url` (vincula chave S3 ja subida), `--execute` |
+| `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
+
+Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses), todas
+validadas ao vivo em 24/08/2026: `realization` (`activityLog::`), `bill`,
+`purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
+`bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
+(vincular `--url` funciona ate com API key); as demais usam a API interna e
+exigem OAuth sempre.
+
+Tamanho: o limite e **100 MB** por arquivo (recusado localmente acima disso,
+sem gastar rede). Arquivo grande funciona — 50 MB sobem em ~40 s.
+
+Regras que evitam retrabalho:
+
+- **Idempotencia por chave S3**: reanexar a mesma `--url` nao grava nada (a
+  saida traz `saved: false` e o registro nem e tocado). Repetir `--file` sobe
+  o arquivo DE NOVO e cria uma segunda copia. Se o vinculo falhar depois do
+  upload, o stderr traz o comando de retry com `--url` — use ele, nunca
+  repita o `--file`.
+- **`totalAttachments: null` nao e zero**: significa que o anexo foi gravado
+  mas a releitura de conferencia nao pode ser lida. Confira com
+  `files list-attachments` antes de concluir qualquer coisa.
+- Comandos de escrita tem acucar para anexar na mesma invocacao: `--attach`
+  em `financial create-bill`/`update-bill`, `purchase-orders create/update` e
+  `purchase-requisitions create/update`; `--file` em
+  `activities create-realization`/`update-realization`. Em falha parcial
+  (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
+  repita o create** (duplicaria o registro).
+- **Nao da para anexar** (o CLI recusa explicando, sem gastar upload):
+  planejamento de atividade (so a realizacao ganhou o campo);
+  abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
+  anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
+  re-save com erro generico na maioria dos registros); livestock-loss/
+  transfer/weighing (API sem update); e **elemento sem catalogo**
+  (cadastro anterior ao conceito de catalogo — o servidor recusa qualquer
+  re-save dele). Nesses casos, anexe pela tela do app.
+- **Elemento merece atencao especial**: nao e caso de borda. Medido em staging
+  (25/08/2026, amostra de 52), **54% dos elementos da fazenda foram barrados** —
+  em FERTILIZER, 8 de 8. Ao anexar em elemento, conte com a recusa e tenha o
+  caminho pela tela como alternativa. Detalhe por categoria em
+  `/aegro-estoquista`.
 
 ### tags (= Agrupadores)
 
@@ -521,12 +574,13 @@ Um elemento participa de tres dominios simultaneamente:
 
 | # | Endpoint | Severidade | Dominio Afetado | Workaround |
 |---|----------|------------|-----------------|------------|
-| 1 | `glebes/filter` 500 | Alta | Talhoes | Usar `GET /glebes/{key}` individual se chave conhecida |
-| 2 | `crop-glebes/filter` 500 | Alta | Safra/Talhoes | Usar `GET /crop-glebes/{key}` individual |
-| 3 | `fuel-supplies/filter` 500 | Baixa | Patrimonial | **Nao reproduz** (producao, 2026-08-14) — usar `list` normalmente; se 500, repetir a chamada |
-| 4 | `maintenances/filter` 500 | Baixa | Patrimonial | **Nao reproduz** (producao, 2026-08-14) — usar `list` normalmente; se 500, repetir a chamada |
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
+
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
+
+> A numeracao tem buracos de proposito: os numeros sao compartilhados entre
+> as skills deste repo, entao renumerar aqui quebraria as referencias de la.
 
 ### Logica de Retry
 
