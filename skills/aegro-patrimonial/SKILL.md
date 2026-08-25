@@ -613,21 +613,27 @@ cat keys.txt | xargs -P 5 -I {} aegro fuel-supplies update {} --crop-prorate-gro
 # xargs segue processando as chaves restantes e o erro se perde no meio de centenas de linhas
 cat keys.txt | xargs -P 1 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
 
-# CORRETO - loop sequencial que interrompe o lote no primeiro erro; a chamada isolada de
-# cada chave ainda pode repetir ate 3 vezes (esperando 1s e 2s entre elas) se um 409
-# ocorrer - repetir nao garante sucesso, entao pare o lote para investigar se o erro
-# persistir apos as 3 tentativas
-while IFS= read -r key; do
+# CORRETO - loop sequencial que para no primeiro erro que nao adianta repetir.
+# Cada chave tenta ate 3 vezes (1 tentativa + 2 repeticoes, esperando 1s e 2s) e SO
+# repete no 409 esporadico: exit 2 (auth), 3 (nao encontrado) e 4 (validacao) nao
+# melhoram com retry e interrompem o lote na hora. O status HTTP vem em
+# `error.status` no JSON que a CLI escreve em stderr.
+# O `|| [ -n "$key" ]` processa a ultima chave mesmo se keys.txt nao terminar em newline.
+while IFS= read -r key || [ -n "$key" ]; do
+  [ -z "$key" ] && continue
   ok=""
   for delay in 0 1 2; do
     [ "$delay" -gt 0 ] && sleep "$delay"
-    if aegro fuel-supplies update "$key" --crop-prorate-group-key "..." --execute; then
-      ok=1
-      break
-    fi
+    erro=$(aegro fuel-supplies update "$key" --crop-prorate-group-key "..." --execute 2>&1 >/dev/null)
+    rc=$?
+    if [ "$rc" -eq 0 ]; then ok=1; break; fi
+    case "$erro" in
+      *'"status": 409'*) continue ;;
+      *) echo "Erro nao-transitorio (exit $rc) na chave $key: $erro" >&2; exit 1 ;;
+    esac
   done
   if [ -z "$ok" ]; then
-    echo "Falhou apos 3 tentativas na chave $key - interrompendo o lote" >&2
+    echo "409 persistiu apos 3 tentativas na chave $key - interrompendo o lote" >&2
     exit 1
   fi
 done < keys.txt
@@ -643,16 +649,30 @@ Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning
 # ERRADO - warning de retry pode corromper o JSON
 aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json 2>&1
 
-# CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal;
-# valide com o parser JSON que existir na maquina (python3, python, node, jq) - nao
-# assuma um. Se a validacao falhar: descarte o arquivo, avise em stderr e pare -
-# nao siga com dado corrompido. Limite o retry da chamada a 3 tentativas.
+# CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal.
+# Escolha UMA vez o parser JSON que existir na maquina - nao assuma python3.
+if command -v python3 >/dev/null 2>&1; then
+  valida_json() { python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$1"; }
+elif command -v python >/dev/null 2>&1; then
+  valida_json() { python -c "import json,sys; json.load(open(sys.argv[1]))" "$1"; }
+elif command -v jq >/dev/null 2>&1; then
+  valida_json() { jq -e . "$1" >/dev/null; }
+elif command -v node >/dev/null 2>&1; then
+  valida_json() { node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$1"; }
+else
+  echo "nenhum parser JSON disponivel (python3, python, jq ou node) - abortando" >&2
+  exit 1
+fi
+
+# JSON valido nao basta: se a CLI saiu com erro, o arquivo pode estar truncado
+# num ponto que ainda parseia. Exija exit 0 DA CLI e parse OK.
 for tentativa in 1 2 3; do
   aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
-  python3 -c "import json; json.load(open('pagina27.json'))" 2>/dev/null && break
+  rc=$?
+  if [ "$rc" -eq 0 ] && valida_json pagina27.json 2>/dev/null; then break; fi
   rm -f pagina27.json
   if [ "$tentativa" -eq 3 ]; then
-    echo "pagina27.json invalido apos 3 tentativas - abortando" >&2
+    echo "pagina27.json invalido ou CLI falhou (exit $rc) apos 3 tentativas - abortando" >&2
     exit 1
   fi
 done
