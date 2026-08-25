@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.5.4
+version: 0.6.3
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -137,9 +137,9 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 | `activities realizations` | `--activity-key`, `--crop-key`, `--start-date`, `--end-date`, `--page` |
 | `activities get-realization <key>` | posicional |
 | `activities create-plan` | `--crop-key` (obrig.), `--type` (obrig.), `--start-date` (obrig.), `--activity-key`, `--crop-glebe-key` (repetivel), `--end-date`, `--observations`, `--tag` (Operacao: nome/etiqueta), `--inputs` (JSON) |
-| `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel) |
+| `activities create-realization` | mesmas opcoes do create-plan (inclui `--tag`) + `--area`/`--area-unit`, `--stock-location-key`, `--farm-user-key` (repetivel), `--file` (anexo, repetivel — exige OAuth) |
 | `activities update-plan <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
-| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar |
+| `activities update-realization <key>` | `--body` (JSON Merge Patch, **PATCH**) - so os campos a alterar; `--file` (anexo, repetivel — ACRESCENTA aos existentes) |
 | `activities delete-activity <key>` | posicional - **chave da atividade** → `DELETE /activities/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 | `activities delete-realization <key>` | posicional - **chave da realizacao** → `DELETE /activities/realizations/{key}`. Mutacao: `--dry-run`/`--execute`, `--farm` |
 
@@ -161,6 +161,47 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   `--body` apenas os campos a alterar, ex.: `--body '{"tag":"Aplicacao de Herbicida"}'`
   para trocar a Operacao. O `tag` (Operacao) e atributo da **atividade** — alterar num
   plano ou realizacao reflete na atividade inteira (plano + todas as realizacoes).
+
+**Anexos na realizacao (`--file` / `aegro files attach`):**
+- A realizacao aceita **anexo de arquivo** (ficha de aplicacao, receituario
+  agronomico, ordem de servico) — e a unica entidade com anexo em escrita na
+  API publica (desde 20/08/2026). **Planejamento NAO tem anexo**: nao anuncie
+  nem tente anexar em plano (`create-plan`/`update-plan` nao tem `--file`).
+- `create-realization --file ficha.pdf` (repetivel) sobe o arquivo e manda a
+  referencia no PROPRIO POST — uma requisicao de escrita so. O upload usa a API
+  interna, entao `--file` **exige login OAuth** (`aegro auth login`); com API
+  key o comando falha antes de criar qualquer coisa (exit 2).
+- **Nao e atomico, e isso importa no erro.** O upload acontece ANTES do POST,
+  entao existe um estado intermediario: a realizacao pode ser criada sem o
+  anexo (servidor antigo que descarta `files`, ou falha na conferencia). Nesse
+  caso o comando sai com **exit 1** e o stderr traz o comando de retry pronto,
+  por `--url`. **NUNCA repita o `create-realization`** — a realizacao ja
+  existe e voce criaria uma segunda. Rode o retry que o CLI emitiu:
+
+  ```bash
+  aegro files attach --entity realization --key activityLog::<id>     --url "<chave S3 que saiu no stderr>" --execute
+  ```
+
+  Reanexar a mesma chave S3 e no-op (a saida traz `saved: false`), entao o
+  retry por `--url` pode ser repetido sem medo. Ja repetir com `--file` sobe o
+  arquivo de novo e cria uma SEGUNDA copia do anexo.
+- `update-realization --file` **acrescenta** aos anexos existentes: o comando
+  le a realizacao antes e reenvia a lista completa, porque o PATCH substitui
+  `files` por inteiro (mandar so os novos apagaria os antigos). Para trocar a
+  lista, passe `files` explicitamente no `--body`. `aegro files attach
+  --entity realization` faz o mesmo append e serve quando voce nao quer mexer
+  em mais nada.
+- Consultar: `aegro files list-attachments --entity realization --key activityLog::<id>`
+  (funciona ate com API key; a leitura e publica). Cada item traz `url` (chave
+  S3) e o nome derivado dela.
+- Se o vinculo falhar DEPOIS do upload, o stderr traz o comando de retry com
+  `--url` — reanexar a mesma chave S3 e no-op (dedup); repetir com `--file`
+  sobe o arquivo de novo e cria uma SEGUNDA copia.
+- Limite de 100 MB por arquivo; PDF, imagem, planilha e documento em geral
+  funcionam (validado em campo). Depois de `create-realization --file` e de
+  `update-realization --file` o CLI **rele a realizacao** e mostra os anexos
+  gravados — a resposta crua da API nao traz o campo `files`, entao e a
+  releitura que confirma.
 
 **Maquina e horimetro (`machineHours`):**
 - Plano e realizacao aceitam o campo `machineHours` no corpo — lista de objetos
@@ -193,6 +234,16 @@ aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 
 # 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Criar realizacao ja com a ficha de aplicacao anexada (--file exige OAuth)
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --file ./ficha-aplicacao.pdf --execute
+
+# Acrescentar anexo a uma realizacao existente SEM perder os anteriores
+aegro files attach --entity realization --key activityLog::68dd6730e90f726622b7f560 \
+  --file ./receituario.pdf --farm "Fazenda Sul" --execute
+aegro files list-attachments --entity realization --key activityLog::68dd6730e90f726622b7f560
 
 # Vincular maquina + horimetro a uma realizacao (so via update --body; create nao tem flag)
 aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
@@ -234,6 +285,11 @@ aegro harvest-logs create --farm "<fazenda>" \
   --discounted-weight 19400 --product-weight 19400 \
   --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901"
 ```
+
+**Anexo no romaneio** (foto da nota, ticket de balanca):
+`aegro files attach --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
+(exige OAuth; releitura de conferencia inclusa). Consulta:
+`aegro files list-attachments --entity harvest-log --key harvestLog::<id>`.
 
 ### 4.6 Clima (`aegro weather`)
 
