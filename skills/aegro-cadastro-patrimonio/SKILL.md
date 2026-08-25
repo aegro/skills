@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.4
+version: 0.6.0
 ---
 
 # Cadastro de Patrimonio
@@ -137,6 +137,30 @@ o registro logo apos criar, mas a listagem posterior via CLI **funciona** — `f
 
 Apresentar tabela com: Nome, Tipo, Fabricante, Ano, Valor, Chave.
 Sugerir proximos passos: primeiro abastecimento, manutencao preventiva.
+
+## Entregue o Link do Patrimonio
+
+Depois de cadastrar, ofereca o link — todos os `create-*` de patrimonio
+devolvem `key` e `farmKey`:
+
+```
+{host}/farm/{farmId}?assetId={assetId}#farm-assets
+```
+
+Abre a ficha do patrimonio (painel, eventos, custos no periodo).
+
+**Abastecimento e manutencao nao tem link direto** — sao eventos de
+patrimonio, e o Aegro nao expoe URL para eles. Depois de
+`fuel-supplies create` ou `maintenances create`, ofereca o link do
+**patrimonio** (aba Eventos) dizendo que e a ficha da maquina, nao o
+lancamento.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos Workflows
 

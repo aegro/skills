@@ -1,7 +1,7 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.9.0
+version: 0.10.0
 ---
 
 # Lancamento Financeiro
@@ -245,6 +245,27 @@ automatico e proporcional a area. Rateio com percentuais pre-definidos
 9. **Campo "Produtor" nao sai via API** -- se o cliente organiza os
    lancamentos por produtor rural, avisar ANTES de lancar em massa: o campo
    nao existe na API publica e o ajuste e manual, pelo app, em cada lancamento
+
+## Entregue o Link da Conta
+
+Depois de criar ou editar a conta, ofereca o link que abre **aquele
+lancamento** para conferencia. O `create-bill` ja devolve tudo que o link
+precisa (`key` e `farmKey`):
+
+```
+{host}/farm/{farmId}?billId={billId}#farm-finance
+```
+
+Abre o dialogo **Editar lancamento** com a conta carregada. Avise que o link
+vale uma vez: o parametro e consumido ao abrir, entao recarregar a pagina
+nao reabre o formulario.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos Workflows
 
