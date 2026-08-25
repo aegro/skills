@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.5.4
+version: 0.5.5
 ---
 
 # Cadastro de Patrimonio
@@ -132,12 +132,12 @@ aegro maintenances create --farm "<fazenda>" \
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
-| **#3** `fuel-supplies list` → HTTP 500 | Impossivel listar historico de abastecimentos | Usar `fuel-supplies get <key>` individual ou Aegro App |
-| **#4** `maintenances list` → HTTP 500 | Impossivel listar historico de manutencoes | Usar `maintenances get <key>` individual ou Aegro App |
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
 
-**Consequencia:** Apos cadastrar abastecimentos/manutencoes, guarde as chaves retornadas.
-Nao sera possivel listar posteriormente via CLI.
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
+
+**Consequencia:** guardar a chave retornada continua sendo bom habito para conferir
+o registro logo apos criar, mas a listagem posterior via CLI **funciona** — `fuel-supplies list` e `maintenances list` aceitam `--asset-key` e periodo.
 
 ## Formato de Resposta
 

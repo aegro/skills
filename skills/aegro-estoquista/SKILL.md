@@ -1,7 +1,7 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.5.3
+version: 0.6.3
 ---
 
 # Aegro Estoquista
@@ -219,6 +219,32 @@ aegro elements financial-categories --farm "<fazenda>" expense --element-key ele
 aegro elements financial-categories --farm "<fazenda>" revenue \
   --element-key element::abc123 --element-key element::def456
 ```
+
+**Anexo no elemento** (bula, ficha tecnica, foto):
+`aegro files attach --entity element --key element::<id> --file ./bula.pdf --execute`
+(exige OAuth; releitura de conferencia inclusa).
+
+**Boa parte do catalogo NAO aceita anexo — conte com isso.** Elemento sem
+`catalogId` (cadastro anterior ao conceito de catalogo) e recusado pelo
+servidor em qualquer re-save, com 400 generico; o CLI barra antes de subir o
+arquivo e diz o motivo. Nao e caso raro: medido na Fazenda Aegro de staging
+(25/08/2026, amostra estratificada de 52 elementos), **54% foram barrados**, e
+a proporcao muda MUITO por categoria:
+
+| Categoria | Aceita | Barrado |
+|---|---|---|
+| FERTILIZER | 0/8 | **8/8** |
+| PEST | 1/8 | 7/8 |
+| SEED | 3/8 | 5/8 |
+| DEFENSIVE | 4/8 | 4/8 |
+| ITEM | 6/8 | 2/8 |
+| SERVICE | 6/8 | 2/8 |
+| ANIMAL | 4/4 | 0/4 |
+
+Ou seja: em fertilizante, espere que NAO va funcionar; em item e servico,
+espere que va. Quando barrar, o caminho e anexar pela tela do app (ou vincular
+o elemento a um catalogo antes). Nao ha como saber pela listagem: o campo
+`catalogId` so aparece na leitura individual.
 
 ### 4.3 catalogs (catalogos de referencia)
 

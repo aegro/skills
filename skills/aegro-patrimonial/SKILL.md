@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.6.4
+version: 0.7.1
 ---
 
 # Dominio Patrimonial
@@ -297,12 +297,19 @@ aegro assets list --farm "Fazenda Aegro" --type MACHINE --machine-type TRACTOR
 aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
 
+**Anexo no patrimonio** (foto, nota de compra):
+`aegro files attach --entity asset --key asset::<id> --file ./foto.jpg --execute`
+(exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
+serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
+`--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
+servidor — anexe pela tela do app enquanto isso).
+
 ### fuel-supplies
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--output` |
-| `aegro fuel-supplies list` | Lista abastecimentos (BUG #3 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
+| `aegro fuel-supplies list` | Lista abastecimentos | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
 | `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--observations`, `--inputs` (JSON) |
 | `aegro fuel-supplies update <key>` | Atualiza abastecimento | mesmas flags do create |
 
@@ -340,7 +347,7 @@ aegro fuel-supplies update --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
 | `aegro maintenances get <key>` | Busca manutencao por chave | `--output` |
-| `aegro maintenances list` | Lista manutencoes (BUG #4 - retorna 500) | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
+| `aegro maintenances list` | Lista manutencoes | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
 | `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key` |
 | `aegro maintenances update <key>` | Atualiza manutencao | mesmas flags do create |
 
@@ -385,37 +392,7 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 
 ## Bugs e Workarounds
 
-### Bug #3: `fuel-supplies/filter` retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/assets/fuel-supplies/filter`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `ca918f1c-3e1d-4f81-a1ca-77d092daa087`
-
-**Impacto:** O comando `aegro fuel-supplies list` retorna erro 500. Impossivel listar historico de abastecimentos por filtro.
-
-**O que funciona:**
-- `aegro fuel-supplies get <key>` — busca individual funciona
-- `aegro fuel-supplies create` — criacao funciona
-- `aegro fuel-supplies update <key>` — atualizacao funciona
-
-**Workaround:** Nao ha workaround para listagem. Se precisar do historico de abastecimentos, use o Aegro App (interface web). Para consultas individuais, use `fuel-supplies get` com a chave conhecida.
-
-### Bug #4: `maintenances/filter` retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/assets/maintenances/filter`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `fcdffc11-3ad3-4e77-83dc-c5141278fef2`
-
-**Impacto:** O comando `aegro maintenances list` retorna erro 500. Impossivel listar historico de manutencoes por filtro.
-
-**O que funciona:**
-- `aegro maintenances get <key>` — busca individual funciona
-- `aegro maintenances create` — criacao funciona
-- `aegro maintenances update <key>` — atualizacao funciona
-
-**Workaround:** Mesmo padrao do Bug #3. Nao ha workaround para listagem. Use o Aegro App para consultar historico. Para registros individuais, use `maintenances get` com a chave conhecida.
+**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 ### Bug #6: `weather-logs` POST retorna HTTP 500
 
@@ -429,18 +406,6 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 **Workaround:** Registrar dados climaticos diretamente no Aegro App (interface web).
 
 ## Anti-padroes
-
-### 1. Nao tente listar fuel-supplies ou maintenances
-
-Os endpoints de listagem (`fuel-supplies list`, `maintenances list`) retornam HTTP 500 (Bugs #3 e #4). Nao insista com retry — o erro e persistente no backend.
-
-```bash
-# ERRADO - vai falhar com 500
-aegro fuel-supplies list --farm "Fazenda Aegro" --asset-key "asset::57d299c3e4b059f24e3f99b0"
-
-# CORRETO - use GET individual se tiver a chave
-aegro fuel-supplies get --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
-```
 
 ### 2. Nao use horimetro em veiculos
 

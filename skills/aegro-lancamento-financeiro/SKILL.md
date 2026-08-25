@@ -1,7 +1,7 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.8.0
+version: 0.9.0
 ---
 
 # Lancamento Financeiro
@@ -45,6 +45,13 @@ Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). **Parcelas
 nascem no proprio `create-bill`** (campo `installments`) -- nao existe CRUD
 avulso de parcela na API. Para ajustar um lancamento existente, use
 `financial update-bill` (PATCH) ou o app.
+
+- **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
+  anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API
+  key falha ANTES de criar. Em conta ja existente:
+  `aegro files attach --entity bill --key bill::<id> --file ./nota.pdf --execute`.
+  Se o create passar e o anexo falhar, o stderr traz `attachRetry` com `--url` --
+  rode ele, NUNCA repita o create (duplicaria a conta).
 
 ## Fluxo de Decisao
 
