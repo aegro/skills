@@ -187,8 +187,12 @@ financeira, agrupador, conta bancaria): diga que **nao existe link direto para
 isso no Aegro**. Se ajudar, ofereca a secao — dizendo que e a secao, nunca
 apresentando lista como se fosse a entidade.
 
-Ao entregar o link, diga o que ele abre e que **vale uma vez**: o parametro e
-consumido ao abrir, entao recarregar a pagina nao reabre o formulario.
+Ao entregar o link, diga o que ele abre. **Regra de uso unico so vale para os
+tres links com parametro de consulta** (Conta, Patrimonio, Item de estoque):
+o parametro (`?billId=`, `?assetId=`, `?elementId=&locationId=`) e consumido
+ao abrir, entao recarregar a pagina nao reabre o dialogo/ficha. Os links de
+Safra e Talhao usam parametro de rota (`/crop/{cropId}`, `/glebe/{glebeId}`):
+nao sao consumidos, e recarregar ou reabrir funciona normalmente.
 
 ```bash
 # Criou a conta e o comando devolveu key + farmKey:
