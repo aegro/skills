@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.6.0
+version: 0.6.2
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -115,6 +115,11 @@ Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
 | "a prazo" / nota com duplicatas | sem flag | parcelas das duplicatas (o cronograma real da nota) |
 | Sem duplicatas e parcelamento combinado | `--installments N` | N parcelas mensais em aberto |
 | Remessa / registro sem efeito de caixa | `--no-payment` | sem parcelas (ver secao 3) |
+
+Qualquer linha desta tabela que gere parcela (`--installments`, `--prompt` ou as
+duplicatas da nota) exige `--bank-account` — inclusive a traducao default de "a
+vista". So `--no-payment` dispensa a conta. Ver a secao de opcoes do
+`launch-bill`.
 
 Se a fala e o documento conflitam (usuario diz "a vista"/"ja paguei" mas a
 nota TEM duplicatas), as duplicatas sao o cronograma real: aponte a
