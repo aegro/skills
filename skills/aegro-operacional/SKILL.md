@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.9.2
+version: 0.9.3
 ---
 
 # Dominio Operacional
@@ -235,9 +235,14 @@ Regras que evitam retrabalho:
   abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
   anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
   re-save com erro generico na maioria dos registros); livestock-loss/
-  transfer/weighing (API sem update); e **elemento antigo sem catalogo**
+  transfer/weighing (API sem update); e **elemento sem catalogo**
   (cadastro anterior ao conceito de catalogo — o servidor recusa qualquer
   re-save dele). Nesses casos, anexe pela tela do app.
+- **Elemento merece atencao especial**: nao e caso de borda. Medido em staging
+  (25/08/2026, amostra de 52), **54% dos elementos da fazenda foram barrados** —
+  em FERTILIZER, 8 de 8. Ao anexar em elemento, conte com a recusa e tenha o
+  caminho pela tela como alternativa. Detalhe por categoria em
+  `/aegro-estoquista`.
 
 ### tags (= Agrupadores)
 
