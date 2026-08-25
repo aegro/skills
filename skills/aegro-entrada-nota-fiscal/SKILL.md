@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.5.0
+version: 0.6.0
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -76,7 +76,7 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 | Detalhe | `items <doc>` (`detalhe`) `[--full]` | Itens (codigo, descricao, NCM, CFOP por item, qtd, valor), totais, pagamento/parcelas, fornecedor/produtor conciliados e sugestoes de elemento. `--full` = Invoice bruto. `doc` = numero, chave de acesso (44) ou key. |
 | Status | `status <doc>...` | Confere em lote se cada nota ja foi lancada, com referencia das bills (guardrail contra duplicidade). |
 | Conciliar | `conciliate <doc> --item CODIGO=elemento --execute` (`conciliar`) | Persiste o mapa produto-da-nota -> elemento (por fazenda+fornecedor+item), reaproveitado nas proximas notas. Elemento por nome ou id; preserva `conversionRate` salvo. |
-| Lancar conta | `launch-bill <doc> --category X [--revenue\|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**. |
+| Lancar conta | `launch-bill <doc> --category X --bank-account C [--revenue\|--expense] [...] --dry-run/--execute` | Cria a conta **com vinculo NF-e<->bill**. `--revenue`/`--expense` **obrigatorio em nota de entrada**; `--bank-account` **obrigatoria** sempre que o lancamento gerar parcela (so `--no-payment` dispensa). |
 | Lancar pedido | `launch-purchase-order <doc> --dry-run/--execute` | Idem como pedido de compra, com guard de pedido duplicado. |
 
 > `preparar` foi **descontinuado** (ensinava o caminho publico sem vinculo
@@ -84,6 +84,11 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 
 Opcoes do `launch-bill` que replicam a UI web:
 - `--category` (obrigatoria na pratica — aceita nome, id ou key; exige folha `ANALYTIC`)
+- `--bank-account` (**obrigatoria** quando o lancamento gera parcela — aceita nome,
+  id interno ou `bankAccount::<id>`). Sem ela o comando **recusa antes de qualquer
+  escrita** (exit 4). Nao existe conta padrao, e a fazenda tem varias: escolher uma
+  em silencio seria decidir por onde o dinheiro anda. Descubra com
+  `aegro bank-accounts list`.
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
   `--prompt` (A Vista: 1 parcela paga), `--installments N` (A Prazo: N mensais);
   sem nenhum, usa as duplicatas da propria nota.
@@ -203,10 +208,12 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 # Sem ele o comando usa o default e um lancamento interno pode ir para producao.
 
 # 1o: preview (nenhuma escrita acontece; o plano completo e exibido)
-aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> --category "Categoria" --expense --dry-run
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> \
+  --category "Categoria" --bank-account "<conta bancaria>" --expense --dry-run
 
 # 2o: so depois que o usuario conferir o plano (fornecedor, categoria, parcelas, valor):
-aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> --category "Categoria" --expense --execute
+aegro received-fiscal-documents launch-bill --farm "<fazenda>" --env <staging|prod> <NUMERO> \
+  --category "Categoria" --bank-account "<conta bancaria>" --expense --execute
 ```
 
 Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`
@@ -246,10 +253,10 @@ staging (`https://app.staging.aegro.io`):
 # assim o alvo nao depende de estado global que outra sessao pode ter trocado.
 # MESMO comando validado, SEMPRE com --dry-run primeiro:
 aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
-  --dry-run --env prod --farm "<Fazenda do Cliente>"
+  --bank-account "<conta bancaria>" --dry-run --env prod --farm "<Fazenda do Cliente>"
 # EV confere o plano (incluindo o campo farmSource) e SO ENTAO:
 aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
-  --execute --env prod --farm "<Fazenda do Cliente>"
+  --bank-account "<conta bancaria>" --execute --env prod --farm "<Fazenda do Cliente>"
 ```
 
 - **Use o NUMERO da nota** (nao a key/ids): chaves e ids diferem entre ambientes;
@@ -281,7 +288,8 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 
 | Comportamento | O que fazer |
 |---|---|
-| **"500 cosmetico"**: o servidor as vezes responde 5xx **depois** de criar a conta. O `launch-bill` detecta e retorna a conta persistida com aviso. | Se vir "a conta FOI criada", esta certo — **nao relance**. |
+| **"500 cosmetico"**: o servidor as vezes responde 5xx **depois** de criar a conta. O `launch-bill` detecta, mas **a conta existir nao prova que o lancamento inteiro persistiu** — a conta e gravada ANTES das parcelas e fora de transacao. | "A conta FOI criada" **nao e mais sinal de sucesso sozinho**: leia o que vem depois. Se disser lancamento **PARCIAL** (exit 1), a conta ficou sem as parcelas — **corrija pela UI e NAO relance**, relancar duplica. |
+| **Lancamento PARCIAL**: o comando confere a contagem de parcelas gravadas contra a enviada e sai com exit 1 quando nao bate. | Nunca trate exit 1 como "tentar de novo": a conta ja existe. Abra a conta na UI e complete as parcelas. |
 | Guard de duplicidade acusa por numero da nota **na fazenda inteira** (nao so por fornecedor); mostra a(s) conta(s) suspeita(s). | Confira as contas listadas; so `--force` apos confirmar que nao e duplicata real. |
 | Categoria financeira e **obrigatoria** e o CLI ainda nao sugere sozinho (a UI sugere). | Pergunte/descubra com `fin-categories list -s`. Exige folha ANALYTIC. |
 | Conciliacao parcial -> conta **sem baixa de estoque** (tudo-ou-nada). | Concilie **todos** os itens para ter estoque. |
