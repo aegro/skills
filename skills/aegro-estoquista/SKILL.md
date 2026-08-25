@@ -223,10 +223,23 @@ no elemento proprio.
 list` (API publica) prediz o resultado — `true` = importado, nao vai
 funcionar. Medido em staging (25/08/2026): acertou em 24 de 24 casos.
 
-Nao e caso de borda: na mesma medicao, **54% dos elementos da fazenda eram
-importados** e por isso barrados, com a proporcao variando muito por
-categoria — FERTILIZER 8/8 barrado, PEST 7/8, SEED 5/8, contra ITEM e SERVICE
-2/8 e ANIMAL 0/4. Quando barrar, o caminho e anexar pela tela do app.
+Nao e caso de borda: na mesma medicao (staging, 25/08/2026, amostra
+estratificada de **52 elementos**), **28 foram barrados — 54%**. A proporcao
+varia muito por categoria:
+
+| Categoria | Aceita | Barrado |
+|---|---|---|
+| FERTILIZER | 0 | **8** |
+| PEST | 1 | 7 |
+| SEED | 3 | 5 |
+| DEFENSIVE | 4 | 4 |
+| ITEM | 6 | 2 |
+| SERVICE | 6 | 2 |
+| ANIMAL | 4 | 0 |
+| **Total** | **24** | **28** |
+
+Em fertilizante, espere que NAO va funcionar; em item e servico, espere que
+va. Quando barrar, o caminho e anexar pela tela do app.
 
 ### 4.3 catalogs (catalogos de referencia)
 

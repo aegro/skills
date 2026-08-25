@@ -243,8 +243,9 @@ Regras que evitam retrabalho:
   pessoas anexam arquivo a elemento do catalogo; so faca quando o usuario
   pedir explicitamente. Quando fizer, saiba que `isImported: true` em
   `elements list` significa que NAO vai funcionar (previu 24 de 24 casos
-  medidos), e que isso vale para boa parte do catalogo — 54% numa amostra de
-  52, 8 de 8 em FERTILIZER. Detalhe em `/aegro-estoquista`.
+  medidos), e que isso vale para boa parte do catalogo — 28 de 52 barrados
+  (54%) numa amostra estratificada de staging em 25/08/2026, sendo 8 de 8 em
+  FERTILIZER. Detalhe por categoria em `/aegro-estoquista`.
 
 ### tags (= Agrupadores)
 
