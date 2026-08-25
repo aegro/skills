@@ -1,7 +1,7 @@
 ---
 name: aegro-agronomo
 description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.6.2
+version: 0.6.3
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -167,10 +167,24 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   agronomico, ordem de servico) — e a unica entidade com anexo em escrita na
   API publica (desde 20/08/2026). **Planejamento NAO tem anexo**: nao anuncie
   nem tente anexar em plano (`create-plan`/`update-plan` nao tem `--file`).
-- `create-realization --file ficha.pdf` (repetivel) sobe o arquivo e vincula
-  no proprio create — realizacao e anexo persistem juntos. O upload usa a API
+- `create-realization --file ficha.pdf` (repetivel) sobe o arquivo e manda a
+  referencia no PROPRIO POST — uma requisicao de escrita so. O upload usa a API
   interna, entao `--file` **exige login OAuth** (`aegro auth login`); com API
   key o comando falha antes de criar qualquer coisa (exit 2).
+- **Nao e atomico, e isso importa no erro.** O upload acontece ANTES do POST,
+  entao existe um estado intermediario: a realizacao pode ser criada sem o
+  anexo (servidor antigo que descarta `files`, ou falha na conferencia). Nesse
+  caso o comando sai com **exit 1** e o stderr traz o comando de retry pronto,
+  por `--url`. **NUNCA repita o `create-realization`** — a realizacao ja
+  existe e voce criaria uma segunda. Rode o retry que o CLI emitiu:
+
+  ```bash
+  aegro files attach --entity realization --key activityLog::<id>     --url "<chave S3 que saiu no stderr>" --execute
+  ```
+
+  Reanexar a mesma chave S3 e no-op (a saida traz `saved: false`), entao o
+  retry por `--url` pode ser repetido sem medo. Ja repetir com `--file` sobe o
+  arquivo de novo e cria uma SEGUNDA copia do anexo.
 - `update-realization --file` **acrescenta** aos anexos existentes: o comando
   le a realizacao antes e reenvia a lista completa, porque o PATCH substitui
   `files` por inteiro (mandar so os novos apagaria os antigos). Para trocar a
