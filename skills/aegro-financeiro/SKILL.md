@@ -190,12 +190,21 @@ Relacionamentos-chave:
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
-| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
+| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
 > nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
 > `installments`) e sao pagas via `realize`.
+
+**Apropriacao direta por patrimonio:** `--apportion-asset "<nome|asset::key>"`
+joga o custo do lancamento para uma maquina ou benfeitoria, em vez de (ou junto
+com) a safra. Limite da API publica: **1 patrimonio por lancamento**. Combine
+com `--apportion-crop` quando o custo for de uma maquina dentro de uma safra.
+
+```bash
+aegro financial create-bill --farm "<fazenda>"   --description "Pneu do trator CT07" --total-amount 4800   --cash-flow EXPENSE --payment-method INSTALLMENT   --category "Manutencao" --bank-account "<conta>"   --apportion-asset "CT07" --apportion-crop "Soja 26/27" --dry-run
+```
 
 **Anexos (nota fiscal, comprovante, boleto):**
 - `create-bill --attach ./nota.pdf` (repetivel) cria a conta e anexa o arquivo
@@ -557,8 +566,24 @@ financeiro por produtor rural.
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
-(campo `installments`); correcoes via `update-bill` (PATCH) ou pelo app.
-Nao ha "unrealize" (desfazer pagamento).
+(campo `installments`). Nao ha "unrealize" (desfazer pagamento).
+
+**`update-bill` NAO altera parcela.** `installments` so existe no schema de
+criacao; no PATCH o servidor descartaria o campo em silencio e responderia 200
+com a conta inteira — indistinguivel de sucesso. O CLI **recusa antes de
+chamar** (exit 4), no `--dry-run` e no `--execute`, junto com qualquer outra
+chave de topo fora de `BillPatchPublicResource`. Vencimento e valor de parcela
+ja lancada mudam **pela tela**.
+
+### Parcela a prazo exige conta bancaria
+
+`create-bill` com `installments` **exige** `--bank-account`. A parcela que vem
+no payload nao herda a conta do lancamento: sem a flag, ela nasceria sem conta
+bancaria e o dinheiro nao teria de onde sair. O CLI cobra a conta antes de
+enviar — no preenchimento interativo, pergunta; em modo nao-interativo, falha.
+
+Nao ofereca `--payment-method PROMPT` para contornar: PROMPT cria parcela **ja
+paga** (secao acima), que e outra coisa.
 
 ### fin-categories create exige todos os 6 campos
 

@@ -464,6 +464,19 @@ aegro purchase-orders create --farm "Fazenda Aegro" \
 aegro purchase-orders list --farm "Fazenda Aegro" --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
 ```
 
+**Remessa lancada por engano: apague, nao compense.** `delete-shipment` apaga a
+remessa **e** os lancamentos de estoque que ela gerou, no mesmo caminho. Lancar
+uma segunda remessa para "corrigir" nao resolve: a primeira ja conta para o
+`deliveryProgress`, e o pedido fica com entrega em dobro.
+
+```bash
+# A chave da remessa sai no get-internal do pedido
+aegro purchase-orders get-internal --farm "<fazenda>" <pedido>
+aegro purchase-orders delete-shipment --farm "<fazenda>" --key <chave-da-remessa> --dry-run
+```
+
+Usa a API interna (`DELETE /app/rest/shippings/{id}`) — exige `aegro auth login`.
+
 ## Orquestracao Entre Dominios
 
 Fluxos operacionais que cruzam multiplos dominios do Aegro. A sequencia correta evita inconsistencias.
@@ -645,6 +658,25 @@ Um elemento participa de tres dominios simultaneamente:
 **Regra:** Criar o elemento e vincular categorias financeiras antes de usar em atividades e estoque.
 
 ## Bugs Conhecidos e Retry
+
+### Versao do CLI: leia o aviso antes de culpar a skill
+
+O CLI avisa no stderr quando ha versao mais nova no PyPI. **Nao engula o
+aviso** — deriva de versao e a causa comum de "o comando nao aceita essa flag"
+e de skill que parece errada. Se a maquina esta atras, atualize antes de
+investigar:
+
+```bash
+pip install -U aegro && aegro --version
+```
+
+### 5xx no criar NAO garante que nada foi criado
+
+Em `activities create-plan`/`create-realization`, um 5xx pode ter gravado o
+registro assim mesmo. O CLI avisa e tenta conferir na listagem — mas ele
+distingue "conferi e nao achei" de "nao consegui conferir". **Nunca repita o
+create as cegas depois de um 5xx**: confira a listagem primeiro, ou voce cria
+o registro em duplicidade.
 
 ### Resumo de Bugs Ativos
 
