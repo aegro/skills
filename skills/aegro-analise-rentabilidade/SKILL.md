@@ -1,7 +1,6 @@
 ---
 name: aegro-analise-rentabilidade
 description: Calcular ROI, custo por hectare e margem bruta da safra
-version: 0.5.3
 ---
 
 # Analise de Rentabilidade

@@ -1,7 +1,6 @@
 ---
 name: aegro-importacao-fornecedores
 description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
-version: 0.7.2
 ---
 
 # Importacao de Fornecedores em Lote

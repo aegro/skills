@@ -1,7 +1,6 @@
 ---
 name: aegro-conciliacao-bancaria
 description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
-version: 0.3.2
 ---
 
 # Aegro Conciliacao Bancaria

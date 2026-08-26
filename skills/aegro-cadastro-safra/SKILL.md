@@ -1,7 +1,6 @@
 ---
 name: aegro-cadastro-safra
 description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), usando a CLI aegro
-version: 0.2.0
 ---
 
 # Cadastro de Safra no Aegro

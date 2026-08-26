@@ -1,7 +1,6 @@
 ---
 name: aegro-fechamento-safra
 description: Checklist guiado para encerramento de safra com validacao de dados completos
-version: 0.5.1
 ---
 
 # Fechamento de Safra

@@ -16,7 +16,6 @@ description: >-
   lancamentos (use /aegro-financeiro com `financial update-bill`), para criar
   categoria (use `fin-categories create`), nem para migrar qualquer outro campo
   que nao seja categoria financeira.
-version: 0.3.3
 ---
 
 # Aegro Migracao de Categorias em Massa

@@ -1,7 +1,6 @@
 ---
 name: aegro-importacao-patrimonio
 description: Importar patrimonio em lote a partir de uma planilha modelo (maquinas, veiculos, silos, benfeitorias, pivos, estacoes)
-version: 0.5.3
 ---
 
 # Importacao de Patrimonio em Lote

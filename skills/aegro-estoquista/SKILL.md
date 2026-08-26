@@ -1,7 +1,6 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.7.2
 ---
 
 # Aegro Estoquista

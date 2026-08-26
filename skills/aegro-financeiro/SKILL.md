@@ -1,7 +1,6 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.9.2
 ---
 
 # Aegro Financeiro

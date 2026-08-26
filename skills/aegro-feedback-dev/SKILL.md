@@ -17,7 +17,6 @@ description: >-
   dev"). NAO use para suporte a cliente final, para reportar bug de produto Aegro
   fora do fluxo CLI/API (use o fluxo normal de bug), nem durante o lancamento em
   si (quem registra e a skill de lancamento; esta compila).
-version: 0.2.0
 ---
 
 # Feedback de campo -> time de dev

@@ -1,7 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
 description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.10.0
 ---
 
 # Lancamento Financeiro

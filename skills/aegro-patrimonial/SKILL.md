@@ -1,7 +1,6 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.7.2
 ---
 
 # Dominio Patrimonial

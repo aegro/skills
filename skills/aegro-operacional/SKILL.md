@@ -1,7 +1,6 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.10.2
 ---
 
 # Dominio Operacional
