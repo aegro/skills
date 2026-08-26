@@ -220,31 +220,42 @@ aegro elements financial-categories --farm "<fazenda>" revenue \
   --element-key element::abc123 --element-key element::def456
 ```
 
-**Anexo no elemento** (bula, ficha tecnica, foto):
-`aegro files attach --entity element --key element::<id> --file ./bula.pdf --execute`
-(exige OAuth; releitura de conferencia inclusa).
+**Anexo no elemento** (bula, ficha tecnica, foto) — **caso de uso raro**:
+poucas pessoas anexam arquivo a elemento do catalogo. **Nao ofereca por conta
+propria**; so faca quando o usuario pedir explicitamente para anexar num
+elemento.
 
-**Boa parte do catalogo NAO aceita anexo — conte com isso.** Elemento sem
-`catalogId` (cadastro anterior ao conceito de catalogo) e recusado pelo
-servidor em qualquer re-save, com 400 generico; o CLI barra antes de subir o
-arquivo e diz o motivo. Nao e caso raro: medido na Fazenda Aegro de staging
-(25/08/2026, amostra estratificada de 52 elementos), **54% foram barrados**, e
-a proporcao muda MUITO por categoria:
+```bash
+aegro files attach --entity element --key element::<id> --file ./bula.pdf --execute
+```
+
+**So elemento CRIADO NA FAZENDA aceita anexo.** Elemento **importado** (do
+catalogo global ou de outro catalogo) e recusado pelo servidor em qualquer
+re-save, com 400 generico — o CLI barra antes de subir o arquivo e diz o
+motivo. E o mesmo comportamento da tela do app: la o anexo tambem so aparece
+no elemento proprio.
+
+**Da para saber ANTES de tentar**: o campo `isImported` de `aegro elements
+list` (API publica) prediz o resultado — `true` = importado, nao vai
+funcionar. Medido em staging (25/08/2026): acertou em 24 de 24 casos.
+
+Nao e caso de borda: na mesma medicao (staging, 25/08/2026, amostra
+estratificada de **52 elementos**), **28 foram barrados — 54%**. A proporcao
+varia muito por categoria:
 
 | Categoria | Aceita | Barrado |
 |---|---|---|
-| FERTILIZER | 0/8 | **8/8** |
-| PEST | 1/8 | 7/8 |
-| SEED | 3/8 | 5/8 |
-| DEFENSIVE | 4/8 | 4/8 |
-| ITEM | 6/8 | 2/8 |
-| SERVICE | 6/8 | 2/8 |
-| ANIMAL | 4/4 | 0/4 |
+| FERTILIZER | 0 | **8** |
+| PEST | 1 | 7 |
+| SEED | 3 | 5 |
+| DEFENSIVE | 4 | 4 |
+| ITEM | 6 | 2 |
+| SERVICE | 6 | 2 |
+| ANIMAL | 4 | 0 |
+| **Total** | **24** | **28** |
 
-Ou seja: em fertilizante, espere que NAO va funcionar; em item e servico,
-espere que va. Quando barrar, o caminho e anexar pela tela do app (ou vincular
-o elemento a um catalogo antes). Nao ha como saber pela listagem: o campo
-`catalogId` so aparece na leitura individual.
+Em fertilizante, espere que NAO va funcionar; em item e servico, espere que
+va. Quando barrar, o caminho e anexar pela tela do app.
 
 ### 4.3 catalogs (catalogos de referencia)
 
