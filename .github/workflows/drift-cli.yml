@@ -1,0 +1,68 @@
+# Drift entre as skills e a CLI `aegro` publicada.
+#
+# Por que agendado e nao na PR: as checagens dependem da CLI publicada e mudam
+# quando o CLI muda, sem relacao com o commit em revisao. Cobrar na PR deixaria
+# vermelha a PR de quem nao mexeu em contrato nenhum, e o autor aprenderia a
+# ignorar o vermelho. Mesmo raciocinio do `openapi-drift.yml` do tool-aegro-cli.
+#
+# Instala a `aegro` do PyPI de proposito: o alvo e o que o cliente tem na
+# maquina, nao o que esta no `dev` do CLI.
+name: Drift skills x CLI
+
+on:
+  schedule:
+    # Segunda 12:15 UTC = 09:15 America/Sao_Paulo (Brasil sem horario de verao).
+    # Quinze minutos depois do openapi-drift, para os dois nao competirem.
+    - cron: "15 12 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: drift-cli
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar a CLI publicada
+        run: |
+          python -m pip install --upgrade pip
+          pip install aegro
+          aegro --version
+
+      - name: Conferir drift
+        id: drift
+        run: |
+          python scripts/drift_cli.py --md > drift.md
+          if python scripts/drift_cli.py > /dev/null; then
+            echo "tem_drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tem_drift=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat drift.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Abrir issue com o que divergiu
+        if: steps.drift.outputs.tem_drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "As skills citam comando ou flag que a \`aegro\` publicada nao tem mais."
+            echo
+            cat drift.md
+            echo
+            echo "Aberto por \`.github/workflows/drift-cli.yml\`."
+          } > corpo.md
+          gh issue create \
+            --title "Drift: skills x CLI publicada ($(date -u +%d/%m/%Y))" \
+            --body-file corpo.md \
+            --label documentation

@@ -294,6 +294,17 @@ aegro harvest-logs create --farm "<fazenda>" \
   --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901"
 ```
 
+**Romaneio com destino (silo) sai em um comando so.** Com `--destination-key`,
+se o servidor descartar o silo no create, o CLI completa por PATCH e confere
+por releitura — a saida ja e o registro relido. Se a completacao falhar, o
+comando **falha dizendo que o romaneio ja existe**: nunca repita o `create`,
+use o `update` que ele sugere, ou voce duplica o romaneio.
+
+**Campo desconhecido no `--body` e recusado antes de enviar** (exit 4). Nao e
+frescura do CLI: a API aceitaria a requisicao, descartaria o campo e
+responderia sucesso — o romaneio ficaria sem o dado e a releitura pareceria
+certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
+
 **Anexo no romaneio** (foto da nota, ticket de balanca):
 `aegro files attach --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
 (exige OAuth; releitura de conferencia inclusa). Consulta:
