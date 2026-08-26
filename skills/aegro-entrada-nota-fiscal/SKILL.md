@@ -276,7 +276,7 @@ MOVIMENTAR ITENS -> Estoque de producao".
 ```bash
 # Venda de arroz com baixa do silo (o caso do feedback):
 aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
-  --category "Venda Agricola" \
+  --category "Venda Agricola" --bank-account "<conta bancaria>" \
   --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
   --farm "<Fazenda>" --env prod --dry-run
 ```
