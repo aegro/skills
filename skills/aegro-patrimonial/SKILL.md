@@ -9,6 +9,22 @@ version: 0.7.2
 Referencia completa do dominio de patrimonio da Fazenda Aegro (`farm::5711512de4b0e15eb04da4d0`, ~67k ha).
 Cobre ativos (maquinas, veiculos, silos, benfeitorias, pivos, estacoes meteorologicas), abastecimentos de combustivel e manutencoes.
 
+## Fazenda explicita em toda escrita
+
+Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confie
+no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
+alvo da outra sem avisar.
+
+Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
+entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
+na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
+
+Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
+`--execute`, ele recusa escrita cuja fazenda nao veio de `--farm`
+(`IMPLICIT_FARM_BLOCKED`, exit 4). No envelope do `--dry-run`, confira `farm` e
+`farmSource: "flag"` antes de aprovar.
+
 ## Vocabulario
 
 | Termo | Definicao | Formato da Chave |
@@ -236,6 +252,10 @@ use o comando de retomada que o erro imprime, que e um `update`.
 ## Referencia de Comandos
 
 ### assets
+
+> **`--farm "<Fazenda|farm::key>"` e obrigatorio em todo comando de escrita desta
+> tabela** (`create-*`, `update-*`, `delete-*`), e nao esta repetido linha a linha.
+> Ver "Fazenda explicita em toda escrita" no topo.
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|

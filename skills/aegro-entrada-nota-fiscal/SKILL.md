@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.6.0
+version: 0.6.3
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -90,13 +90,57 @@ Opcoes do `launch-bill` que replicam a UI web:
   em silencio seria decidir por onde o dinheiro anda. Descubra com
   `aegro bank-accounts list`.
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
-  `--prompt` (A Vista: 1 parcela paga), `--installments N` (A Prazo: N mensais);
-  sem nenhum, usa as duplicatas da propria nota.
+  `--prompt` (A Vista: 1 parcela **JA PAGA** - baixa automatica na criacao),
+  `--installments N` (A Prazo: parcelas em aberto - N=1 vence na data da nota,
+  N>1 sao mensais); sem nenhum, usa as duplicatas da propria nota (nota sem
+  duplicatas: o efeito e 1 parcela em aberto na data da nota). Antes de
+  escolher, leia a traducao logo abaixo: "a vista" dito pelo usuario **nao**
+  vira `--prompt` automaticamente.
 - `--currency USD --exchange-rate 5.42` (moeda estrangeira; parcelas acompanham)
 - `--create-company` (cria o fornecedor com os dados da nota) e
   `--company <nome|id|key>` (desambigua emitente com CNPJ duplicado)
-- `--stock-location <key>` (baixa de estoque), `--apportion-crop "Safra X"` (rateio),
-  `--asset <id>`, `--tag`, `--description`, `--producer`, `--force`.
+- **Estoque — duas flags, dois estoques diferentes** (ver secao 5b):
+  `--stock-location <key>` movimenta o estoque de **INSUMO** e so vale em
+  **despesa**; `--stock-harvest <asset::silo>` (+ `--stock-harvest-crop "Safra X"`)
+  movimenta o estoque de **PRODUCAO** — e o que da **baixa** numa venda de graos.
+- `--apportion-crop "Safra X"` (rateio), `--asset <id>`, `--tag`,
+  `--description`, `--producer`, `--force`.
+
+### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
+
+No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
+criacao, irreversivel via API - correcao so pelo app). Quando o usuario diz
+que a nota "e a vista" - ou a nota vem sem duplicatas - ele normalmente
+descreve a **condicao de pagamento** (vencimento na data da nota), nao uma
+ordem para dar baixa.
+Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
+31/07/2026 - ENTRADA-135):
+
+| O que foi dito / esta na nota | Flag | Efeito |
+|---|---|---|
+| "a vista" (condicao; baixa NAO confirmada) | `--installments 1` | 1 parcela **em aberto** com vencimento na data da nota; o produtor confirma o pagamento depois |
+| "a vista", pagamento JA feito **e** baixa automatica desejada | `--prompt` | 1 parcela ja paga na data da nota |
+| Pagamento ja feito, mas o produtor prefere conferir antes de baixar | `--installments 1` | 1 parcela em aberto na data; apos a conferencia, `aegro financial realize` |
+| "a prazo" / nota com duplicatas | sem flag | parcelas das duplicatas (o cronograma real da nota) |
+| Sem duplicatas e parcelamento combinado | `--installments N` | N parcelas mensais em aberto |
+| Remessa / registro sem efeito de caixa | `--no-payment` | sem parcelas (ver secao 3) |
+
+Qualquer linha desta tabela que gere parcela (`--installments`, `--prompt` ou as
+duplicatas da nota) exige `--bank-account` — inclusive a traducao default de "a
+vista". So `--no-payment` dispensa a conta. Ver a secao de opcoes do
+`launch-bill`.
+
+Se a fala e o documento conflitam (usuario diz "a vista"/"ja paguei" mas a
+nota TEM duplicatas), as duplicatas sao o cronograma real: aponte a
+divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
+confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
+e registre os pagamentos com `financial realize` em seguida.
+
+**Nunca traduza "a vista" direto para `--prompt`** sem confirmar que o
+pagamento ja ocorreu **e** que a baixa automatica e desejada. O proprio time de
+Servicos lanca nota com data a vista como "A Prazo" de 1 parcela na mesma data,
+justamente para o sistema nao marcar "pago" sozinho e o produtor poder revisar
+lancamentos retroativos.
 
 ## Fluxo de decisao
 
@@ -169,11 +213,21 @@ quase-lancamento de R$ 1,6M como receita). Recomendacao default, nesta ordem:
 Nunca encaminhe lancamento cheio dessas notas sem alerta explicito.
 
 **Nota recebida com CFOP 59xx/69xx de remessa ou retorno: NAO e compra — nao
-monte conta a pagar.** O `launch-bill` **nao sinaliza** essas notas e montaria
-a conta normalmente (~R$ 827 mil em passivo falso quase lancado numa sessao —
-uma remessa para demonstracao 5912 e um retorno de deposito 5906 —, evitado so
-pela leitura manual da natureza). **O guard e da skill:** leia `cfopCode` +
-`natureOfOperation` no `items` ANTES de oferecer qualquer lancamento.
+monte conta a pagar.** Foram ~R$ 827 mil em passivo falso quase lancados numa
+sessao (uma remessa para demonstracao 5912 e um retorno de deposito 5906),
+evitados so pela leitura manual da natureza.
+
+Desde o CLI **v0.17.0** esse guard existe **tambem no `launch-bill`**: nota de
+nao-compra lancada como **despesa** para o comando, e so segue com
+`--allow-non-purchase` (a decisao aparece no preview do dry-run). Em
+**receita** o guard nao dispara — ele protege contra conta a **pagar** falsa, e
+receita e classificacao explicita de quem opera (uma venda de producao com CFOP
+1905 e legitima; ver secao 5b).
+
+Isso **nao dispensa a leitura**: o guard olha so o CFOP, e a natureza da
+operacao ("RETORNO DE COMODATO") costuma decidir antes. Leia `cfopCode` +
+`natureOfOperation` no `items` ANTES de oferecer qualquer lancamento — e trate
+o bloqueio do CLI como segunda rede, nao como a primeira.
 
 - **Nao-compra (default: arquivar ou acionar a pessoa):** 5905/5906/5907
   (deposito/armazem e retornos), 5912/5913 (demonstracao), 5901/5902
@@ -230,18 +284,72 @@ Descubra o nome exato da categoria com `aegro fin-categories list -s "<trecho>"`
 2. **Total da conta vs total da nota.** O `launch-bill` monta a conta pelo
    `value` (soma dos produtos); quando o `totalValue` da nota e maior
    (frete/impostos/acrescimos), a conta nasce **subvalorizada**. Compare os
-   dois no `items`; divergiu -> mostre a diferenca e confirme com o operador
-   qual valor vale antes do execute.
+   dois no `items`; divergiu -> na v0.17.0+ o comando **para** e exige o valor
+   explicito: confirme com o operador qual vale e repita o `--dry-run`/
+   `--execute` com `--total <valor>`.
 3. **Quantidades do estoque plausiveis.** Confira `inputs[].amount` do dry-run
    contra a quantidade da nota: distorcao tipo x1000 indica `conversionRate`
    errado persistido na conciliacao (ex. fator 1000 com nota e elemento na
    MESMA unidade, que deveria ser 1). Nesse caso, lance **sem**
-   `--stock-location` (a entrada de estoque sairia inflada; com a flag o
-   cost-apportion tende a dar 422) e reporte via `/aegro-feedback-dev`.
+   `--stock-location` **nem** `--stock-harvest` (a mesma distorcao infla os
+   dois estoques; com a flag o cost-apportion tende a dar 422) — corrija com
+   `conciliate --unit`/`--conversion-rate`, rode um novo dry-run e so ai
+   execute, e reporte via `/aegro-feedback-dev`.
 
 Como **pedido de compra**: `launch-purchase-order <doc> --order-code <n> --dry-run`
 (depois `--execute`). Requer itens conciliados (itens sem conciliacao ficam fora
 do pedido — o comando avisa); itens conciliados ao mesmo elemento sao agregados.
+
+### 5b. Nota que MOVIMENTA ESTOQUE — escolha o estoque certo
+
+> Requer CLI **v0.18.0+** (`--stock-harvest`). Confira com `aegro --version`;
+> em versao anterior a flag nao existe e **nao ha caminho de baixa de producao
+> pelo CLI** — o fluxo e a UI web (Estq. Producao -> VENDER).
+
+O Aegro tem **dois estoques** e cada um tem a sua flag. Errar a flag foi o
+atrito de campo que gerou o ENTRADA-170: numa venda de graos, `--stock-location`
+nao da baixa nenhuma da producao.
+
+| Quero... | Flag | Vale em |
+|---|---|---|
+| Entrada de **insumo** comprado (adubo, defensivo, semente) | `--stock-location <stockLocation::key>` | so **despesa** — em receita o comando para com exit 4 |
+| **Baixa** de **producao** vendida (graos saindo do silo) | `--stock-harvest <asset::silo>` + `--stock-harvest-crop "Safra X"` | **receita** = saida; despesa = entrada (compra de graos) |
+
+**A direcao vem da conta, nao da flag**: com `--stock-harvest`, receita **baixa**
+o silo e despesa **credita**. Nao existe flag de sentido — classifique a conta
+certo e o estoque segue. E o mesmo grupo que a UI monta no switch "RETIRAR E
+MOVIMENTAR ITENS -> Estoque de producao".
+
+```bash
+# Venda de arroz com baixa do silo (o caso do feedback):
+aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
+  --category "Venda Agricola" --bank-account "<conta bancaria>" \
+  --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
+  --farm "<Fazenda>" --env prod --dry-run
+```
+
+Tres coisas que fazem o comando parar antes de escrever — e o conserto:
+
+- **O silo e um `asset` do tipo GARNER**, id de 24 hex. Pegue em
+  `aegro assets list --farm "<Fazenda>" --env <staging|prod> --type GARNER`
+  (sem `--farm`/`--env` o id pode vir da fazenda/ambiente errado); nome nao
+  resolve aqui, e asset que nao seja silo o comando recusa dizendo que nao
+  existe nesta fazenda.
+- **Todos os itens conciliados**, e o grao (item de categoria SEED) numa unidade
+  **compativel com kg** (`kg`, `t`, `sc60`...). `un`/`L` nao convertem — o
+  lancamento para e manda reconciliar com `conciliate --unit` /
+  `--conversion-rate`. O grupo aceita so semente + servico: adubo/defensivo no
+  meio da nota faz o comando reclamar do item, com o codigo dele.
+- **A safra e obrigatoria na pratica** (`--stock-harvest-crop`): sem ela a baixa
+  nasce sem origem de producao. Nome de safra resolve normalmente.
+
+Depois do `--execute`, o comando **confere a movimentacao no servidor** — existe?
+no silo certo? no sentido certo? na quantidade e unidade certas? na safra certa
+(o rateio com `--stock-harvest-crop` e conferido junto)? — e responde
+"saida de N conferida". Se nao conseguir conferir, o envelope sai `partial` com
+`stockUnverified`: **isso nao quer dizer que falhou**, quer dizer que ninguem
+confirmou. Confira na UI (Estq. Producao -> Movimentacoes) antes de cogitar
+relancar; relancar duplica a baixa.
 
 ### 6. [Modo interno] Reproduzir em producao
 
@@ -296,10 +404,12 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Fornecedor recem-criado demora a "aparecer" (consistencia eventual); o CLI contorna buscando por CNPJ. | Se falhar mesmo assim, aguarde ~10s e repita. |
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
-| `launch-bill` **nao sinaliza** NF que nao e compra (remessa/retorno 59xx/69xx) — montaria conta a pagar mesmo assim. | O guard e da skill: secao 3 (ler CFOP + natureza da operacao ANTES de oferecer lancamento). |
-| `launch-bill` usa o `value` (produtos), nao o `totalValue` da nota — conta pode nascer subvalorizada. | Checagem 2 da conferencia do dry-run (secao 5): compare e confirme com o operador. |
+| Desde a **v0.17.0** o `launch-bill` **bloqueia** NF de nao-compra (59xx/69xx) lancada como **despesa**; em receita nao dispara. | Libere com `--allow-non-purchase` so apos conferir. O guard le so o CFOP — a natureza da operacao continua sendo leitura sua (secao 3). |
+| Total divergente (`value` dos produtos x `totalValue` da nota com frete/impostos) **para** o lancamento na v0.17.0+. | Confira os dois no `items` e escolha explicitamente com `--total <valor>`. |
+| `--stock-location` **nunca** da baixa de producao — e o estoque de **insumo**, e em nota de receita o comando para (exit 4). | Venda de graos usa `--stock-harvest <asset::silo>` (secao 5b), CLI v0.18.0+. |
+| Apos `--execute` com estoque, o envelope pode sair `partial` com `stockUnverified`. | **Nao relance** — a conta foi criada; faltou a *conferencia*. Confira na UI (Estq. Producao -> Movimentacoes). |
 | Conciliacao pode ter `conversionRate` errado persistido (ex. 1000 com nota e elemento na mesma unidade) — estoque sairia x1000; `--stock-location` -> 422 de cost-apportion. | Checagem 3 da conferencia do dry-run (secao 5): confira `inputs[].amount` vs quantidade da nota; distorcido -> lance sem `--stock-location` e reporte. |
-| `conciliate` grava `measuringUnit: "ENUM_NOT_FOUND"` quando a unidade da nota nao e reconhecida (ex. SC). | Confira o retorno do conciliate; vindo `ENUM_NOT_FOUND`, avise e nao use o item em fluxo com estoque/consumo. |
+| Unidade da nota nao reconhecida (ex. SC) gravava `measuringUnit: "ENUM_NOT_FOUND"` em silencio. Na **v0.17.0+** o `conciliate` grava a unidade do **elemento** e o `launch-bill` recusa mapeamento com defeito. | Siga o conserto que o proprio comando indica: `conciliate <doc> --unit CODIGO=un` e/ou `--conversion-rate CODIGO=fator`. O de/para e reusado por (fazenda, fornecedor, item) — fator errado contamina a proxima nota. |
 | Dry-run serializa localmente e **nao valida nomes no servidor** (categoria/tag/conta com typo passam). | Checagem 1 da conferencia do dry-run (secao 5): resolva cada nome via listagem antes do execute. |
 | `items <numero>` ambiguo pede a key completa mas nao lista os candidatos. | Rode `list` com `--texto <numero>` (ou a janela de datas) para ver os candidatos e escolher a key. |
 
@@ -355,6 +465,32 @@ aplicou** (auditavel). O CLI permanece deterministico.
 
 > O de/para item<->catalogo **nao** vai ao playbook: a conciliacao ja persiste
 > server-side por fornecedor+item e e reaproveitada.
+
+## Entregue o link da conta lancada
+
+Depois do `launch-bill --execute`, ofereca o link que abre a conta gerada
+pela nota — e o caminho mais rapido para a pessoa conferir rateio, itens e
+categoria sem procurar o lancamento na lista:
+
+```
+{host}/farm/{farmId}?billId={billId}#farm-finance
+```
+
+**Atencao ao dialeto:** `launch-bill` passa pela API interna e devolve `id`
+e `farmId` (ja sem o prefixo `tipo::`), nao `key`/`farmKey`. Use esses
+campos direto.
+
+Nao existe link direto para a **nota** (documento recebido) — so para a
+conta. Se a pessoa quiser ver a nota, o maximo e a secao:
+`{host}/farms/{farmId}/fiscal/received-fiscal-document`. Diga que e a lista,
+nao a nota.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos workflows
 

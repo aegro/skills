@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-talhoes
 description: Cadastra e mantem os talhoes (glebas) de uma fazenda no Aegro, manualmente ou importando de um KML (com previa antes de gravar), usando a CLI aegro
-version: 0.1.2
+version: 0.2.0
 ---
 
 # Cadastro de Talhoes no Aegro
@@ -166,6 +166,28 @@ a safra.
   quando a precisao for critica.
 - **Unidade manual**: valor interpretado na unidade da fazenda; sem conversao
   automatica.
+
+## Entregue o Link do Talhao
+
+Depois de cadastrar, ofereca o link — o `glebes create` devolve `key` e
+`farmKey`:
+
+```
+{host}/farm/{farmId}/glebe/{glebeId}
+```
+
+Abre o talhao no mapa, util justamente depois de importar KML para a pessoa
+conferir o desenho. Existe tambem o formulario de edicao
+(`/farm/{farmId}/edit-glebe/{glebeId}`), mas **prefira o link acima**: o
+formulario abriu como "Area excluida" em talhao sem geometria durante os
+testes.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos Workflows
 

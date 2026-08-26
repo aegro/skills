@@ -157,6 +157,72 @@ asset::57d299c3e4b059f24e3f99b0
 crop::68dd6719e90f726622b7f549
 ```
 
+### Link Direto para a Entidade (deep link)
+
+Depois de criar ou editar algo, **ofereca ao usuario o link que abre aquela
+entidade** no navegador. Monte o link a partir do que o proprio comando devolveu:
+nao existe `aegro link` nem endpoint que resolva isso.
+
+Host pelo `--env` da sessao — nunca use o `AEGRO_API_BASE_URL`:
+
+| env | host |
+|-----|------|
+| prod | `https://app.aegro.com.br` |
+| staging | `https://app.staging.aegro.io` |
+
+**A lista abaixo e FECHADA.** So estas entidades tem link direto no Aegro:
+
+| Entidade | Template | Abre |
+|----------|----------|------|
+| Conta (bill) | `/farm/{farmId}?billId={billId}#farm-finance` | dialogo "Editar lancamento" da conta |
+| Patrimonio | `/farm/{farmId}?assetId={assetId}#farm-assets` | ficha do patrimonio |
+| Safra | `/farm/{farmId}/crop/{cropId}#crop-dashboard` | a safra |
+| Talhao | `/farm/{farmId}/glebe/{glebeId}` | o talhao |
+| Talhao (formulario) | `/farm/{farmId}/edit-glebe/{glebeId}` | "Editar area" carregado — prefira a linha acima, este abre como "Area excluida" em talhao sem geometria |
+| Talhao na safra | `/farm/{farmId}/crop/{cropId}/glebe/{glebeId}` | o talhao dentro da safra |
+| Item de estoque | `/farm/{farmId}?elementId={elementId}&locationId={locationId}&tab=stockItemHistory#farm-stock` | "Historico de item" do insumo naquele local |
+
+Abas (`#`) alternativas da safra, quando fizer sentido: `crop-manage`,
+`crop-inputs`, `crop-costs`, `crop-realized-costs`, `crop-harvest`, `crop-scout`,
+`crop-map`, `crop-outcomes`.
+
+Quatro regras, todas ja custaram link quebrado:
+
+1. **Tire o prefixo da chave.** A URL usa so o hexstring:
+   `bill::68d29a2e556faf2b209a0c20` -> `?billId=68d29a2e556faf2b209a0c20`.
+2. **Talhao na safra usa o `glebeKey`, NAO a chave `cropGlebe::`.** O
+   `crop-glebes list` devolve os dois campos: use `cropKey` + `glebeKey` e ignore
+   o `key`.
+3. **A API interna fala outro dialeto.** `received-fiscal-documents launch-bill`,
+   `purchase-orders create-bill`, `financial settle` e `bank-reconciliation`
+   devolvem `id`/`farmId` (ja sem prefixo) no lugar de `key`/`farmKey`. Leia os
+   dois.
+4. **Link errado nao da erro — ele mente.** Aba desconhecida (ou sem permissao)
+   cai na home da fazenda e reescreve a URL, sem aviso nenhum. Por isso: **nunca
+   invente template por analogia.** `?billId=` funcionar nao implica que
+   `?harvestLogId=` ou `?purchaseOrderId=` funcionem — eles nao existem.
+
+**Quando a entidade nao esta na tabela** (abastecimento, manutencao, romaneio,
+pedido de compra, atividade, parcela, NF-e, pecuaria, empresa, elemento, categoria
+financeira, agrupador, conta bancaria): diga que **nao existe link direto para
+isso no Aegro**. Se ajudar, ofereca a secao — dizendo que e a secao, nunca
+apresentando lista como se fosse a entidade.
+
+Ao entregar o link, diga o que ele abre. **Regra de uso unico so vale para os
+tres links com parametro de consulta** (Conta, Patrimonio, Item de estoque):
+o parametro (`?billId=`, `?assetId=`, `?elementId=&locationId=`) e consumido
+ao abrir, entao recarregar a pagina nao reabre o dialogo/ficha. Os links de
+Safra e Talhao usam parametro de rota (`/crop/{cropId}`, `/glebe/{glebeId}`):
+nao sao consumidos, e recarregar ou reabrir funciona normalmente.
+
+```bash
+# Criou a conta e o comando devolveu key + farmKey:
+#   {"key": "bill::68d29a2e556faf2b209a0c20",
+#    "farmKey": "farm::5711512de4b0e15eb04da4d0", ...}
+# O link (prod) fica:
+#   https://app.aegro.com.br/farm/5711512de4b0e15eb04da4d0?billId=68d29a2e556faf2b209a0c20#farm-finance
+```
+
 ### Exit Codes
 
 | Codigo | Significado | Quando |

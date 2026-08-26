@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-safra
 description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), usando a CLI aegro
-version: 0.1.1
+version: 0.2.0
 ---
 
 # Cadastro de Safra no Aegro
@@ -122,6 +122,31 @@ Confirme nome, periodo e os talhoes vinculados.
 - A safra **nao cria talhao**; se um talhao faltar, cadastre em
   `/aegro-cadastro-talhoes` antes.
 - `--type` deve ser um `CropType` valido.
+
+## Entregue o Link da Safra
+
+Depois de criar a safra, ofereca o link — o `crops create` devolve `key` e
+`farmKey`:
+
+```
+{host}/farm/{farmId}/crop/{cropId}#crop-dashboard
+```
+
+Trocando a aba conforme o que a pessoa vai fazer em seguida: `crop-map`
+(conferir os talhoes no mapa), `crop-manage` (atividades), `crop-inputs`,
+`crop-harvest`.
+
+Para um talhao **dentro** da safra, o caminho e
+`{host}/farm/{farmId}/crop/{cropId}/glebe/{glebeId}` — e o `{glebeId}` vem
+do campo **`glebeKey`** do `crop-glebes list`, nunca do `key` (que e o
+`cropGlebe::`). Usar o `key` gera link quebrado.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos Workflows
 
