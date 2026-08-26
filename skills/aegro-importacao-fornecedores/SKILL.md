@@ -61,20 +61,28 @@ vazias devem ser ignoradas.
   **422 (campos invalidos)**. Linhas sem documento **nao podem ser cadastradas** —
   pule e registre no relatorio.
 
-## Ordem Obrigatoria de Ambientes: Staging -> Verificacao -> Prod
+## Ordem Obrigatoria: Lote Pequeno -> Verificacao -> Resto
 
 Importacao em prod mexe em dados **reais** do cliente e **nao tem delete em
-lote** — um cadastro errado e trabalhoso de desfazer. Por isso, **nunca importe
-direto em prod**. Siga sempre esta ordem:
+lote** — um cadastro errado e trabalhoso de desfazer. A protecao **nao** e
+importar em staging antes: aquele ambiente e reposto de producao todo dia as
+03:15 BRT, entao a carga de la desaparece e nao prova que a de prod vai valer.
+O que limita o estrago e o tamanho do primeiro lote. Siga sempre esta ordem:
 
-1. **Importe primeiro em staging** (`--env staging`), numa fazenda de teste.
-   Rode o fluxo completo (passos 1 a 6) contra staging.
-2. **Verifique manualmente uma amostra** depois da carga — nao confie so no
-   "criado com sucesso". Confira via `aegro companies get <key> --env staging`
-   ou `aegro companies list --env staging`. Cubra cada caso: CNPJ (com
-   endereco) e CPF.
-3. **So depois de o staging conferir**, repita a mesma importacao em prod
-   (`--env prod`), apos confirmacao explicita do usuario.
+1. **Importe um lote pequeno primeiro** (5 a 10 linhas), no ambiente do
+   trabalho, **cobrindo cada caso** da planilha: CNPJ com endereco e CPF. Uma
+   duzia de cadastros errados se conserta a mao; trezentos, nao.
+2. **Verifique por leitura** — nao confie so no "criado com sucesso". Confira
+   via `aegro companies get <key>` ou `aegro companies list` que os campos
+   chegaram como esperado. Ha caminho de escrita no Aegro que responde sucesso
+   sem gravar, e a releitura e o que separa um do outro.
+3. **So depois que a amostra conferir**, importe o resto, apos confirmacao
+   explicita do usuario.
+
+> Um ensaio em `staging` (`--env staging`) continua util para **conhecer o
+> comando** e ver a forma da saida — e as chaves de la sao as mesmas de
+> producao, porque o ambiente e uma copia. Mas o que voce **criou** la morre no
+> restore das 03:15 BRT: nao use como validacao.
 
 > Os comandos `companies` (`create`/`get`/`list`/`update`) expoem `--env`
 > (`staging` para homologacao; `prod` para producao; default `prod`) e

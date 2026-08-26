@@ -6,8 +6,8 @@ description: >-
   lista as notas nao lancadas, apresenta a ficha da nota (resumo identificavel +
   fornecedor resolvido + consulta SEFAZ), concilia produtos ao catalogo, verifica
   duplicidade e lanca como conta (bill) ou pedido de compra com vinculo NF-e<->bill.
-  Sempre dry-run antes de execute. Detecta se o usuario e do time Aegro (staging-first)
-  ou cliente (producao direta). Use quando pedirem "dar entrada em nota fiscal",
+  Sempre dry-run antes de execute. Detecta se o usuario e do time Aegro (diario
+  de sessao) ou cliente (producao direta). Use quando pedirem "dar entrada em nota fiscal",
   "listar notas nao lancadas", "lancar essa NF-e como conta/pedido", "conciliar os
   itens da nota"; EN "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
@@ -29,15 +29,30 @@ O preenchimento fino da conta (categoria, parcelas, rateio) apoia-se em
 `/aegro-lancamento-financeiro`; aqui cuidamos da **decisao, da conciliacao e do
 lancamento a partir do documento**.
 
+> **Nota que veio da SEFAZ se lanca por aqui, nao pelo `financial create-bill`.**
+> O caminho deste grupo (`received-fiscal-documents`) e o que concilia item a
+> elemento, move estoque e **vincula a NF-e a conta**. O `create-bill` e para
+> conta **sem** nota; usado numa nota da SEFAZ, ele cria uma conta que nao
+> concilia item nenhum, e a nota **continua como nao lancada** na tela Fiscal —
+> pronta para alguem lancar de novo. E o vinculo depende de um campo que so
+> existe na **criacao** (`nfeAccessKey`, a chave de acesso): esquecer dele nao se
+> conserta com um `update-bill` depois, porque o patch publico nao aceita esse
+> campo (conferido no `BillPatchPublicResource`, serv-core). Se por algum motivo
+> a nota tiver de ser lancada por fora, passe `--nfe-access-key <chave>` na
+> criacao — e diga ao usuario o que ficou de fora (conciliacao e estoque).
+
 ## Modo da sessao: time Aegro vs. cliente (ler primeiro)
 
 Antes de qualquer coisa, identifique quem esta operando pelo **e-mail do
 usuario** disponivel no contexto da sessao:
 
 - **Interno — e-mail `@aegro.com.br`** (time de Servicos / EV operando a fazenda
-  de um cliente): fluxo **staging-first**. Valida na fazenda do cliente em
-  `staging`, confere na UI de staging e so entao **reproduz em producao**. Mantem
-  o **diario de sessao** (ver secao propria). Este e o modo do piloto ENTRADA-44.
+  de um cliente): opera no ambiente do trabalho, com **dry-run conferido antes
+  de cada escrita e releitura depois**, e mantem o **diario de sessao** (ver
+  secao propria). Este e o modo do piloto ENTRADA-44. Um ensaio em `staging`
+  serve para conhecer um comando novo — **nao para provar que o lancamento vai
+  valer**: o ambiente e reposto de producao todo dia as 03:15 BRT e o que foi
+  lancado la desaparece (ver "Ensaio em staging: o que ele prova").
 - **Externo — qualquer outro dominio** (cliente operando a propria fazenda):
   opera **direto em producao**. **Nao conduza o cliente a staging** — o ambiente
   existe, nao e segredo, mas nao e o caminho dele. Diario/telemetria nao sao
@@ -160,7 +175,7 @@ list (janela recente, --not-launched)
         |
 5. launch-bill (ou launch-purchase-order) --dry-run  ->  conferir  ->  --execute
         |
-6. [modo interno] validado em staging -> reproduzir em producao (--dry-run primeiro)
+6. releitura: conferir na listagem/status o que ficou gravado (o dry-run nao prova)
 ```
 
 ## Sequencia de passos
@@ -170,6 +185,14 @@ list (janela recente, --not-launched)
 `list --not-launched` na janela desejada. Apresente ao usuario como **tabela de
 conferencia em texto** antes de qualquer lancamento. `--launched` mostra as ja
 lancadas.
+
+**Ja sei o numero da nota.** Busque por ele — nao va ao navegador, e nao
+pagine a listagem inteira: `list` aceita `--search` (`-s`, ou `--texto`), que e
+**busca no servidor** sobre numero, fornecedor e chave de acesso.
+
+```bash
+aegro received-fiscal-documents list --farm "<fazenda>" --env prod --search 161286
+```
 
 ### 1b. FICHA DA NOTA (obrigatoria, antes de qualquer pergunta)
 
@@ -354,26 +377,42 @@ no silo certo? no sentido certo? na quantidade e unidade certas? na safra certa
 confirmou. Confira na UI (Estq. Producao -> Movimentacoes) antes de cogitar
 relancar; relancar duplica a baixa.
 
-### 6. [Modo interno] Reproduzir em producao
+### 6. Ensaio em staging: o que ele prova
 
-So depois que o lancamento saiu **certo em staging** e o EV confirmou na UI de
-staging (`https://app.staging.aegro.io`):
+`staging` (`https://app.staging.aegro.io`) e bom para **conhecer um comando
+novo** e ver a forma da saida. Nao e prova de que a operacao vai valer, e a razao
+esta no ambiente, nao no comando:
+
+- **O que voce lanca la some.** Staging e restaurado por completo a partir de um
+  snapshot de producao **todo dia as 03:15 BRT** — sem merge, sem preservar
+  escrita. Em 07/08/2026, 44 de 68 ajustes conferidos por uma EV voltaram ao
+  valor original tres dias depois.
+- **As chaves sao as MESMAS de producao** (e uma copia, com os mesmos `_id`).
+  Uma chave achada em staging vale em prod; o **registro que voce criou la**,
+  nao. Mesmo assim, prefira o **NUMERO da nota** e os nomes (categoria, safra,
+  fornecedor) a chaves: eles re-resolvem no ambiente certo, e cadastro criado
+  depois do ultimo restore existe num ambiente e nao no outro.
+- **Sucesso em staging nao e prova.** Ha caminho de escrita no Aegro que responde
+  200 sem gravar (serv-core#5386, serv-core#5505).
+
+O que protege de verdade, nos dois ambientes:
 
 ```bash
 # A fazenda vai no PROPRIO comando (--farm), nao num 'farms select' anterior:
 # assim o alvo nao depende de estado global que outra sessao pode ter trocado.
-# MESMO comando validado, SEMPRE com --dry-run primeiro:
+# SEMPRE --dry-run primeiro, e --env explicito:
 aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
   --bank-account "<conta bancaria>" --dry-run --env prod --farm "<Fazenda do Cliente>"
-# EV confere o plano (incluindo o campo farmSource) e SO ENTAO:
+# O EV confere o plano (incluindo o campo farmSource) e SO ENTAO:
 aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense \
   --bank-account "<conta bancaria>" --execute --env prod --farm "<Fazenda do Cliente>"
 ```
 
-- **Use o NUMERO da nota** (nao a key/ids): chaves e ids diferem entre ambientes;
-  o numero (e nomes de categoria/safra/fornecedor) re-resolve no ambiente certo.
-- **Dry-run em prod e inegociavel**, mesmo com comando identico ao de staging —
-  cadastros divergem (categoria pode nao existir, fornecedor pode ja existir).
+- **Dry-run e inegociavel**, e ele **serializa localmente**: nome errado passa
+  batido e so estoura (ou entra errado) no `--execute`. Resolva cada nome antes,
+  na listagem.
+- **Releia depois de gravar** (`status <doc>` ou a listagem): e a unica coisa que
+  distingue "gravou" de "respondeu 200".
 - O guard de duplicidade continua ativo; em prod, duplicata e dado real de
   cliente — **investigue antes de qualquer `--force`**.
 

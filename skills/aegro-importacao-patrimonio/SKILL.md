@@ -91,22 +91,31 @@ Duas abas:
 | `Outro` | `OTHER` |
 | `Não é uma Máquina` | — (so aparece quando `tipo` != Máquina; ignorar) |
 
-## Ordem Obrigatoria de Ambientes: Staging -> Verificacao -> Prod
+## Ordem Obrigatoria: Lote Pequeno -> Verificacao -> Resto
 
 Importacao em prod mexe em dados **reais** do cliente e **nao tem delete em
 lote** — um mapeamento errado e trabalhoso de desfazer (um `update-*` por
-ativo). Por isso, **nunca importe direto em prod**. Siga sempre esta ordem:
+ativo). A protecao **nao** e importar em staging antes: aquele ambiente e
+reposto de producao todo dia as 03:15 BRT, entao a carga de la desaparece e nao
+prova que a de prod vai valer. O que limita o estrago e o tamanho do primeiro
+lote. Siga sempre esta ordem:
 
-1. **Importe primeiro em staging** (`--env staging`), numa fazenda de teste.
-   Rode o fluxo completo (passos 1 a 6 abaixo) contra staging.
-2. **Verifique manualmente algumas entradas** depois da carga em staging —
-   nao confie so no "criado com sucesso". Confira no App de staging ou via
-   `aegro assets get <key> --env staging`. Faca spot-check de uma amostra que
-   cubra: cada `tipo` presente, o mapeamento `sub_tipo -> machineType`, datas
-   convertidas, `isImplement`, valor/medidor. Confirme que os campos chegaram
-   como esperado (e nao, por exemplo, uma data invalida virando erro).
-3. **So depois de o staging conferir**, repita a mesma importacao em prod
-   (`--env prod`), apos confirmacao explicita do usuario.
+1. **Importe um lote pequeno primeiro** (5 a 10 ativos), no ambiente do
+   trabalho, escolhido para **cobrir cada caso** da planilha: cada `tipo`
+   presente, o mapeamento `sub_tipo -> machineType`, uma data que precise de
+   conversao, `isImplement`, valor/medidor.
+2. **Verifique por leitura** — nao confie so no "criado com sucesso". Confira no
+   App ou via `aegro assets get <key>` que os campos chegaram como esperado (e
+   nao, por exemplo, uma data invalida virando erro). Ha caminho de escrita no
+   Aegro que responde sucesso sem gravar, e a releitura e o que separa um do
+   outro.
+3. **So depois que a amostra conferir**, importe o resto, apos confirmacao
+   explicita do usuario.
+
+> Um ensaio em `staging` (`--env staging`) continua util para **conhecer o
+> comando** e ver a forma da saida — e as chaves de la sao as mesmas de
+> producao, porque o ambiente e uma copia. Mas o que voce **criou** la morre no
+> restore das 03:15 BRT: nao use como validacao.
 
 Essa ordem existe para pegar bugs de mapeamento (ex: data so com hora gerando
 400, `machineType` faltando gerando 422) no ambiente seguro, antes de tocar o

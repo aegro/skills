@@ -58,12 +58,24 @@ aegro auth status
 aegro auth logout
 ```
 
-### Staging reseta diariamente — revalide a sessao antes de operar
+### Staging e reposto de producao as 03:15 BRT — o que isso muda
 
-O ambiente de staging (`app.staging.aegro.io`) e **zerado todo dia**: dados sao
-apagados e sessoes/logins sao invalidados. Consequencia pratica: **toda sessao de
-trabalho em staging comeca verificando a autenticacao**, e refazer o login no dia
-seguinte e o fluxo normal.
+O ambiente de staging (`app.staging.aegro.io`) **nao e zerado: e substituido**.
+Todo dia as **03:15 BRT** ele e restaurado por completo a partir de um snapshot
+de producao — restore de cluster inteiro, sem merge e sem preservar o que foi
+escrito la. Tres consequencias praticas, e as tres ja custaram tempo em campo:
+
+1. **Sessoes e logins sao invalidados**: toda sessao de trabalho em staging
+   comeca verificando a autenticacao, e refazer o login no dia seguinte e o
+   fluxo normal.
+2. **O que voce lancou la some.** Em 07/08/2026, 44 de 68 ajustes de estoque
+   conferidos por uma EV voltaram ao valor original tres dias depois. Staging
+   serve para conhecer um comando novo, **nao como validacao** de que a operacao
+   vai valer.
+3. **As chaves sao as mesmas de producao.** Staging e uma copia, com os mesmos
+   `_id`: uma chave achada la vale em prod — e a fazenda que responde em staging
+   pode ser a do cliente, com os dados reais dele. O que existe so em staging e
+   o **registro que voce criou depois do ultimo restore**.
 
 ```bash
 # Sempre no inicio de uma sessao de staging
