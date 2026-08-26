@@ -1,6 +1,14 @@
 ---
 name: aegro-cadastro-patrimonio
-description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
+description: >-
+  Cadastra ativos da fazenda no Aegro pela CLI — maquina, veiculo, silo,
+  benfeitoria, pivo e estacao meteorologica — e deixa o ativo pronto para
+  receber abastecimento e manutencao, entregando o link direto da ficha. Use
+  quando pedirem "cadastrar trator", "adicionar maquina", "criar patrimonio",
+  "registrar veiculo", "cadastrar silo"; EN "register a machine", "add an
+  asset". NAO use para subir a frota inteira de uma planilha (use
+  /aegro-importacao-patrimonio) nem para registrar abastecimento ou manutencao
+  (use /aegro-patrimonial).
 ---
 
 # Cadastro de Patrimonio
@@ -164,8 +172,6 @@ a cota. Detalhes e modos de falha em `/aegro-patrimonial`.
 | Bug | Impacto | Workaround |
 |-----|---------|------------|
 | **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
-
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 **Consequencia:** guardar a chave retornada continua sendo bom habito para conferir
 o registro logo apos criar, mas a listagem posterior via CLI **funciona** — `fuel-supplies list` e `maintenances list` aceitam `--asset-key` e periodo.

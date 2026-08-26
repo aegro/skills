@@ -1,6 +1,14 @@
 ---
 name: aegro-agronomo
-description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
+description: >-
+  Dominio agronomico do Aegro pela CLI — safras, talhoes na safra, atividades
+  planejadas e realizadas, romaneios de colheita, clima e insumos de producao:
+  vocabulario, comandos e regras. Use quando pedirem "registrar atividade",
+  "plantio", "aplicacao de defensivo", "colheita", "romaneio", "quanto colhi",
+  "atividades da safra"; EN "record a field activity", "harvest log". NAO use
+  para criar a safra ou o talhao do zero (use /aegro-cadastro-safra e
+  /aegro-cadastro-talhoes) nem para custo e rentabilidade (use
+  /aegro-analise-rentabilidade).
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -178,7 +186,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   existe e voce criaria uma segunda. Rode o retry que o CLI emitiu:
 
   ```bash
-  aegro files attach --entity realization --key activityLog::<id>     --url "<chave S3 que saiu no stderr>" --execute
+  aegro files attach --farm "<fazenda>" --entity realization --key activityLog::<id> \n    --url "<chave S3 que saiu no stderr>" --execute
   ```
 
   Reanexar a mesma chave S3 e no-op (a saida traz `saved: false`), entao o
@@ -423,8 +431,6 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 |-----|---------|------------|
 | **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
 | **#6** `weather create` | `POST /weather-logs` → 500 | Registrar clima pela interface web. Leitura funciona normal. |
-
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 **Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
 Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).

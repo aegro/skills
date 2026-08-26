@@ -1,6 +1,13 @@
 ---
 name: aegro-fechamento-safra
-description: Checklist guiado para encerramento de safra com validacao de dados completos
+description: >-
+  Checklist guiado de encerramento de safra no Aegro pela CLI: confere
+  atividades, realizacoes, colheitas, rateios e descontos, e devolve um
+  percentual de completude com a lista do que falta antes do fechamento
+  contabil. Use quando pedirem "fechar a safra", "encerrar safra", "a safra
+  esta completa", "o que falta para fechar"; EN "close the crop season". NAO
+  use para calcular rentabilidade (use /aegro-analise-rentabilidade) nem para
+  corrigir lancamento financeiro (use /aegro-financeiro).
 ---
 
 # Fechamento de Safra

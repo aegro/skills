@@ -1,6 +1,16 @@
 ---
 name: aegro-financeiro
-description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
+description: >-
+  Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
+  parcelas, categorias, contas bancarias, empresas e pedidos de compra:
+  vocabulario, contrato de cada comando, regras de negocio e armadilhas. Use
+  quando precisar da sintaxe ou da regra exata de um comando financeiro, "como
+  funciona parcela no Aegro", "quais campos o create-bill aceita", "listar
+  contas", "baixar parcela"; EN "financial commands reference", "how do
+  installments work". NAO use como guia passo a passo de lancamento (use
+  /aegro-lancamento-financeiro), para conciliacao bancaria (use
+  /aegro-conciliacao-bancaria) nem para migracao de categoria em massa (use
+  /aegro-migracao-categorias).
 ---
 
 # Aegro Financeiro

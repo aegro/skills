@@ -1,6 +1,14 @@
 ---
 name: aegro-operacional
-description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
+description: >-
+  Dominio operacional do Aegro pela CLI — fazendas, autenticacao, agrupadores
+  (tags), empresas, pedidos de compra, anexos de arquivo e os links diretos
+  que abrem a entidade no app. E a skill de orquestracao: define a fazenda
+  explicita em toda escrita e as regras que valem entre dominios. Use quando
+  pedirem "trocar de fazenda", "listar fazendas", "criar agrupador", "anexar
+  arquivo", "gerar o link do lancamento", "pedido de compra"; EN "switch
+  farm", "attach a file". NAO use para lancar conta (use /aegro-financeiro)
+  nem para atividade de campo (use /aegro-agronomo).
 ---
 
 # Dominio Operacional
@@ -290,8 +298,8 @@ com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
 | `aegro files attach` | Vincula arquivo(s) a uma entidade existente | `--entity`, `--key`, `--file/-f` (sobe e vincula) ou `--url` (vincula chave S3 ja subida), `--execute` |
 | `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
 
-Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses), todas
-validadas ao vivo em 24/08/2026: `realization` (`activityLog::`), `bill`,
+Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
+`realization` (`activityLog::`), `bill`,
 `purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
 `bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
 (vincular `--url` funciona ate com API key); as demais usam a API interna e
@@ -399,8 +407,8 @@ planilha viram dois agrupadores iguais, porque cada uma e um `create` valido.
 Se criar errado, o desfazer e o arquivamento (nao existe `delete` no CLI):
 
 ```bash
-aegro tags archive tag::abc --execute     # sai da selecao, historico preservado
-aegro tags unarchive tag::abc --execute   # reversivel
+aegro tags archive --farm "<fazenda>" tag::abc --execute     # sai da selecao, historico preservado
+aegro tags unarchive --farm "<fazenda>" tag::abc --execute   # reversivel
 ```
 
 **`archive`/`unarchive` exigem login OAuth** (`aegro auth login`): a API publica
@@ -644,8 +652,6 @@ Um elemento participa de tres dominios simultaneamente:
 |---|----------|------------|-----------------|------------|
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
-
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 > A numeracao tem buracos de proposito: os numeros sao compartilhados entre
 > as skills deste repo, entao renumerar aqui quebraria as referencias de la.

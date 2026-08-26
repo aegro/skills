@@ -1,6 +1,13 @@
 ---
 name: aegro-reconciliacao-estoque
-description: Identificar e explicar divergencias entre estoque fisico, atividades e financeiro
+description: >-
+  Explica divergencia entre o estoque registrado no Aegro, o consumo lancado
+  em atividades de campo e os lancamentos financeiros, apontando a causa
+  provavel de cada diferenca. Use quando pedirem "o estoque nao bate",
+  "sobrou/faltou insumo", "divergencia de estoque", "auditoria de insumos",
+  "conferir consumo da lavoura"; EN "stock does not match". NAO use para
+  consultar saldo ou movimentar estoque (use /aegro-estoquista) nem para
+  conciliar extrato bancario (use /aegro-conciliacao-bancaria).
 ---
 
 # Reconciliacao de Estoque

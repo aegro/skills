@@ -1,6 +1,13 @@
 ---
 name: aegro-cadastro-talhoes
-description: Cadastra e mantem os talhoes (glebas) de uma fazenda no Aegro, manualmente ou importando de um KML (com previa antes de gravar), usando a CLI aegro
+description: >-
+  Cadastra e mantem os talhoes (glebas) de uma fazenda no Aegro pela CLI,
+  manualmente ou importando um KML, com previa e prevalidacao de area e
+  geometria antes de gravar, e link direto do talhao. Use quando pedirem
+  "cadastrar talhao", "importar KML", "subir o mapa da fazenda", "corrigir a
+  area do talhao"; EN "register a field", "import KML". NAO use para vincular
+  talhao a uma safra (use /aegro-cadastro-safra) nem para custo por talhao
+  (use /aegro-analise-rentabilidade).
 ---
 
 # Cadastro de Talhoes no Aegro

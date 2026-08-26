@@ -1,6 +1,13 @@
 ---
 name: aegro-monitoramento-pragas
-description: Acompanhar aplicacoes de defensivos, consumo e eficacia no controle fitossanitario
+description: >-
+  Acompanha aplicacoes de defensivos na safra pela CLI, cruza com o consumo de
+  estoque e aponta padroes de uso que indiquem risco de resistencia ou
+  ineficacia. Use quando pedirem "quais defensivos apliquei", "historico de
+  aplicacao", "risco de resistencia", "monitoramento de pragas", "controle
+  fitossanitario"; EN "pesticide applications". NAO use para registrar a
+  aplicacao (use /aegro-agronomo) nem para saldo de defensivo em estoque (use
+  /aegro-estoquista).
 ---
 
 # Monitoramento de Pragas e Defensivos

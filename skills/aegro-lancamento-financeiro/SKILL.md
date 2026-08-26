@@ -1,6 +1,15 @@
 ---
 name: aegro-lancamento-financeiro
-description: Guia para criar e gerenciar contas a pagar e receber corretamente
+description: >-
+  Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
+  categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
+  de montar o comando, e entrega o link direto do lancamento criado. Foco na
+  sequencia de decisoes, nao na sintaxe. Use quando pedirem "lancar uma
+  conta", "registrar despesa", "conta a pagar", "conta a receber", "cadastrar
+  o pagamento do fornecedor"; EN "create a bill", "record an expense". NAO use
+  para dar entrada em NF-e recebida (use /aegro-entrada-nota-fiscal), para
+  conciliar extrato (use /aegro-conciliacao-bancaria) nem como referencia de
+  comandos do dominio (use /aegro-financeiro).
 ---
 
 # Lancamento Financeiro

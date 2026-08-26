@@ -391,9 +391,8 @@ o que ele faz, porque voce vai ver isso no stderr e vai precisar explicar.
 Quais contas entram e **sempre** a enumeracao do servidor. O que o CLI escolhe e
 so como buscar o conteudo delas, e as duas rotas tem custo oposto: ler uma a uma
 custa 1 requisicao por **alvo**; paginar a categoria custa 1 por **cada 100**
-lancamentos, alvo ou nao. Medido em staging (18/08/2026, FAZENDAS RAIZES AGRO):
-79 alvos custaram 81 requisicoes lendo um a um, enquanto a categoria inteira
-(150 contas) sai em 2 paginas.
+lancamentos, alvo ou nao. Quando os alvos sao poucos diante do tamanho da
+categoria, ler um a um sai mais barato; quando sao muitos, paginar ganha.
 
 Ele sonda a categoria, compara os dois custos e vai pela rota mais barata,
 dizendo qual escolheu e com que numeros:
@@ -723,7 +722,7 @@ proposito. E desse arquivo que sai o relatorio da secao 9.2.
 Existem duas coisas que acontecem na escrita, sao **excecao**, e **nao tem causa
 identificada**:
 
-| O que acontece | Medido em campo (19/08/2026) |
+| O que acontece | Frequencia esperada |
 |---|---|
 | **Nao gravou em silencio.** A API responde 200, o ledger registra OK, a conta continua na categoria antiga. Nao e nenhuma das causas conhecidas: reproduzivel com concorrencia 1, releitura minutos depois confirma, e as contas sao identicas a centenas que gravaram | **38 de 1.234** (3,1%) |
 | **Gravou, e o total da conta mudou 1 centavo** — para cima ou para baixo. A soma dos itens continua certa; e o total que o servidor recalcula ao regravar `inputs` | **26 de 783** de nivel item (3,3%); nenhuma de nivel conta |

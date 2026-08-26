@@ -1,6 +1,14 @@
 ---
 name: aegro-visao-geral
-description: Panorama rapido da fazenda - safras, saldos, pendencias e alertas
+description: >-
+  Panorama da fazenda pela CLI aegro: safras ativas, saldo consolidado das
+  contas bancarias, contas a pagar e a receber dos proximos 30 dias e alertas
+  de estoque, num resumo unico para abrir atendimento ou reuniao de
+  acompanhamento. Use quando pedirem "como esta minha fazenda", "panorama da
+  fazenda", "resumo geral", "o que precisa de atencao"; EN "farm overview",
+  "how is my farm doing". NAO use para executar acao — e so leitura: para
+  lancar conta use /aegro-lancamento-financeiro, para safra use
+  /aegro-cadastro-safra, para estoque use /aegro-estoquista.
 ---
 
 # Visao Geral da Fazenda
@@ -27,9 +35,12 @@ Para detalhes dos comandos e regras de negocio:
 
 ## Sequencia de Passos
 
-### 1. Confirmar fazenda selecionada
+### 1. Confirmar a fazenda
 
-Usar `list_farms` e `select_farm` se necessario. Sem fazenda selecionada
+Liste com `aegro farms list` e confirme com o usuario qual e a fazenda. Passe
+`--farm "<Fazenda|farm::key>"` em **todos** os comandos seguintes: nao existe
+fazenda "selecionada" implicita, e uma sessao em paralelo trocaria o alvo desta
+sem avisar. Sem a fazenda
 nenhum passo seguinte funciona.
 
 ### 2. Listar safras ativas

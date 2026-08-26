@@ -1,6 +1,14 @@
 ---
 name: aegro-importacao-fornecedores
-description: Importar fornecedores em lote a partir de uma planilha (Nome + CPF/CNPJ), com enriquecimento opcional de dados da Receita
+description: >-
+  Importa a carteira de fornecedores de uma planilha (nome + CPF/CNPJ) para o
+  Aegro pela CLI: classifica o documento, enriquece opcionalmente os dados de
+  quem tem CNPJ, mostra previa para conferencia e cria as empresas sem
+  duplicar. Use quando pedirem "importar fornecedores", "subir a lista de
+  fornecedores", "cadastrar fornecedores em lote", "planilha de fornecedores";
+  EN "import suppliers in bulk". NAO use para cadastrar um fornecedor so (use
+  /aegro-financeiro) nem para importar patrimonio (use
+  /aegro-importacao-patrimonio).
 ---
 
 # Importacao de Fornecedores em Lote

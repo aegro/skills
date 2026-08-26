@@ -1,6 +1,14 @@
 ---
 name: aegro-conciliacao-bancaria
-description: Conciliacao bancaria no Aegro - importa OFX, casa entradas do extrato com o financeiro e confirma, fechando o saldo Aegro x banco
+description: >-
+  Concilia o extrato bancario com o financeiro do Aegro pela CLI: importa o
+  OFX, casa entradas do extrato com os movimentos internos, confirma em lote e
+  fecha o saldo Aegro x banco no periodo. Use quando pedirem "conciliar o
+  banco", "importar OFX", "o saldo nao bate com o extrato", "conciliacao
+  bancaria", "baixar o que ja foi pago no banco"; EN "bank reconciliation",
+  "import OFX". NAO use para lancar conta nova (use
+  /aegro-lancamento-financeiro) nem para divergencia de estoque (use
+  /aegro-reconciliacao-estoque).
 ---
 
 # Aegro Conciliacao Bancaria
