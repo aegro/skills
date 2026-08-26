@@ -301,14 +301,17 @@ Regras que evitam retrabalho:
   abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
   anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
   re-save com erro generico na maioria dos registros); livestock-loss/
-  transfer/weighing (API sem update); e **elemento sem catalogo**
-  (cadastro anterior ao conceito de catalogo — o servidor recusa qualquer
-  re-save dele). Nesses casos, anexe pela tela do app.
-- **Elemento merece atencao especial**: nao e caso de borda. Medido em staging
-  (25/08/2026, amostra de 52), **54% dos elementos da fazenda foram barrados** —
-  em FERTILIZER, 8 de 8. Ao anexar em elemento, conte com a recusa e tenha o
-  caminho pela tela como alternativa. Detalhe por categoria em
-  `/aegro-estoquista`.
+  transfer/weighing (API sem update); e **elemento IMPORTADO** (do catalogo
+  global ou de outro catalogo — o servidor recusa qualquer re-save dele; so o
+  elemento criado NA FAZENDA aceita, igual a tela do app). Nesses casos, anexe
+  pela tela do app.
+- **Anexo em elemento e caso RARO — nao ofereca por conta propria.** Poucas
+  pessoas anexam arquivo a elemento do catalogo; so faca quando o usuario
+  pedir explicitamente. Quando fizer, saiba que `isImported: true` em
+  `elements list` significa que NAO vai funcionar (previu 24 de 24 casos
+  medidos), e que isso vale para boa parte do catalogo — 28 de 52 barrados
+  (54%) numa amostra estratificada de staging em 25/08/2026, sendo 8 de 8 em
+  FERTILIZER. Detalhe por categoria em `/aegro-estoquista`.
 
 ### tags (= Agrupadores)
 
