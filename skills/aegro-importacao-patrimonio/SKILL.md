@@ -118,13 +118,14 @@ lote. Siga sempre esta ordem:
 > restore das 03:15 BRT: nao use como validacao.
 
 Essa ordem existe para pegar bugs de mapeamento (ex: data so com hora gerando
-400, `machineType` faltando gerando 422) no ambiente seguro, antes de tocar o
-cliente real.
+400, `machineType` faltando gerando 422) numa duzia de ativos, e nao na planilha
+inteira do cliente.
 
 ## Fluxo de Importacao
 
-> Rode este fluxo inteiro em **staging** primeiro. So replique em **prod**
-> depois da verificacao manual (ver secao acima). O `--env` controla o alvo.
+> Rode este fluxo inteiro **no ambiente do trabalho**, comecando por um lote
+> pequeno: o passo 5 cria a amostra e o 5b confere por leitura. So depois da
+> conferencia vai o resto (ver secao acima). O `--env` controla o alvo.
 
 ### 1. Ler a planilha
 
@@ -162,14 +163,14 @@ trabalhosa de desfazer (nao ha delete em lote).
 Antes de criar, liste o que ja existe e pule duplicatas por nome:
 
 ```bash
-# cubra TODOS os tipos presentes na planilha - um list por tipo (troque --env conforme o alvo):
-aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output json
-aegro assets list --farm "<fazenda>" --env staging --type VEHICLE --output json
-aegro assets list --farm "<fazenda>" --env staging --type GARNER --output json
-aegro assets list --farm "<fazenda>" --env staging --type IMMOBILIZED --output json
-aegro assets list --farm "<fazenda>" --env staging --type PIVOT --output json
-aegro assets list --farm "<fazenda>" --env staging --type WEATHER_STATION --output json
-# ou: aegro assets list --env staging --search "<nome>"  para conferir um nome especifico
+# cubra TODOS os tipos presentes na planilha - um list por tipo (--env do alvo):
+aegro assets list --farm "<fazenda>" --env prod --type MACHINE --output json
+aegro assets list --farm "<fazenda>" --env prod --type VEHICLE --output json
+aegro assets list --farm "<fazenda>" --env prod --type GARNER --output json
+aegro assets list --farm "<fazenda>" --env prod --type IMMOBILIZED --output json
+aegro assets list --farm "<fazenda>" --env prod --type PIVOT --output json
+aegro assets list --farm "<fazenda>" --env prod --type WEATHER_STATION --output json
+# ou: aegro assets list --env prod --search "<nome>"  para conferir um nome especifico
 ```
 
 Compare nomes de forma tolerante (ignorando acento/maiusculas). Alerte o usuario
@@ -221,23 +222,23 @@ aegro assets create-pivot --farm "<fazenda>" \
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. Capture a `key` retornada de cada ativo.
 
-**Alvo:** passe `--env staging` no primeiro passe e `--env prod` so na
-replicacao final (ver "Ordem Obrigatoria de Ambientes"). Os mesmos comandos
-valem para os dois ambientes; muda so o `--env`.
+**Alvo:** `--env` explicito em **todo** comando, apontando para o ambiente do
+trabalho (ver "Ordem Obrigatoria: Lote Pequeno -> Verificacao -> Resto"). Comece
+pelo lote pequeno; os mesmos comandos servem para o resto da carga.
 
-### 5b. Verificar (obrigatorio apos o passe em staging)
+### 5b. Verificar (obrigatorio apos o lote pequeno)
 
-Depois de criar em staging, **confira manualmente uma amostra** antes de
-pensar em prod. Use as chaves capturadas:
+Depois de criar a amostra, **confira por leitura** — nunca pela mensagem de
+sucesso — antes de mandar o resto. Use as chaves capturadas:
 
 ```bash
-aegro assets get --farm "<fazenda>" <key> --env staging --output table
+aegro assets get --farm "<fazenda>" <key> --env prod --output table
 # ou conferir por tipo:
-aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output table
+aegro assets list --farm "<fazenda>" --env prod --type MACHINE --output table
 ```
 
 Cheque uma amostra que cubra cada `tipo`, o `machineType`, datas, `isImplement`
-e valor/medidor. So avance para prod quando a amostra estiver correta.
+e valor/medidor. So importe o resto quando a amostra estiver correta.
 
 ### 6. Relatorio final
 

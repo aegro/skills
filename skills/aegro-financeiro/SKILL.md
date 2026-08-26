@@ -356,14 +356,13 @@ arquivo JSON com uma lista de lancamentos *name-based* (mesmos campos) e devolve
 uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
 
 ```bash
-# Tabela de conferencia (nao executa): apresente-a ao usuario e so avance
-# para a escrita depois que ele aprovar linha a linha
+# 1o passo - PREVIA: `--complete` monta a tabela de conferencia e NAO grava
+# nada. Apresente-a ao usuario e espere a aprovacao linha a linha.
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod --complete
 
-# Escrever no ambiente do trabalho, apos aprovacao da tabela linha a linha.
-# Um ensaio em staging ajuda a conhecer o comando, mas nao prova nada: o que foi
-# lancado la desaparece no restore das 03:15 BRT (ver secao 5, multi-env).
-# A rede de seguranca real e o lote pequeno primeiro + releitura do que gravou.
+# 2o passo - ESCRITA (e so aqui que grava), no ambiente do trabalho.
+# A rede de seguranca e o lote pequeno primeiro + releitura do que gravou; um
+# ensaio em staging nao prova nada (ver secao 5, multi-env).
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod
 ```
 

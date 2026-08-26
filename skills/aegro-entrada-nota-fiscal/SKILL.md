@@ -31,7 +31,8 @@ lancamento a partir do documento**.
 
 > **Nota que veio da SEFAZ se lanca por aqui, nao pelo `financial create-bill`.**
 > O caminho deste grupo (`received-fiscal-documents`) e o que concilia item a
-> elemento, move estoque e **vincula a NF-e a conta**. O `create-bill` e para
+> elemento, **vincula a NF-e a conta** e — com **todos** os itens conciliados e
+> `--stock-location` — da entrada no estoque. O `create-bill` e para
 > conta **sem** nota; usado numa nota da SEFAZ, ele cria uma conta que nao
 > concilia item nenhum, e a nota **continua como nao lancada** na tela Fiscal —
 > pronta para alguem lancar de novo. E o vinculo depende de um campo que so

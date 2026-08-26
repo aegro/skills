@@ -93,8 +93,9 @@ O que limita o estrago e o tamanho do primeiro lote. Siga sempre esta ordem:
 
 ## Fluxo de Importacao
 
-> Rode este fluxo inteiro em **staging** primeiro. So replique em **prod** depois
-> da verificacao manual.
+> Rode este fluxo inteiro **no ambiente do trabalho**, comecando por um lote
+> pequeno: os passos 1 a 5 preparam, o 6 cria a amostra e o 6b confere por
+> leitura. So depois da conferencia vai o resto (ver secao acima).
 
 ### 1. Ler a planilha
 
@@ -139,11 +140,11 @@ digitos)** em duas frentes:
 - **contra empresas ja cadastradas** no ambiente
 
 ```bash
-# Indexar empresas existentes (paginar ate cobrir todas; troque --env conforme o alvo)
-aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CNPJ --output json
-aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CPF --output json
+# Indexar empresas existentes no ambiente do trabalho (paginar ate cobrir todas)
+aegro companies list --farm "<fazenda>" --env prod --fiscal-number-type CNPJ --output json
+aegro companies list --farm "<fazenda>" --env prod --fiscal-number-type CPF --output json
 # ou conferir um caso especifico:
-aegro companies list --farm "<fazenda>" --env staging --search-text "<nome>"
+aegro companies list --farm "<fazenda>" --env prod --search-text "<nome>"
 ```
 
 Compare tambem por nome normalizado (ignorando acento/maiusculas). **Quando
@@ -156,12 +157,12 @@ decisao do usuario.
 Crie uma empresa por linha. Capture a `key` retornada de cada uma.
 
 ```bash
-# --env staging explicito: o default e prod, e o primeiro passe NUNCA vai
-# direto a producao. Troque para --env prod so na replicacao final, apos
-# conferencia em staging e confirmacao explicita do usuario.
+# --env e --farm explicitos em todo comando: o default de --env e prod, e um
+# alvo implicito e o que faz a carga cair na fazenda errada. Comece pelo lote
+# pequeno e so mande o resto depois da conferencia por leitura (passo 6b).
 
 # Fornecedor com CNPJ (apos enriquecimento)
-aegro companies create --farm "<fazenda>" --env staging \
+aegro companies create --farm "<fazenda>" --env prod \
   --name "AGRO EXEMPLO LTDA" \
   --type PROVIDER \
   --fiscal-code 23706398000181 --fiscal-type CNPJ \
@@ -169,7 +170,7 @@ aegro companies create --farm "<fazenda>" --env staging \
   --trade-name "AGRO EXEMPLO"
 
 # Fornecedor com CPF
-aegro companies create --farm "<fazenda>" --env staging \
+aegro companies create --farm "<fazenda>" --env prod \
   --name "JOAO DA SILVA" \
   --type PROVIDER \
   --fiscal-code 12345678901 --fiscal-type CPF
@@ -183,20 +184,21 @@ aegro companies create --farm "<fazenda>" --env staging \
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. Faca retry em erros 5xx/timeout; nao faca retry em 4xx.
 
-**Alvo:** passe `--env staging` no primeiro passe e `--env prod` so na
-replicacao final (ver "Ordem Obrigatoria de Ambientes"), com `--farm` apontando
-para a fazenda de teste em staging e a real em prod. Os mesmos comandos valem para
-os dois ambientes; mudam so o `--env` e o `--farm`.
+**Alvo:** `--env` e `--farm` explicitos em **todo** comando, apontando para o
+ambiente e a fazenda do trabalho (ver "Ordem Obrigatoria: Lote Pequeno ->
+Verificacao -> Resto"). Comece pelo lote pequeno; os mesmos comandos servem para
+o resto da carga, sem mudar nada alem do conteudo do lote.
 
-### 6b. Verificar (obrigatorio apos o passe em staging)
+### 6b. Verificar (obrigatorio apos o lote pequeno)
 
 ```bash
-aegro companies get --farm "<fazenda>" <key> --env staging --output table
-aegro companies list --farm "<fazenda>" --env staging --fiscal-number-type CNPJ --output table
+aegro companies get --farm "<fazenda>" <key> --env prod --output table
+aegro companies list --farm "<fazenda>" --env prod --fiscal-number-type CNPJ --output table
 ```
 
-Confira uma amostra que cubra CNPJ enriquecido, CPF e sem documento. So avance
-para prod quando a amostra estiver correta.
+Confira uma amostra que cubra CNPJ enriquecido, CPF e sem documento — **por
+leitura**, nunca pela mensagem de sucesso. So importe o resto quando a amostra
+estiver correta.
 
 ### 7. Relatorio final
 
