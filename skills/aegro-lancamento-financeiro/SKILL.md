@@ -76,7 +76,8 @@ PROVIDER             CLIENT
     Como sera o pagamento?
     /        |          \
 JA PAGO    A VENCER    SEM PAGAMENTO
-(a vista)  (1..N parc)  (so custo/DRE)
+(baixa     (1..N parc)  (so custo/DRE)
+confirmada)   |             |
    |          |             |
 PROMPT     INSTALLMENT   NO_PAYMENT
 parcela    parcelas em   sem parcela,
@@ -84,10 +85,18 @@ unica JA   --installments sem conta
 PAGA       (NOT_PAID)    bancaria
 ```
 
+**Regra do ramo "JA PAGO":** exige pagamento E baixa confirmados (os dois).
+Pagamento que ja ocorreu mas cuja baixa ainda NAO foi confirmada segue o ramo
+`A VENCER` (`INSTALLMENT` com 1 parcela) -- nunca `JA PAGO`/`PROMPT` so por
+causa do vencimento ja ter passado ou ser hoje.
+
 Atencao: `PROMPT` marca a parcela como **paga na criacao** (irreversivel via
-API). Conta a vencer — mesmo "a vista" com vencimento futuro — e `INSTALLMENT`
-com 1 parcela. `INSTALLMENT` exige `--installments`; `NO_PAYMENT` nao gera
-parcela nem movimenta caixa.
+API). **"A vista" na fala do usuario descreve a condicao de pagamento
+(vencimento imediato), nao a baixa**: conta a vista cuja baixa NAO foi
+confirmada - mesmo com vencimento hoje ou na data da nota - e `INSTALLMENT`
+com 1 parcela (padrao do time de Servicos, para o sistema nao marcar "pago"
+sozinho; ENTRADA-135). `INSTALLMENT` exige `--installments`; `NO_PAYMENT` nao
+gera parcela nem movimenta caixa.
 
 ## Sequencia de Passos
 
@@ -95,9 +104,11 @@ parcela nem movimenta caixa.
 
 Perguntar ao usuario:
 - Despesa (conta a pagar) ou receita (conta a receber)?
-- **Ja foi pago (a vista) ou esta a vencer?** Define o payment-method: PROMPT
-  (parcela unica ja paga), INSTALLMENT (a vencer, 1..N parcelas) ou NO_PAYMENT
-  (sem movimentacao de caixa).
+- **O pagamento JA ACONTECEU ou esta a vencer?** ("a vista" NAO responde isso -
+  e condicao de vencimento, nao baixa.) Define o payment-method: PROMPT (parcela
+  unica ja paga - so com baixa confirmada), INSTALLMENT (a vencer, 1..N
+  parcelas - inclusive conta a vista ainda nao paga: 1 parcela com vencimento
+  na data) ou NO_PAYMENT (sem movimentacao de caixa).
 - Valor total e quantas parcelas?
 - Data de vencimento (ou primeira parcela)?
 - A conta tem itens (produtos da nota)? Se sim, categorizar POR ITEM (passo 2).
@@ -170,8 +181,11 @@ verificar que tudo foi criado corretamente.
    JA PAGA** automaticamente (vencimento = data do lancamento)
 2. **Isso equivale a um realize, que e irreversivel via API** (nao ha
    "unrealize") -- confirmar com o usuario que o pagamento de fato ocorreu
-3. Se a conta e "a vista" mas ainda vai ser paga (vencimento futuro), use
-   `INSTALLMENT` com 1 parcela NOT_PAID e realize depois
+   E que ele quer a parcela ja baixada
+3. Se a conta e "a vista" mas a baixa nao foi confirmada - vencimento futuro
+   OU na propria data do lancamento - use `INSTALLMENT` com 1 parcela NOT_PAID
+   e realize depois (padrao do time de Servicos: evita a baixa automatica e o
+   produtor confirma o pagamento ao revisar)
 
 ### Sem Pagamento (so custo/DRE)
 

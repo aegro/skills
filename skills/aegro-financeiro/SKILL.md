@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.9.0
+version: 0.9.2
 ---
 
 # Aegro Financeiro
@@ -10,6 +10,22 @@ Skill especializada no dominio financeiro da plataforma Aegro. Cobre lancamentos
 parcelas (installments), categorias financeiras, contas bancarias, empresas e ordens de compra.
 
 ---
+
+## Fazenda explicita em toda escrita
+
+Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confie
+no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
+alvo da outra sem avisar.
+
+Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
+entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
+na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
+
+Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
+`--execute`, ele recusa escrita cuja fazenda nao veio de `--farm`
+(`IMPLICIT_FARM_BLOCKED`, exit 4). No envelope do `--dry-run`, confira `farm` e
+`farmSource: "flag"` antes de aprovar.
 
 ## 1. Vocabulario
 
@@ -31,7 +47,7 @@ parcelas (installments), categorias financeiras, contas bancarias, empresas e or
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
 | Documento fiscal         | `fiscalNumber`         | Objeto aninhado com `code`, `fiscalNumberType` (CPF/CNPJ) e `countryCode`.                |
 | Item do lancamento       | `inputs`               | Insumo/produto dentro da bill. Cada item pode ter categoria financeira PROPRIA.            |
-| Metodo de pagamento      | `--payment-method`     | PROMPT (a vista, parcela unica JA PAGA), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
+| Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA - **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
 | Produtor                 | (nao exposto)          | Empresa "produtor" que organiza lancamentos no produto. NAO existe na API publica.         |
 
 ---
@@ -110,14 +126,23 @@ Relacionamentos-chave:
 10. **Paginacao padrao**: Todos os endpoints de listagem usam `requiredPageNumber` e `maximumItemsPerPageCount: 50`. Use `--page` para navegar.
 
 11. **Semantica do paymentMethod**:
-    - `PROMPT` (a vista): se `installments` nao for enviado, a API **gera
+    - `PROMPT` ("A Vista" da UI; baixa confirmada): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
       e marcada como paga na criacao. Como realize e irreversivel via API, **so
-      use PROMPT quando o pagamento de fato ja ocorreu**.
+      use PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
+      desejada**.
     - `INSTALLMENT` (parcelado): **exige `installments` nao-vazio** — sem elas a
       API retorna erro de validacao. Parcelas nascem NOT_PAID. Para conta a
       vencer com parcela unica ("a vista a vencer"), use INSTALLMENT com 1
       parcela, NAO use PROMPT.
+    - **Traducao de "a vista"** (ENTRADA-135): na fala do usuario, "a vista" e
+      a **condicao de pagamento** (vencimento imediato/na data da nota), nao
+      uma ordem de baixa. Pergunte se o pagamento ja aconteceu quando
+      possivel; sem confirmacao explicita, traduza para INSTALLMENT com 1
+      parcela vencendo na data da nota (ou do lancamento, quando nao ha nota)
+      - padrao do time de Servicos, que lanca nota com data a vista como
+      "A Prazo" de 1 parcela na mesma data para o sistema nao marcar "pago"
+      sozinho.
     - `NO_PAYMENT`/`UNKNOWN` (sem pagamento): nenhuma parcela e criada e a
       conta bancaria do lancamento e **descartada** — o lancamento existe para
       custo/relatorios, sem efeito no fluxo de caixa.
@@ -143,6 +168,10 @@ Relacionamentos-chave:
 ## 4. Referencia de Comandos
 
 ### 4.1 financial (lancamentos e parcelas)
+
+> **`--farm "<Fazenda|farm::key>"` e obrigatorio em todo comando de escrita das
+> tabelas da secao 4**, e nao esta repetido linha a linha. Ver "Fazenda explicita
+> em toda escrita" no topo.
 
 | Comando               | Tipo     | Parametros obrigatorios                                    | Parametros opcionais                                                                 |
 |------------------------|----------|------------------------------------------------------------|--------------------------------------------------------------------------------------|
@@ -211,8 +240,11 @@ O que o comando faz por voce:
   `--bank-account "Conta BB"` viram chaves. As variantes exatas
   (`--company-key`, `--financial-category-key`, `--bank-account-key`) seguem
   validas para scripts.
-- **Infere contexto**: `--farm-key` vem da credencial (omita); `--entry-date`
-  vira hoje em America/Sao_Paulo se omitida.
+- **Infere contexto**: `--entry-date` vira hoje em America/Sao_Paulo se omitida.
+  **A fazenda NAO entra nessa lista** — diga `--farm` em todo comando de escrita.
+  `--farm-key` nao substitui: ele alimenta o corpo da requisicao de endpoints
+  internos, enquanto `--farm` escolhe a credencial. Deixar a fazenda ser inferida
+  da sessao e o que gravou lancamento na fazenda errada em 11/08/2026.
 - **Pergunta so o que falta**: sem TTY, campos faltantes/ambiguos saem como um
   envelope `needs_input` (status, resolved, inferred, missing, ambiguous, preview)
   e **nada e executado**. Resolva os pontos e reinvoque. Use `--complete` para
@@ -227,7 +259,8 @@ uma categoria ANALYTIC (ver regra 1).
 
 | Situacao                             | payment-method | installments               |
 |--------------------------------------|----------------|------------------------------|
-| Ja foi pago a vista                  | `PROMPT`       | omitir (gera 1 parcela PAGA) |
+| Ja foi pago a vista (baixa desejada) | `PROMPT`       | omitir (gera 1 parcela PAGA) |
+| Diz "a vista", baixa NAO confirmada  | `INSTALLMENT`  | 1 parcela vencendo na data (regra 11) |
 | A vencer (1 ou N parcelas)           | `INSTALLMENT`  | obrigatorio (JSON, NOT_PAID) |
 | Sem movimentacao (so custo/DRE)      | `NO_PAYMENT`   | nao gera parcela             |
 
@@ -630,7 +663,7 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 
 8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
 
-9. **Nao use PROMPT para conta a vencer.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela.
+9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
 
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 
