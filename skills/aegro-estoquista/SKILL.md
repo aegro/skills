@@ -1,7 +1,7 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.7.1
+version: 0.7.2
 ---
 
 # Aegro Estoquista
@@ -443,3 +443,28 @@ aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg
 7. **Nao confunda endpoints de movimentacao.** Entry usa `/manual-entries`, removal usa `/manual-removals`, transfer usa o endpoint raiz `/stock-logs`. Usar o endpoint errado causa erro ou comportamento inesperado.
 
 8. **Nao esqueca set-categories apos criar elemento.** Sem a associacao financeira, lancamentos de compra desse insumo nao serao classificados corretamente no financeiro.
+
+## 8. Link do Item de Estoque
+
+Depois de uma movimentacao, ofereca o link que abre o **historico daquele
+insumo naquele local** — e onde a pessoa confere se a movimentacao caiu
+certo:
+
+```
+{host}/farm/{farmId}?elementId={elementId}&locationId={locationId}&tab=stockItemHistory#farm-stock
+```
+
+Os tres ids saem da resposta do proprio `stock entry|removal|transfer`
+(`StockLog`): `farmKey`, `elementKey` e `destinationLocationKey` (na entrada
+e na transferencia) ou `sourceLocationKey` (na saida). Escolha o local que
+a pessoa quer conferir.
+
+**Nao existe link direto para a movimentacao (`stockLog`) em si** — so para
+o item. Tambem nao existe para elemento, local de estoque nem catalogo.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.

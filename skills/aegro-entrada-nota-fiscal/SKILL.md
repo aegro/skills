@@ -11,7 +11,7 @@ description: >-
   itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
-version: 0.6.2
+version: 0.6.3
 ---
 
 # Entrada de Nota Fiscal no Aegro
@@ -465,6 +465,32 @@ aplicou** (auditavel). O CLI permanece deterministico.
 
 > O de/para item<->catalogo **nao** vai ao playbook: a conciliacao ja persiste
 > server-side por fornecedor+item e e reaproveitada.
+
+## Entregue o link da conta lancada
+
+Depois do `launch-bill --execute`, ofereca o link que abre a conta gerada
+pela nota — e o caminho mais rapido para a pessoa conferir rateio, itens e
+categoria sem procurar o lancamento na lista:
+
+```
+{host}/farm/{farmId}?billId={billId}#farm-finance
+```
+
+**Atencao ao dialeto:** `launch-bill` passa pela API interna e devolve `id`
+e `farmId` (ja sem o prefixo `tipo::`), nao `key`/`farmKey`. Use esses
+campos direto.
+
+Nao existe link direto para a **nota** (documento recebido) — so para a
+conta. Se a pessoa quiser ver a nota, o maximo e a secao:
+`{host}/farms/{farmId}/fiscal/received-fiscal-document`. Diga que e a lista,
+nao a nota.
+
+Regras que nao podem ser puladas (detalhe em `/aegro-operacional`, secao
+"Link Direto para a Entidade"): host vem do `--env` da sessao
+(`https://app.aegro.com.br` em prod, `https://app.staging.aegro.io` em
+staging), a URL usa a chave **sem** o prefixo `tipo::`, e link com aba
+invalida **nao da erro** — cai na home da fazenda em silencio. Nunca invente
+template por analogia.
 
 ## Proximos workflows
 
