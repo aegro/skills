@@ -1,7 +1,7 @@
 ---
 name: aegro-financeiro
 description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.9.0
+version: 0.9.1
 ---
 
 # Aegro Financeiro
@@ -10,6 +10,22 @@ Skill especializada no dominio financeiro da plataforma Aegro. Cobre lancamentos
 parcelas (installments), categorias financeiras, contas bancarias, empresas e ordens de compra.
 
 ---
+
+## Fazenda explicita em toda escrita
+
+Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confie
+no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
+alvo da outra sem avisar.
+
+Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
+entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
+na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
+
+Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
+`--execute`, ele recusa escrita cuja fazenda nao veio de `--farm`
+(`IMPLICIT_FARM_BLOCKED`, exit 4). No envelope do `--dry-run`, confira `farm` e
+`farmSource: "flag"` antes de aprovar.
 
 ## 1. Vocabulario
 
@@ -144,6 +160,10 @@ Relacionamentos-chave:
 
 ### 4.1 financial (lancamentos e parcelas)
 
+> **`--farm "<Fazenda|farm::key>"` e obrigatorio em todo comando de escrita das
+> tabelas da secao 4**, e nao esta repetido linha a linha. Ver "Fazenda explicita
+> em toda escrita" no topo.
+
 | Comando               | Tipo     | Parametros obrigatorios                                    | Parametros opcionais                                                                 |
 |------------------------|----------|------------------------------------------------------------|--------------------------------------------------------------------------------------|
 | `bill <key>`           | GET      | `bill_key` (argumento)                                     | `--output`                                                                           |
@@ -211,8 +231,11 @@ O que o comando faz por voce:
   `--bank-account "Conta BB"` viram chaves. As variantes exatas
   (`--company-key`, `--financial-category-key`, `--bank-account-key`) seguem
   validas para scripts.
-- **Infere contexto**: `--farm-key` vem da credencial (omita); `--entry-date`
-  vira hoje em America/Sao_Paulo se omitida.
+- **Infere contexto**: `--entry-date` vira hoje em America/Sao_Paulo se omitida.
+  **A fazenda NAO entra nessa lista** — diga `--farm` em todo comando de escrita.
+  `--farm-key` nao substitui: ele alimenta o corpo da requisicao de endpoints
+  internos, enquanto `--farm` escolhe a credencial. Deixar a fazenda ser inferida
+  da sessao e o que gravou lancamento na fazenda errada em 11/08/2026.
 - **Pergunta so o que falta**: sem TTY, campos faltantes/ambiguos saem como um
   envelope `needs_input` (status, resolved, inferred, missing, ambiguous, preview)
   e **nada e executado**. Resolva os pontos e reinvoque. Use `--complete` para

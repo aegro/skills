@@ -1,7 +1,7 @@
 ---
 name: aegro-estoquista
 description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.7.0
+version: 0.7.1
 ---
 
 # Aegro Estoquista
@@ -10,6 +10,22 @@ Skill especializada no dominio de estoque e insumos da plataforma Aegro. Cobre i
 (posicoes), locais de armazenamento, movimentacoes (logs), elementos (insumos) e catalogos.
 
 ---
+
+## Fazenda explicita em toda escrita
+
+Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confie
+no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
+alvo da outra sem avisar.
+
+Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
+entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
+na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
+
+Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
+`--execute`, ele recusa escrita cuja fazenda nao veio de `--farm`
+(`IMPLICIT_FARM_BLOCKED`, exit 4). No envelope do `--dry-run`, confira `farm` e
+`farmSource: "flag"` antes de aprovar.
 
 ## 1. Vocabulario
 
