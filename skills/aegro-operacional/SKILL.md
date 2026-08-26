@@ -1,7 +1,7 @@
 ---
 name: aegro-operacional
 description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.10.1
+version: 0.10.2
 ---
 
 # Dominio Operacional
@@ -49,6 +49,27 @@ aegro auth status
 # Remover credenciais locais
 aegro auth logout
 ```
+
+### Staging reseta diariamente — revalide a sessao antes de operar
+
+O ambiente de staging (`app.staging.aegro.io`) e **zerado todo dia**: dados sao
+apagados e sessoes/logins sao invalidados. Consequencia pratica: **toda sessao de
+trabalho em staging comeca verificando a autenticacao**, e refazer o login no dia
+seguinte e o fluxo normal.
+
+```bash
+# Sempre no inicio de uma sessao de staging
+aegro auth status --env staging
+
+# Se a sessao caiu (reset diario), refaca o login — comportamento esperado
+aegro auth login --env staging
+```
+
+**Erro 401 em staging no inicio do dia e comportamento esperado, NAO bug.** Nao
+gaste tempo diagnosticando nem reporte como falso positivo no feedback de dev —
+o reset diario ja e conhecido (registrado na rodada de feedback de 2026-08-10).
+So investigue um 401 de staging se ele persistir **depois** de um
+`aegro auth login --env staging` bem-sucedido na mesma sessao.
 
 ### Selecao de Fazenda Ativa
 
@@ -558,7 +579,7 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --stock-location-key "stockLocation::abc123" \
   --hourmeter 1550 \
   --observations "Troca filtros + oleo - revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
 
 # 2. Gerar o lancamento do servico de manutencao
 # SEMPRE --dry-run primeiro; --execute so apos o usuario conferir o plano.
@@ -643,7 +664,7 @@ Um elemento participa de tres dominios simultaneamente:
 | 500 | Erro interno do servidor | Retry automatico. Se persistir, verificar tabela de bugs conhecidos |
 | 422 | Erro de validacao | Verificar campos obrigatorios e formatos. Nao faz retry |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
-| 401 | Nao autenticado | Verificar API key com `aegro auth status` |
+| 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |
 | Timeout | Sem resposta em 30s | Retry automatico. API pode estar lenta |
 

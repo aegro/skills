@@ -1,7 +1,7 @@
 ---
 name: aegro-patrimonial
 description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.7.1
+version: 0.7.2
 ---
 
 # Dominio Patrimonial
@@ -30,12 +30,20 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Termo | Definicao | Formato da Chave |
 |-------|-----------|------------------|
 | Asset (Patrimonio) | Bem da fazenda: maquina, veiculo, silo, benfeitoria, pivo ou estacao meteorologica | `asset::hexstring` |
-| Fuel Supply (Abastecimento) | Evento de abastecimento de combustivel vinculado a um patrimonio | `fuelSupply::hexstring` |
-| Maintenance (Manutencao) | Evento de manutencao vinculado a um patrimonio, pode consumir pecas do estoque | `maintenance::hexstring` |
+| Fuel Supply (Abastecimento) | Evento de abastecimento de combustivel vinculado a um patrimonio | `assetEvent::hexstring` |
+| Maintenance (Manutencao) | Evento de manutencao vinculado a um patrimonio, pode consumir pecas do estoque | `assetEvent::hexstring` |
 | Horimetro | Contador de horas de operacao. Usado em MACHINE e PIVOT | Valor numerico (ex: 1550.5) |
 | Hodometro (Odometro) | Contador de quilometros rodados. Usado em VEHICLE | Valor em km (ex: 85000) |
 | Implemento | Equipamento acoplado a maquina (isImplement: true). Nao tem horimetro proprio | Flag booleana no asset |
 | Stock Location | Local de estoque de onde saem pecas/combustivel para eventos | `stockLocation::hexstring` |
+| Talhao (Glebe) | Area fisica da fazenda. Usado para restringir a apropriacao de custo | `glebe::hexstring` |
+| Talhao da safra (CropGlebe) | Vinculo entre um talhao e uma safra, com a area plantada | `cropGlebe::hexstring` |
+| Agrupador (tag do talhao) | Rotulo que agrupa talhoes (ex: "Estancia"). Na tela aparece como "Agrupador" | Texto livre no talhao |
+| Grupo de rateio | Grupo de safras salvo, reutilizavel entre lancamentos. **Limitado por cota de plano** | `cropProrateGroup::hexstring` |
+
+> **Abastecimento e manutencao sao o mesmo objeto no backend** (`AssetEvent`), por isso
+> a chave dos dois e `assetEvent::...` — nao existe `fuelSupply::` nem `maintenance::`.
+> O comando (`fuel-supplies` ou `maintenances`) e que diz o tipo do evento.
 
 ### Tipos de Patrimonio (type)
 
@@ -72,19 +80,22 @@ FARM (farm::5711512de4b0e15eb04da4d0)
   │     ├── isImplement: false
   │     ├── value: {currencyCode: "BRL", amount: 1200000}
   │     │
-  │     ├── FUEL_SUPPLY (fuelSupply::...)
+  │     ├── FUEL_SUPPLY (assetEvent::...)
   │     │     ├── assetKey → referencia ao patrimonio
   │     │     ├── occurrenceDate: "2026-03-13"
   │     │     ├── hourmeterAtOccurrence: 1550
   │     │     ├── stockLocationKey → deposito de combustivel
-  │     │     └── inputs: [{elementKey, quantity}]
+  │     │     ├── inputs: [{elementKey, quantity}]
+  │     │     └── cropKeys: [crop::...]  → apropriacao do custo (ver regra 7)
+  │     │           └── talhoes escolhidos → restringe o custo a parte da safra
   │     │
-  │     └── MAINTENANCE (maintenance::...)
+  │     └── MAINTENANCE (assetEvent::...)
   │           ├── assetKey → referencia ao patrimonio
   │           ├── occurrenceDate: "2026-03-12"
   │           ├── hourmeterAtOccurrence: 1545
   │           ├── stockLocationKey → deposito de pecas
-  │           └── inputs: [{elementKey, quantity}]
+  │           ├── inputs: [{elementKey, quantity}]
+  │           └── cropKeys: [crop::...]  → apropriacao do custo (ver regra 7)
   │
   ├── ASSET (type: VEHICLE)
   │     ├── currentOdometer: 85000 (km)
@@ -111,7 +122,7 @@ FARM (farm::5711512de4b0e15eb04da4d0)
 - `ASSET → FUEL_SUPPLY`: Um patrimonio tem N abastecimentos
 - `ASSET → MAINTENANCE`: Um patrimonio tem N manutencoes
 - `ASSET (WEATHER_STATION) → WEATHER_LOG`: Estacao tem N registros climaticos
-- `FUEL_SUPPLY/MAINTENANCE → stockLocationKey`: Evento pode referenciar local de estoque para baixa automatica de pecas/combustivel
+- `FUEL_SUPPLY/MAINTENANCE → stockLocationKey`: **obrigatorio na criacao** do evento; e dele que sai a baixa automatica de pecas/combustivel quando ha `inputs`
 
 ## Regras de Negocio
 
@@ -160,18 +171,21 @@ Consumo (L/h) = Litros abastecidos / (Horimetro atual - Horimetro anterior)
 
 ### 5. Inputs em eventos (abastecimento e manutencao)
 
-Tanto `fuel-supplies` quanto `maintenances` aceitam `inputs` — lista de insumos consumidos:
+Tanto `fuel-supplies` quanto `maintenances` aceitam `inputs` — lista de insumos
+consumidos. `quantity` e um **objeto** com `unit` e `magnitude` (numero solto e
+recusado pela CLI):
 
 ```json
 {
   "inputs": [
-    {"elementKey": "element::combustivel01", "quantity": 200},
-    {"elementKey": "element::filtro01", "quantity": 2}
+    {"elementKey": "element::combustivel01", "quantity": {"unit": "L", "magnitude": 200}},
+    {"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}
   ]
 }
 ```
 
-Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticamente no local indicado.
+A baixa de estoque sai do `stockLocationKey` do evento — que e **obrigatorio na
+criacao**, tenha `inputs` ou nao (ver anti-padrao 1).
 
 ### 6. Hodometro vs Horimetro em eventos
 
@@ -182,6 +196,58 @@ Se `stockLocationKey` estiver preenchido, a baixa de estoque e feita automaticam
 | VEHICLE | `odometerAtOccurrenceInKilometers` | Km |
 | GARNER | `hourmeterAtOccurrence` | Horas |
 | IMMOBILIZED | — (benfeitoria nao tem medidor) | — |
+
+### 7. Apropriacao de custo: safra inteira, talhoes escolhidos ou grupo de rateio
+
+O custo de um abastecimento ou manutencao pode ser apropriado a safra. Ha tres niveis
+de granularidade, e escolher errado espalha custo em area que nao consumiu nada:
+
+| Quero... | Flags | Observacao |
+|---|---|---|
+| Custo na safra **inteira** | `--crop-key crop::C` (repetivel) | Rateio automatico por area entre todos os talhoes da safra |
+| Custo em **parte** dos talhoes da safra | `--crop-key crop::C` + `--crop-glebe` e/ou `--glebe-tag` | Exige **exatamente uma** safra e login OAuth |
+| Reusar um conjunto de safras salvo | `--crop-prorate-group-key cropProrateGroup::G` | **Cota de plano** — ver aviso abaixo |
+| Voltar a safra inteira | `--clear-crop-glebes` (so no `update`) | Remove a restricao por talhao |
+| Conferir onde o custo caiu | `fuel-supplies get <key> --apportionment` (idem `maintenances`) | O GET publico nao devolve essa composicao |
+
+**Nao gaste o grupo de rateio para restringir a um talhao.** O grupo de rateio e
+limitado por cota de plano: **1 grupo** na maioria dos planos, **2** no Avancado,
+ilimitado so no Premium ou com addon. Criar um grupo por lancamento estoura a cota
+(`ConsumableLimitBoundExceededException`) e queima o unico slot da fazenda. Grupo de
+rateio serve para um conjunto de safras **reutilizado** entre lancamentos; para
+apontar talhoes de uma safra, use `--crop-glebe`/`--glebe-tag`.
+
+`--crop-glebe` aceita `glebe::<id>`, `cropGlebe::<id>` **ou o nome do talhao** (casa
+sem exigir caixa e acento exatos). `--glebe-tag` casa pelo agrupador e pega todos os
+talhoes daquele grupo — e a forma mais curta quando a safra cobre blocos separados.
+As duas flags sao repetiveis e combinam entre si.
+
+No `create`, a safra vem do `--crop-key` (exatamente um). No `update`, `--crop-key` e
+**opcional**: a safra sai do proprio lancamento quando ha uma so, e o comando pede a
+flag quando ha mais de uma.
+
+#### O que restringir por talhao realmente faz
+
+Restringe o **custo**, nao o percentual: a area de rateio do lancamento passa a ser a
+soma dos talhoes escolhidos. Numa safra de 100 ha em tres talhoes (20, 30 e 50 ha),
+selecionar o agrupador que cobre 20+30 faz a area apropriada cair de 100 para 50 ha —
+medido em staging em 14/08/2026.
+
+#### Como falha (e nunca em silencio)
+
+| Situacao | Saida |
+|---|---|
+| Sem login OAuth | **exit 2**, antes de qualquer escrita — nada e criado |
+| Mais de um `--crop-key` com flag de talhao | **exit 4** — a restricao exige uma safra so |
+| Flag de talhao junto com `--crop-prorate-group-key` | **exit 4** — com grupo, o servidor recalcula a partir dele e sobrescreveria a selecao |
+| Nome de talhao ambiguo (dois talhoes com o mesmo nome) | **exit 4** com as chaves para desambiguar — o CLI nao escolhe por voce |
+| Restricao nao persistiu | **exit 1**, `NOT_PERSISTED`, avisando que o lancamento **existe** e entregando o comando para retomar |
+
+A gravacao sai em **duas pernas**: o `create`/`update` publico e, depois, a restricao
+por talhao pela API interna (a API publica ainda nao expoe o campo). Por isso a
+restricao **exige `aegro auth login`** — API key nao serve. Se a segunda perna falhar,
+o lancamento ja existe: **nao repita o comando inteiro** (duplicaria o lancamento) —
+use o comando de retomada que o erro imprime, que e um `update`.
 
 ## Referencia de Comandos
 
@@ -308,10 +374,10 @@ servidor — anexe pela tela do app enquanto isso).
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
-| `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--output` |
+| `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--apportionment` (composicao do custo), `--output` |
 | `aegro fuel-supplies list` | Lista abastecimentos | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--observations`, `--inputs` (JSON) |
-| `aegro fuel-supplies update <key>` | Atualiza abastecimento | mesmas flags do create |
+| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--observations`, `--inputs` (JSON), `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--crop-prorate-group-key`, `--farm-user-key`, `--skip-verify` |
+| `aegro fuel-supplies update <key>` | Atualiza abastecimento (PATCH parcial) | mesmas flags do create + `--clear-crop-glebes` |
 
 ```bash
 # Registrar abastecimento de trator (Diesel S10 - 200L)
@@ -321,35 +387,68 @@ aegro fuel-supplies create --farm "Fazenda Aegro" \
   --hourmeter 1550 \
   --stock-location-key "stockLocation::abc123" \
   --observations "Diesel S10 - 200L - Tanque sede" \
-  --inputs '[{"elementKey": "element::combustivel_diesel", "quantity": 200}]'
-# {"key": "fuelSupply::67f4d5e6a7b8c9d0", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
+  --inputs '[{"elementKey": "element::combustivel_diesel", "quantity": {"unit": "L", "magnitude": 200}}]'
+# {"key": "assetEvent::67f4d5e6a7b8c9d0", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Registrar abastecimento de veiculo (com hodometro)
 aegro fuel-supplies create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-13" \
   --odometer 15500 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Diesel S10 - 80L - Posto externo"
 
 # Buscar abastecimento especifico
-aegro fuel-supplies get --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0"
+aegro fuel-supplies get --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0"
 
 # Atualizar observacao de abastecimento
-aegro fuel-supplies update --farm "Fazenda Aegro" "fuelSupply::67f4d5e6a7b8c9d0" \
+aegro fuel-supplies update --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-13" \
   --hourmeter 1550 \
   --observations "Diesel S10 - 200L - Tanque sede - Corrigido"
+
+# Custo na safra inteira (rateio automatico por area entre os talhoes da safra)
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" \
+  --date "2026-03-13" \
+  --hourmeter 1550 \
+  --stock-location-key "stockLocation::abc123" \
+  --crop-key "crop::5d817ac8338bf976a0244391" \
+  --inputs '[{"elementKey": "element::combustivel_diesel", "quantity": 200}]'
+
+# Custo SO nos talhoes do agrupador "Estancia" (a safra cobre blocos separados)
+# Exige login OAuth e exatamente um --crop-key
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" \
+  --date "2026-03-13" \
+  --hourmeter 1550 \
+  --stock-location-key "stockLocation::abc123" \
+  --crop-key "crop::5d817ac8338bf976a0244391" \
+  --glebe-tag "Estancia" \
+  --execute
+
+# Corrigir lancamento que ficou na safra inteira: restringir a um talhao pelo nome
+# No update a safra sai do proprio lancamento — --crop-key so e necessario se houver mais de uma
+aegro fuel-supplies update --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0" \
+  --crop-glebe "Talhao 3" --execute
+
+# Desfazer a restricao, devolvendo o custo para a safra inteira
+aegro fuel-supplies update --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0" \
+  --clear-crop-glebes --execute
+
+# Conferir a apropriacao (safra, share e talhoes) — o GET publico nao traz isso
+aegro fuel-supplies get --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0" --apportionment
 ```
 
 ### maintenances
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
-| `aegro maintenances get <key>` | Busca manutencao por chave | `--output` |
+| `aegro maintenances get <key>` | Busca manutencao por chave | `--apportionment` (composicao do custo), `--output` |
 | `aegro maintenances list` | Lista manutencoes | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--hourmeter`, `--odometer`, `--stock-location-key`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key` |
-| `aegro maintenances update <key>` | Atualiza manutencao | mesmas flags do create |
+| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key`, `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--skip-verify` |
+| `aegro maintenances update <key>` | Atualiza manutencao (PATCH parcial) | mesmas flags do create + `--clear-crop-glebes` |
 
 ```bash
 # Registrar manutencao preventiva de trator (troca de filtros + oleo)
@@ -359,35 +458,63 @@ aegro maintenances create --farm "Fazenda Aegro" \
   --hourmeter 1545 \
   --stock-location-key "stockLocation::abc123" \
   --observations "Revisao 500h - Troca filtros oleo/ar/combustivel + oleo motor 15W40" \
-  --inputs '[{"elementKey": "element::filtro_oleo01", "quantity": 1}, {"elementKey": "element::filtro_ar01", "quantity": 1}, {"elementKey": "element::oleo_motor01", "quantity": 18}]'
-# {"key": "maintenance::67f5e6a7b8c9d0e1", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
+  --inputs '[{"elementKey": "element::filtro_oleo01", "quantity": {"unit": "un", "magnitude": 1}}, {"elementKey": "element::filtro_ar01", "quantity": {"unit": "un", "magnitude": 1}}, {"elementKey": "element::oleo_motor01", "quantity": {"unit": "L", "magnitude": 18}}]'
+# {"key": "assetEvent::67f5e6a7b8c9d0e1", "assetKey": "asset::57d299c3e4b059f24e3f99b0", ...}
 
 # Manutencao corretiva de colheitadeira
 aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::colheitadeira_case01" \
   --date "2026-03-10" \
   --hourmeter 318 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Troca correia do elevador - quebra em operacao" \
-  --inputs '[{"elementKey": "element::correia_elevador", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::correia_elevador", "quantity": {"unit": "un", "magnitude": 1}}]'
 
 # Manutencao de veiculo (usa hodometro)
 aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::veiculo_hilux01" \
   --date "2026-03-11" \
   --odometer 15200 \
+  --stock-location-key "stockLocation::abc123" \
   --observations "Troca oleo + filtros - revisao 10.000km" \
-  --inputs '[{"elementKey": "element::oleo_motor_5w30", "quantity": 7}, {"elementKey": "element::filtro_oleo_hilux", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::oleo_motor_5w30", "quantity": {"unit": "L", "magnitude": 7}}, {"elementKey": "element::filtro_oleo_hilux", "quantity": {"unit": "un", "magnitude": 1}}]'
 
-# Manutencao com rateio para safra
+# Manutencao apropriada a uma safra (custo rateado por area em toda a safra)
 aegro maintenances create --farm "Fazenda Aegro" \
   --asset-key "asset::57d299c3e4b059f24e3f99b0" \
   --date "2026-03-08" \
   --hourmeter 1540 \
-  --crop-prorate-group-key "prorateGroup::safra2526" \
-  --observations "Reparo sistema hidraulico - rateado para safra 25/26"
+  --stock-location-key "stockLocation::abc123" \
+  --crop-key "crop::5d817ac8338bf976a0244391" \
+  --observations "Reparo sistema hidraulico - safra 25/26"
+
+# Manutencao apropriada a talhoes especificos da safra (exige OAuth e uma safra so)
+aegro maintenances create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" \
+  --date "2026-03-08" \
+  --hourmeter 1540 \
+  --stock-location-key "stockLocation::abc123" \
+  --crop-key "crop::5d817ac8338bf976a0244391" \
+  --crop-glebe "Talhao 1" --crop-glebe "Talhao 2" \
+  --observations "Reparo do pivo que atende so esses dois talhoes" \
+  --execute
+
+# Manutencao com GRUPO DE RATEIO salvo — use apenas para um conjunto de safras
+# REUTILIZADO entre lancamentos. Ha cota de plano (1 grupo na maioria); nao crie
+# um grupo por lancamento nem para apontar um talhao (use --crop-glebe).
+aegro maintenances create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" \
+  --date "2026-03-08" \
+  --hourmeter 1540 \
+  --stock-location-key "stockLocation::abc123" \
+  --crop-prorate-group-key "cropProrateGroup::6903854211d95556f227b028" \
+  --observations "Reparo rateado entre as safras do grupo"
 
 # Buscar manutencao especifica
-aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
+aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1"
+
+# Conferir em que talhoes o custo caiu
+aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --apportionment
 ```
 
 ## Bugs e Workarounds
@@ -406,6 +533,32 @@ aegro maintenances get --farm "Fazenda Aegro" "maintenance::67f5e6a7b8c9d0e1"
 **Workaround:** Registrar dados climaticos diretamente no Aegro App (interface web).
 
 ## Anti-padroes
+
+### 1. Nao crie evento de patrimonio sem local de estoque
+
+`--stock-location-key` e obrigatorio no `create` de abastecimento **e** de
+manutencao, com ou sem `--inputs`: o servidor recusa qualquer evento sem local de
+estoque (422 `invalid.asset-event.stock-location.key.required`). Nao e "registro
+informativo" — e erro.
+
+A CLI barra isso localmente, com **exit 4**, inclusive no `--dry-run` (verificado em
+14/08/2026); versoes antigas so falhavam quando havia `--inputs`.
+
+```bash
+# ERRADO - vai falhar (exit 4 na CLI, 422 no servidor)
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" --date "2026-03-13" --hourmeter 1550
+
+# CORRETO - descubra o local e passe a flag
+aegro stock locations --farm "Fazenda Aegro"
+aegro fuel-supplies create --farm "Fazenda Aegro" \
+  --asset-key "asset::57d299c3e4b059f24e3f99b0" --date "2026-03-13" --hourmeter 1550 \
+  --stock-location-key "stockLocation::abc123"
+```
+
+No `update` a flag nao e exigida: o PATCH e parcial e o evento herda o local ja
+gravado. Passe-a quando estiver trocando os `inputs`, para nao deixar a baixa de
+estoque implicita.
 
 ### 2. Nao use horimetro em veiculos
 
@@ -451,17 +604,96 @@ aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacture
 aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacturer "John Deere" --machine-type TRACTOR
 ```
 
-### 6. Nao misture inputs sem stockLocationKey
+### 6. Nao passe `quantity` como numero solto em `inputs`
 
-Se passar `inputs` em um evento de abastecimento ou manutencao, considere tambem passar `stockLocationKey`. Sem ele, os insumos sao registrados no evento mas **nao geram baixa automatica de estoque**.
+`quantity` e um objeto com `unit` e `magnitude`. Numero solto e recusado pela CLI
+antes de chegar na API — `INVALID_INPUTS`, **exit 4** (verificado em 14/08/2026).
 
 ```bash
-# Inputs sem stockLocationKey = registro informativo apenas, sem baixa de estoque
-aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
-
-# Inputs com stockLocationKey = baixa automatica do estoque no local indicado
+# ERRADO - quantity como numero
 aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
   --stock-location-key "stockLocation::abc123" \
   --inputs '[{"elementKey": "element::filtro01", "quantity": 2}]'
+
+# CORRETO - quantity com unidade e magnitude
+aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "2026-03-12" \
+  --stock-location-key "stockLocation::abc123" \
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
+```
+
+### 7. Nao paralelize chamadas de escrita da CLI
+
+Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si — observado em 2026-08-10 (CLI v0.16.0): com 5 chamadas paralelas, 2 de 5 falharam; com 3 paralelas, ~1,4% de falha; sequencial, 0 falhas.
+
+```bash
+# ERRADO - paralelismo gera 409 esporadico
+cat keys.txt | xargs -P 5 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
+
+# ERRADO tambem - "xargs -P 1" serializa mas nao interrompe o lote: se uma chave falhar,
+# xargs segue processando as chaves restantes e o erro se perde no meio de centenas de linhas
+cat keys.txt | xargs -P 1 -I {} aegro fuel-supplies update {} --crop-prorate-group-key "..." --execute
+
+# CORRETO - loop sequencial que para no primeiro erro que nao adianta repetir.
+# Cada chave tenta ate 3 vezes (1 tentativa + 2 repeticoes, esperando 1s e 2s) e SO
+# repete no 409 esporadico: exit 2 (auth), 3 (nao encontrado) e 4 (validacao) nao
+# melhoram com retry e interrompem o lote na hora. O status HTTP vem em
+# `error.status` no JSON que a CLI escreve em stderr.
+# O `|| [ -n "$key" ]` processa a ultima chave mesmo se keys.txt nao terminar em newline.
+while IFS= read -r key || [ -n "$key" ]; do
+  [ -z "$key" ] && continue
+  ok=""
+  for delay in 0 1 2; do
+    [ "$delay" -gt 0 ] && sleep "$delay"
+    erro=$(aegro fuel-supplies update "$key" --crop-prorate-group-key "..." --execute 2>&1 >/dev/null)
+    rc=$?
+    if [ "$rc" -eq 0 ]; then ok=1; break; fi
+    case "$erro" in
+      *'"status": 409'*) continue ;;
+      *) echo "Erro nao-transitorio (exit $rc) na chave $key: $erro" >&2; exit 1 ;;
+    esac
+  done
+  if [ -z "$ok" ]; then
+    echo "409 persistiu apos 3 tentativas na chave $key - interrompendo o lote" >&2
+    exit 1
+  fi
+done < keys.txt
+```
+
+Sempre valide o payload com `--dry-run` em 1 registro antes de rodar o lote com `--execute`.
+
+### 8. Nao junte stdout e stderr ao capturar `--output json`
+
+Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning que, com `2>&1`, se mistura ao JSON e quebra o parse. Redirecione apenas o stdout — mas isso reduz o risco, nao elimina: se o warning sair pelo proprio stdout (nao pelo stderr), o arquivo fica contaminado mesmo sem `2>&1`. Valide sempre o arquivo com um parser JSON antes de consumi-lo; se o parse falhar, descarte a resposta e repita a chamada.
+
+```bash
+# ERRADO - warning de retry pode corromper o JSON
+aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json 2>&1
+
+# CORRETO - stdout puro no arquivo, warnings continuam visiveis no terminal.
+# Escolha UMA vez o parser JSON que existir na maquina - nao assuma python3.
+if command -v python3 >/dev/null 2>&1; then
+  valida_json() { python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$1"; }
+elif command -v python >/dev/null 2>&1; then
+  valida_json() { python -c "import json,sys; json.load(open(sys.argv[1]))" "$1"; }
+elif command -v jq >/dev/null 2>&1; then
+  valida_json() { jq -e . "$1" >/dev/null; }
+elif command -v node >/dev/null 2>&1; then
+  valida_json() { node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$1"; }
+else
+  echo "nenhum parser JSON disponivel (python3, python, jq ou node) - abortando" >&2
+  exit 1
+fi
+
+# JSON valido nao basta: se a CLI saiu com erro, o arquivo pode estar truncado
+# num ponto que ainda parseia. Exija exit 0 DA CLI e parse OK.
+for tentativa in 1 2 3; do
+  aegro fuel-supplies list --farm "Fazenda Aegro" --page 27 --output json > pagina27.json
+  rc=$?
+  if [ "$rc" -eq 0 ] && valida_json pagina27.json 2>/dev/null; then break; fi
+  rm -f pagina27.json
+  if [ "$tentativa" -eq 3 ]; then
+    echo "pagina27.json invalido ou CLI falhou (exit $rc) apos 3 tentativas - abortando" >&2
+    exit 1
+  fi
+done
 ```

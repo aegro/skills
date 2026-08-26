@@ -1,7 +1,7 @@
 ---
 name: aegro-cadastro-patrimonio
 description: Guia para cadastrar e gerenciar patrimonios, abastecimentos e manutencoes
-version: 0.6.0
+version: 0.6.1
 ---
 
 # Cadastro de Patrimonio
@@ -112,21 +112,53 @@ aegro assets get --farm "<fazenda>" <asset_key_retornada>
 aegro fuel-supplies create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-13" --hourmeter 1550 \
   --stock-location-key <stock_location_key> \
-  --inputs '[{"elementKey": "element::combustivel", "quantity": 200}]'
+  --inputs '[{"elementKey": "element::combustivel", "quantity": {"unit": "L", "magnitude": 200}}]'
 ```
 
-Com `stockLocationKey`: baixa de estoque automatica. Sem ele: registro informativo apenas.
+`--stock-location-key` e **obrigatorio** na criacao, com ou sem `--inputs`: o
+servidor recusa o lancamento sem local de estoque (422
+`invalid.asset-event.stock-location.key.required`) e a CLI barra antes, com exit 4.
+Descubra os locais com `aegro stock locations`. Havendo `--inputs`, e desse local que
+sai a baixa — e `quantity` vai como objeto `{"unit": ..., "magnitude": ...}`, nunca
+numero solto.
 
 ## Sequencia: Registrar Manutencao
 
 ```bash
-# Preventiva com pecas (adicionar --crop-prorate-group-key para ratear na safra)
+# Preventiva com pecas (para apropriar o custo a uma safra, ver a secao abaixo)
 aegro maintenances create --farm "<fazenda>" \
   --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
   --stock-location-key <stock_location_key> \
   --observations "Revisao 500h" \
-  --inputs '[{"elementKey": "element::filtro01", "quantity": 1}]'
+  --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 1}}]'
 ```
+
+`--stock-location-key` tambem e obrigatorio aqui — vale para todo evento de
+patrimonio (abastecimento e manutencao).
+
+## Apropriar o custo a uma safra (ou a parte dela)
+
+Vale para abastecimento e manutencao:
+
+| Quero... | Flags |
+|---|---|
+| Custo na safra inteira (rateio por area) | `--crop-key crop::C` |
+| Custo so em alguns talhoes da safra | `--crop-key crop::C` + `--crop-glebe "<nome ou chave>"` e/ou `--glebe-tag "<agrupador>"` |
+| Desfazer a restricao por talhao | `--clear-crop-glebes` (no `update`) |
+| Conferir onde o custo caiu | `get <key> --apportionment` |
+
+```bash
+# Custo apenas nos talhoes do agrupador "Estancia" (exige login OAuth e uma safra so)
+aegro maintenances create --farm "<fazenda>" \
+  --asset-key <asset_key> --date "2026-03-12" --hourmeter 1545 \
+  --stock-location-key <stock_location_key> \
+  --crop-key <crop_key> --glebe-tag "Estancia" --execute
+```
+
+**Nao use `--crop-prorate-group-key` para apontar talhoes.** Grupo de rateio tem cota
+de plano (1 grupo na maioria, 2 no Avancado) e serve para um conjunto de safras
+reutilizado entre lancamentos — gastar o unico slot da fazenda por lancamento estoura
+a cota. Detalhes e modos de falha em `/aegro-patrimonial`.
 
 ## Limitacoes Atuais
 
@@ -171,5 +203,6 @@ template por analogia.
 ## Proximos Workflows
 
 - **Controlar estoque de pecas/combustivel** → `/aegro-reconciliacao-estoque`
-- **Ratear manutencao para safra** → `/aegro-analise-rentabilidade`
+- **Apropriar custo de manutencao a safra ou a talhoes** → `/aegro-patrimonial`
+- **Analisar a rentabilidade por safra** → `/aegro-analise-rentabilidade`
 - **Visao geral da fazenda** → `/aegro-visao-geral`
