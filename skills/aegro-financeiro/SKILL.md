@@ -43,7 +43,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Lancamento financeiro    | `bill`                 | Registro contabil pai. Agrupa uma ou mais parcelas.                                        |
 | Parcela                  | `installment`          | Fracao de pagamento de um lancamento. Possui valor, vencimento e status.                   |
 | Categoria financeira     | `fin-categories`       | Classificacao contabil hierarquica, UMA por lancamento no nivel da bill; em bills com `inputs`, cada item pode ter a sua PROPRIA (ver regra 12). SYNTHETIC (nao recebe lancamento) ou ANALYTIC (recebe). **NAO e "agrupador financeiro"** - ver linha abaixo. |
-| Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --relation-type BILL`. |
+| Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --farm "<fazenda>" --relation-type BILL`. |
 | Tipo de operacao (bill)  | `--operation-type`     | REVENUE (receita) ou EXPENSE (despesa). Usado no filtro de installments.                   |
 | Tipo de operacao (cat)   | `--operation-type`     | CREDITOR (credora) ou DEBTOR (devedora). Usado em categorias financeiras.                  |
 | Status da parcela        | `--status`             | PAID (paga) ou NOT_PAID (pendente).                                                       |
@@ -199,11 +199,24 @@ Relacionamentos-chave:
 
 **Apropriacao direta por patrimonio:** `--apportion-asset "<nome|asset::key>"`
 joga o custo do lancamento para uma maquina ou benfeitoria, em vez de (ou junto
-com) a safra. Limite da API publica: **1 patrimonio por lancamento**. Combine
-com `--apportion-crop` quando o custo for de uma maquina dentro de uma safra.
+com) a safra. Combine com `--apportion-crop` quando o custo for de uma maquina
+dentro de uma safra: a safra vira o reflexo do custo do patrimonio, rateado por
+area.
+
+Dois limites da API publica que mudam o resultado:
+
+- **1 patrimonio por lancamento**, e **somente despesa** (`EXPENSE`). Em receita
+  o write e recusado.
+- Com `--inputs`, os insumos entram como **custo da maquina e NAO dao entrada no
+  estoque** — o grupo de apropriacao e unico: ou patrimonio, ou estoque. Se o que
+  voce quer e estoque, nao passe `--apportion-asset`.
 
 ```bash
-aegro financial create-bill --farm "<fazenda>"   --description "Pneu do trator CT07" --total-amount 4800   --cash-flow EXPENSE --payment-method INSTALLMENT   --category "Manutencao" --bank-account "<conta>"   --apportion-asset "CT07" --apportion-crop "Soja 26/27" --dry-run
+aegro financial create-bill --farm "<fazenda>" \
+  --description "Pneu do trator CT07" --total-amount 4800 \
+  --cash-flow EXPENSE --payment-method INSTALLMENT \
+  --category "Manutencao" --bank-account "<conta>" \
+  --apportion-asset "CT07" --apportion-crop "Soja 26/27" --dry-run
 ```
 
 **Anexos (nota fiscal, comprovante, boleto):**
@@ -217,7 +230,7 @@ aegro financial create-bill --farm "<fazenda>"   --description "Pneu do trator C
 - **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
   com `--url` — rode ELE; repetir o create duplicaria a conta.
 - Transferencia bancaria tambem aceita anexo:
-  `aegro files attach --entity bank-transfer --key bankTransfer::<id> ...`
+  `aegro files attach --farm "<fazenda>" --entity bank-transfer --key bankTransfer::<id> ...`
   (re-save dentro de periodo financeiro FECHADO falha com erro de validacao,
   por design).
 

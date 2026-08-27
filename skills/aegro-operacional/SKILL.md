@@ -472,7 +472,10 @@ uma segunda remessa para "corrigir" nao resolve: a primeira ja conta para o
 ```bash
 # A chave da remessa sai no get-internal do pedido
 aegro purchase-orders get-internal --farm "<fazenda>" <pedido>
-aegro purchase-orders delete-shipment --farm "<fazenda>" --key <chave-da-remessa> --dry-run
+aegro purchase-orders delete-shipment --farm "<fazenda>" \
+  --shipping-key <chave-da-remessa> --purchase-order-key <chave-do-pedido> --dry-run
+aegro purchase-orders delete-shipment --farm "<fazenda>" \
+  --shipping-key <chave-da-remessa> --purchase-order-key <chave-do-pedido> --execute
 ```
 
 Usa a API interna (`DELETE /app/rest/shippings/{id}`) — exige `aegro auth login`.

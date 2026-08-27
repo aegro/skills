@@ -62,7 +62,7 @@ reutilize.
 | Listar talhoes existentes (dedup!) | `aegro glebes list` |
 | Ver um talhao | `aegro glebes get <key>` |
 | Previa do KML (**nao persiste**) | `aegro glebes preview-kml --file <arquivo.kml>` |
-| Criar talhao | `aegro glebes create --name <nome> --area <valor> --area-unit <ha\|alq> [--polygon <json>] [--tag <tag>]` |
+| Criar talhao | `aegro glebes create --farm "<fazenda>" --name <nome> --area <valor> --area-unit <ha\|alq> [--polygon <json>] [--tag <tag>]` |
 
 `glebes preview-kml` parseia o arquivo e mostra os talhoes que **seriam**
 criados (nome, area geodesica ja na unidade da fazenda, poligono) **sem gravar

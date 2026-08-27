@@ -306,7 +306,7 @@ responderia sucesso — o romaneio ficaria sem o dado e a releitura pareceria
 certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Anexo no romaneio** (foto da nota, ticket de balanca):
-`aegro files attach --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
+`aegro files attach --farm "<fazenda>" --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
 (exige OAuth; releitura de conferencia inclusa). Consulta:
 `aegro files list-attachments --entity harvest-log --key harvestLog::<id>`.
 

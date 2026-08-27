@@ -370,7 +370,7 @@ aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
 
 **Anexo no patrimonio** (foto, nota de compra):
-`aegro files attach --entity asset --key asset::<id> --file ./foto.jpg --execute`
+`aegro files attach --farm "<fazenda>" --entity asset --key asset::<id> --file ./foto.jpg --execute`
 (exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
 serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
 `--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
