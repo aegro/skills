@@ -1,6 +1,6 @@
 ---
 name: aegro-agronomo
-requires-cli: 0.19.0
+requires-cli: 0.21.0
 description: >-
   Dominio agronomico do Aegro pela CLI — safras, talhoes na safra, atividades
   planejadas e realizadas, romaneios de colheita, clima e insumos de producao:

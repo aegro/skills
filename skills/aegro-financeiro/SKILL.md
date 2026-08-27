@@ -1,5 +1,6 @@
 ---
 name: aegro-financeiro
+requires-cli: 0.21.0
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
   parcelas, categorias, contas bancarias, empresas e pedidos de compra:

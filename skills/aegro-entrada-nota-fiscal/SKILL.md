@@ -85,8 +85,11 @@ Aliases PT entre parenteses. Todos aceitam `--env prod|staging`.
 Opcoes do `launch-bill` que replicam a UI web:
 - `--category` (obrigatoria na pratica — aceita nome, id ou key; exige folha `ANALYTIC`)
 - `--bank-account` (**obrigatoria** quando o lancamento gera parcela — aceita nome,
-  id interno ou `bankAccount::<id>`). Sem ela o comando **recusa antes de qualquer
-  escrita** (exit 4). Nao existe conta padrao, e a fazenda tem varias: escolher uma
+  id interno ou `bankAccount::<id>`). A parcela nao herda conta de lugar nenhum:
+  sem a flag ela nasce sem conta bancaria e o dinheiro nao tem de onde sair.
+  A partir da v0.22.0 o comando **recusa antes de qualquer escrita** (exit 4);
+  ate a v0.21.0 ele aceita e a parcela nasce torta em silencio, entao **confira
+  as parcelas na releitura**. Nao existe conta padrao, e a fazenda tem varias: escolher uma
   em silencio seria decidir por onde o dinheiro anda. Descubra com
   `aegro bank-accounts list`.
 - Modo de pagamento (os mesmos rotulos da UI): `--no-payment` (Sem pagamento),
@@ -396,8 +399,8 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 
 | Comportamento | O que fazer |
 |---|---|
-| **"500 cosmetico"**: o servidor as vezes responde 5xx **depois** de criar a conta. O `launch-bill` detecta, mas **a conta existir nao prova que o lancamento inteiro persistiu** — a conta e gravada ANTES das parcelas e fora de transacao. | "A conta FOI criada" **nao e mais sinal de sucesso sozinho**: leia o que vem depois. Se disser lancamento **PARCIAL** (exit 1), a conta ficou sem as parcelas — **corrija pela UI e NAO relance**, relancar duplica. |
-| **Lancamento PARCIAL**: o comando confere a contagem de parcelas gravadas contra a enviada e sai com exit 1 quando nao bate. | Nunca trate exit 1 como "tentar de novo": a conta ja existe. Abra a conta na UI e complete as parcelas. |
+| **"500 cosmetico"**: o servidor as vezes responde 5xx **depois** de criar a conta. O `launch-bill` detecta, mas **a conta existir nao prova que o lancamento inteiro persistiu** — a conta e gravada ANTES das parcelas e fora de transacao. | "A conta FOI criada" **nao e mais sinal de sucesso sozinho**: leia o que vem depois. Se disser lancamento **PARCIAL** (exit 1, a partir da v0.22.0), a conta ficou sem as parcelas — **corrija pela UI e NAO relance**, relancar duplica. Ate a v0.21.0 esse aviso nao sai: confira as parcelas na UI por conta propria. |
+| **Lancamento PARCIAL**: a partir da v0.22.0 o comando confere a contagem de parcelas gravadas contra a enviada e sai com exit 1 quando nao bate. Ate a v0.21.0 ele nao confere: o 5xx e a unica pista. | Nunca trate exit 1 como "tentar de novo": a conta ja existe. Abra a conta na UI e complete as parcelas. Na v0.21.0, depois de qualquer 5xx **confira as parcelas na UI antes de concluir** — e nao relance. |
 | Guard de duplicidade acusa por numero da nota **na fazenda inteira** (nao so por fornecedor); mostra a(s) conta(s) suspeita(s). | Confira as contas listadas; so `--force` apos confirmar que nao e duplicata real. |
 | Categoria financeira e **obrigatoria** e o CLI ainda nao sugere sozinho (a UI sugere). | Pergunte/descubra com `fin-categories list -s`. Exige folha ANALYTIC. |
 | Conciliacao parcial -> conta **sem baixa de estoque** (tudo-ou-nada). | Concilie **todos** os itens para ter estoque. |

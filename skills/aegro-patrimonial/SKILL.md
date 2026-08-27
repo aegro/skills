@@ -1,6 +1,6 @@
 ---
 name: aegro-patrimonial
-requires-cli: 0.19.0
+requires-cli: 0.21.0
 description: >-
   Dominio de patrimonio do Aegro pela CLI — maquinas, veiculos, silos,
   benfeitorias, pivos e estacoes, mais abastecimentos de combustivel e

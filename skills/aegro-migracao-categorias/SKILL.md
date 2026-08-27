@@ -1,6 +1,6 @@
 ---
 name: aegro-migracao-categorias
-requires-cli: 0.19.0
+requires-cli: 0.20.0
 description: >-
   Conduz a migracao de categoria financeira em massa no Aegro (milhares de
   lancamentos saindo de categorias arquivadas para a arvore nova) pela CLI
