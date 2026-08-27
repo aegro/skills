@@ -1,5 +1,6 @@
 ---
 name: aegro-operacional
+requires-cli: 0.21.0
 description: >-
   Dominio operacional do Aegro pela CLI — fazendas, autenticacao, agrupadores
   (tags), empresas, pedidos de compra, anexos de arquivo e os links diretos

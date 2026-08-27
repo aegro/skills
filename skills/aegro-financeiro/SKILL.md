@@ -582,18 +582,26 @@ Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 (campo `installments`). Nao ha "unrealize" (desfazer pagamento).
 
 **`update-bill` NAO altera parcela.** `installments` so existe no schema de
-criacao; no PATCH o servidor descartaria o campo em silencio e responderia 200
-com a conta inteira — indistinguivel de sucesso. O CLI **recusa antes de
-chamar** (exit 4), no `--dry-run` e no `--execute`, junto com qualquer outra
-chave de topo fora de `BillPatchPublicResource`. Vencimento e valor de parcela
-ja lancada mudam **pela tela**.
+criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
+com a conta inteira — indistinguivel de sucesso. Nunca tente mudar parcela por
+aqui, em nenhuma versao: vencimento e valor de parcela ja lancada mudam **pela
+tela**.
+
+A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
+`--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
+Ate a v0.21.0 o comando aceita e voce recebe o 200 mudo — a releitura parece
+certa e a parcela nao mudou.
 
 ### Parcela a prazo exige conta bancaria
 
-`create-bill` com `installments` **exige** `--bank-account`. A parcela que vem
-no payload nao herda a conta do lancamento: sem a flag, ela nasceria sem conta
-bancaria e o dinheiro nao teria de onde sair. O CLI cobra a conta antes de
-enviar — no preenchimento interativo, pergunta; em modo nao-interativo, falha.
+**Sempre passe `--bank-account` junto com `--installments`.** A parcela que vem
+no payload **nao herda** a conta do lancamento: sem a flag ela nasce sem conta
+bancaria e o dinheiro nao tem de onde sair. Isso vale em qualquer versao — e
+defeito da API publica (API-018), nao do CLI.
+
+A partir da v0.22.0 o CLI cobra a conta antes de enviar: no preenchimento
+interativo pergunta, em modo nao-interativo falha. Ate a v0.21.0 ele aceita sem
+a flag e a parcela nasce torta em silencio, entao **confira a conta na releitura**.
 
 Nao ofereca `--payment-method PROMPT` para contornar: PROMPT cria parcela **ja
 paga** (secao acima), que e outra coisa.

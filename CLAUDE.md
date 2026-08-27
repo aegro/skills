@@ -86,6 +86,18 @@ O valor tem de ser `X.Y.Z` e nada mais: `0.19`, `>=0.19.0` ou um comentario na
 mesma linha sao pisos que a CLI nao consegue comparar — ela ignora, e o piso
 nunca avisa. O crivo recusa.
 
+Declare `requires-cli` quando a skill citar comando ou flag que nao existe em
+toda versao suportada. Use a **primeira** release que tem o recurso, conferida
+com `git tag --contains <commit>` no trunk do `tool-aegro-cli`, que e o `dev`.
+
+**Nunca declare uma versao que ainda nao saiu no PyPI.** E o piso nao dispensa a
+ressalva no corpo: quem compara e o `aegro skills install`/`sync`, que **avisa
+sem bloquear** e so existe da v0.22.0 em diante — em CLI mais antiga ninguem le o
+campo. Quando a diferenca muda o que o agente deve fazer, escreva a regra de
+forma que valha nas duas versoes e diga a partir de quando o CLI cobra, como em
+`aegro-financeiro` e `aegro-entrada-nota-fiscal`
+([0005](docs/decisions/0005-piso-da-primeira-release.md)).
+
 Nao existe `version:` por skill ([0001](docs/decisions/0001-sem-version-por-skill.md)).
 
 ## Corpo
