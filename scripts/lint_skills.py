@@ -40,17 +40,67 @@ DESCRICAO_MIN = 200
 # demais e atropela a skill vizinha.
 RE_GATILHO = re.compile(r"\bUse (quando|ao|para|se)\b|\bAtive\b|\bUse when\b", re.I)
 RE_NAO_USE = re.compile(r"N[AÃ]O use\b|\bDo not use\b|\bNOT use\b", re.I)
-RE_INGLES = re.compile(r'"[^"]*[a-z]+ [a-z]+[^"]*"')
+
+# O gatilho em ingles vem depois do marcador `EN`. Sem exigir o marcador, um
+# gatilho em PT-BR entre aspas satisfazia a checagem do ingles, e a parte 3 do
+# contrato nunca podia falhar numa skill que tivesse a parte 2.
+RE_INGLES = re.compile(r'\bEN\b[^"\n]{0,60}"[^"]{3,}"')
+
+# Parte 1 do contrato: dizer que o trabalho e pela CLI `aegro`.
+RE_CLI = re.compile(r"\bCLI\b")
+
+# Piso que a CLI nao consegue comparar e piso que nunca avisa.
+RE_VERSAO = re.compile(r"\d+\.\d+\.\d+")
 
 # Nomes da era MCP, morta desde a virada para CLI em 03/2026.
 RE_MCP = re.compile(r"\b(list|get|create|select|update|delete)_[a-z][a-z_]+\b")
 
-# Rastro de investigacao: data de medicao/conferencia no corpo da skill.
+# Rastro de investigacao: data de medicao/conferencia no corpo da skill. Os tres
+# formatos, porque tirar as barras escondia a linha do crivo sem tirar o rastro.
 RE_DATA_MEDICAO = re.compile(
     r"(Conferid[oa]|Medid[oa]|Validad[oa]s?|Verificad[oa]|Testad[oa]|Reconferid[oa])"
-    r"[^.\n]{0,80}\d{2}/\d{2}/20\d{2}",
+    r"[^.\n]{0,80}(?:\d{2}/\d{2}/(?:20)?\d{2}|20\d{2}-\d{2}-\d{2})",
     re.I,
 )
+
+# Denominador de medicao (`38 de 1.234`, `26 de 783`). O que fica e a taxa, que
+# muda a decisao; o denominador e a evidencia, e evidencia vai na PR. Exige tres
+# digitos ou separador de milhar para nao pegar contagem de instrucao legitima
+# ("parcela 1 de 12").
+RE_DENOMINADOR = re.compile(r"\b\d[\d.]* de (?:\d{3,}|\d{1,3}\.\d{3})\b")
+
+TITULOS = (
+    "Objetivo",
+    "Quando usar",
+    "Vocabulario",
+    "Pre-requisitos",
+    "Sequencia de passos",
+    "Referencia de comandos",
+    "Regras de negocio",
+    "Validacoes e erros comuns",
+    "Anti-padroes",
+    "Limitacoes",
+    "Proximos workflows",
+)
+
+
+def variante_de_titulo(titulo: str) -> str | None:
+    """Titulo que acrescenta palavra a uma secao do vocabulario, ou None.
+
+    Nao proibe secao nova, e nao briga por caixa: `Quando Usar` e `Quando usar`
+    dizem a mesma coisa e ninguem procura errado por causa disso. O que atrapalha
+    e a palavra a mais, que faz parecer outra secao — `Referencia Completa de
+    Comandos` ao lado de `Referencia de comandos`, `Limitacoes Atuais` ao lado de
+    `Limitacoes`.
+    """
+    palavras = set(re.sub(r"[^a-z ]", " ", titulo.lower()).split())
+    if not palavras:
+        return None
+    for oficial in TITULOS:
+        oficiais = set(oficial.lower().split())
+        if oficiais < palavras and 1 <= len(palavras - oficiais) <= 3:
+            return oficial
+    return None
 
 
 def frontmatter(texto: str) -> tuple[dict[str, str], str] | None:
@@ -67,6 +117,43 @@ def frontmatter(texto: str) -> tuple[dict[str, str], str] | None:
         elif chave and linha.startswith(" "):
             campos[chave] = (campos[chave] + " " + linha.strip()).strip()
     return campos, texto[m.end() :]
+
+
+def checar_corpo(nome: str, corpo: str) -> list[str]:
+    """Checagens que valem para qualquer markdown da skill, nao so o SKILL.md.
+
+    Vale para `reference/*.md` tambem: foi por olhar so o SKILL.md que um nome de
+    cliente sobreviveu em dois arquivos de referencia.
+    """
+    faltas: list[str] = []
+
+    for morto in sorted({m.group(0) for m in RE_MCP.finditer(corpo)}):
+        faltas.append(
+            f"{nome}: `{morto}` e nome de ferramenta da era MCP, morta desde 03/2026 "
+            f"— use o comando `aegro` equivalente"
+        )
+
+    for m in RE_DATA_MEDICAO.finditer(corpo):
+        trecho = re.sub(r"\s+", " ", m.group(0))[:70]
+        faltas.append(
+            f"{nome}: data de medicao no corpo — vai no corpo da PR, nao na skill: “{trecho}…”"
+        )
+
+    for m in RE_DENOMINADOR.finditer(corpo):
+        faltas.append(
+            f"{nome}: denominador de medicao no corpo (“{m.group(0)}”) — "
+            f"fica a taxa, o denominador vai no corpo da PR"
+        )
+
+    for linha in corpo.splitlines():
+        if not linha.startswith("#"):
+            continue
+        titulo = linha.lstrip("#").strip()
+        oficial = variante_de_titulo(titulo)
+        if oficial is not None:
+            faltas.append(f"{nome}: titulo '{titulo}' e variante de '{oficial}'")
+
+    return faltas
 
 
 def checar(caminho: Path) -> list[str]:
@@ -90,35 +177,36 @@ def checar(caminho: Path) -> list[str]:
     if campos.get("name") and campos["name"] != nome:
         faltas.append(f"{nome}: 'name: {campos['name']}' difere do nome do diretorio")
 
+    minima = campos.get("requires-cli")
+    if minima is not None and not RE_VERSAO.fullmatch(minima.strip("\"'")):
+        faltas.append(
+            f"{nome}: requires-cli {minima!r} nao e X.Y.Z — "
+            f"a CLI nao compara, e o piso nunca avisa"
+        )
+
     # 2. description
     desc = re.sub(r"\s+", " ", campos.get("description", "").lstrip(">-").strip())
+    if "description" in campos and not desc:
+        # Sem isto a description vazia passava por TODAS as checagens de uma vez,
+        # inclusive o minimo de caracteres.
+        faltas.append(f"{nome}: description vazia")
     if desc:
         if len(desc) < DESCRICAO_MIN:
             faltas.append(
                 f"{nome}: description com {len(desc)} caracteres, minimo {DESCRICAO_MIN} "
                 f"— e a unica coisa que o modelo le para decidir carregar a skill"
             )
+        if not RE_CLI.search(desc):
+            faltas.append(f"{nome}: description nao diz que o trabalho e pela CLI `aegro`")
         if not RE_GATILHO.search(desc):
             faltas.append(f"{nome}: description sem gatilho ('Use quando...', 'Ative...')")
+        if not RE_INGLES.search(desc):
+            faltas.append(f"{nome}: description sem gatilho em ingles depois de `EN`")
         if not RE_NAO_USE.search(desc):
             faltas.append(f"{nome}: description sem clausula 'NAO use ... (use /outra-skill)'")
-        if not RE_INGLES.search(desc):
-            faltas.append(f"{nome}: description sem gatilho em ingles entre aspas")
 
-    # 3. ferramenta MCP morta
-    for morto in sorted({m.group(0) for m in RE_MCP.finditer(corpo)}):
-        faltas.append(
-            f"{nome}: `{morto}` e nome de ferramenta da era MCP, morta desde 03/2026 "
-            f"— use o comando `aegro` equivalente"
-        )
-
-    # 4. data de medicao no corpo
-    for m in RE_DATA_MEDICAO.finditer(corpo):
-        trecho = re.sub(r"\s+", " ", m.group(0))[:70]
-        faltas.append(
-            f"{nome}: data de medicao no corpo — vai no corpo da PR, nao na skill: "
-            f"“{trecho}…”"
-        )
+    # 3. corpo (as mesmas checagens valem para os reference/*.md)
+    faltas.extend(checar_corpo(nome, corpo))
 
     return faltas
 
@@ -133,11 +221,19 @@ def main() -> int:
         print(f"ERRO: nenhuma skill em {SKILLS_DIR}", file=sys.stderr)
         return 1
 
+    # Todo markdown da skill que nao e o SKILL.md: mesmo corpo, mesmas regras.
+    referencias = sorted(
+        p for p in SKILLS_DIR.glob("aegro-*/**/*.md") if p.name != "SKILL.md"
+    )
+
     todas: list[str] = []
     for f in arquivos:
         todas.extend(checar(f))
+    for f in referencias:
+        rotulo = f.relative_to(SKILLS_DIR).as_posix()
+        todas.extend(checar_corpo(rotulo, f.read_text(encoding="utf-8")))
 
-    # 5. changelog copiado entre skills — paragrafo repetido QUE CARREGA data de
+    # 4. changelog copiado entre skills — paragrafo repetido QUE CARREGA data de
     # medicao. Repetir uma regra entre dominios ("diga a fazenda em cada comando")
     # e proposital e nao entra aqui.
     trechos: dict[str, set[str]] = defaultdict(set)
@@ -153,7 +249,7 @@ def main() -> int:
                 f"{', '.join(sorted(onde))}: “{s[:60]}…”"
             )
 
-    print(f"{len(arquivos)} skills conferidas.\n")
+    print(f"{len(arquivos)} skills e {len(referencias)} arquivo(s) de referencia conferidos.\n")
     if not todas:
         print("Nenhuma violacao.")
         return 0

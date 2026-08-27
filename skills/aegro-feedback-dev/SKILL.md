@@ -13,8 +13,8 @@ description: >-
   conteudo no molde do formulario publico para o cliente enviar a um clique. Use
   ao fim de uma sessao com erros ("compilar esses erros pro time de dev", "montar
   relatorio dos bugs da sessao") ou na rodada semanal ("triagem do feedback",
-  "fechar o feedback da semana", "compile field feedback", "triage errors for
-  dev"). NAO use para suporte a cliente final, para reportar bug de produto Aegro
+  "fechar o feedback da semana"); EN "compile field feedback", "triage errors
+  for dev". NAO use para suporte a cliente final, para reportar bug de produto Aegro
   fora do fluxo CLI/API (use o fluxo normal de bug), nem durante o lancamento em
   si (quem registra e a skill de lancamento; esta compila).
 ---
@@ -46,7 +46,7 @@ Identifique quem esta compilando pelo **e-mail do usuario** no contexto da sessa
 
 Sem e-mail identificavel, trate como **externo**.
 
-## Quando usar / quando NAO usar
+## Quando usar
 
 **Usar:**
 - Ao fim de uma sessao de lancamento em que a skill de lancamento

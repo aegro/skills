@@ -19,7 +19,7 @@ fertilizantes). Base para todos os workflows agronomicos.
 
 ---
 
-## 1. Vocabulario do Dominio
+## 1. Vocabulario
 
 | Termo Aegro | Termo API | Definicao |
 |-------------|-----------|-----------|
@@ -94,7 +94,7 @@ Produtividade (sc/ha) = Peso Descontado Total (kg) / Area (ha) / 60
 
 ---
 
-## 4. Referencia Completa de Comandos
+## 4. Referencia de comandos
 
 ### 4.1 Safras (`aegro crops`)
 
@@ -155,7 +155,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 - `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
 - A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado retorna 404, indistinguivel de "nao existe".
 - E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
-- **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao (verificado em staging, 2026-08-05). Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
+- **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao. Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
 - **Sem `AEGRO_SAFE_MODE=1` nao ha trava: `delete-*` sem flag nenhuma apaga na hora**, sem preview e sem confirmacao. Com `AEGRO_SAFE_MODE=1`, escrever exige `--execute` e `--farm` explicito (senao `SAFE_MODE_BLOCKED` / `IMPLICIT_FARM_BLOCKED`).
 - O `--dry-run` **so imprime a requisicao que seria enviada** - nao chama o servidor, entao nao confirma que a chave existe, que ela e daquela fazenda, nem quanta coisa a cascata vai levar junto. Para prever de verdade **o que sera apagado**, consulte antes: `activities get <ACTIVITY_KEY>` e `activities realizations --activity-key <ACTIVITY_KEY>`.
 
@@ -186,7 +186,8 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   existe e voce criaria uma segunda. Rode o retry que o CLI emitiu:
 
   ```bash
-  aegro files attach --farm "<fazenda>" --entity realization --key activityLog::<id> \n    --url "<chave S3 que saiu no stderr>" --execute
+  aegro files attach --farm "<fazenda>" --entity realization --key activityLog::<id> \
+    --url "<chave S3 que saiu no stderr>" --execute
   ```
 
   Reanexar a mesma chave S3 e no-op (a saida traz `saved: false`), entao o

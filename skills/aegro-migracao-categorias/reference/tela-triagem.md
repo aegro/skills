@@ -108,7 +108,7 @@ clica **Baixar decisoes**. O arquivo cai na pasta de downloads dela como
   "version": 1,
   "plano": "plano-salarios.jsonl",
   "planHash": "sha256:9f2c...",
-  "farm": "FAZENDAS RAIZES AGRO",
+  "farm": "Fazenda Exemplo",
   "revisouAgregado": true,
   "decisoes": [
     {"cluster": "company::c1|pagto energia eletrica cpfl",
@@ -663,7 +663,7 @@ function cartao(i){
   const catEscolhida = d && d.acao === 'migrar' && d.origem === 'escolha-manual'
     ? rotuloCat(catPorChave[d.toKey] || {key:d.toKey, nome:nomeCat(d.toKey)}) : '';
   /* Grupo de UM lancamento nasce com a amostra aberta: nele a amostra E o grupo,
-     e clicar para ver a unica linha era clique puro. Aqui eram 84 de 152. */
+     e clicar para ver a unica linha era clique puro. */
   const aberto = cl.count === 1 ? ' open' : '';
 
   return '<section class="card' + (d ? (d.acao === 'manual' ? ' manual' : ' decidido') : '') +

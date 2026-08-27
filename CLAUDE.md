@@ -76,7 +76,11 @@ So tres campos, e dois sao obrigatorios:
 |---|---|---|
 | `name` | obrigatorio | igual ao nome do diretorio |
 | `description` | obrigatorio | contrato acima |
-| `requires-cli` | opcional | versao minima da CLI, ex. `0.18.0` |
+| `requires-cli` | opcional | versao minima da CLI, exatamente `X.Y.Z` |
+
+O valor tem de ser `X.Y.Z` e nada mais. `0.19`, `>=0.19.0` ou um comentario na
+mesma linha (`0.19.0  # primeira release com --execute`) sao pisos que a CLI nao
+consegue comparar — ela ignora, e o piso nunca avisa. O crivo recusa.
 
 **Nao existe `version:` por skill.** Ela era mantida a mao, apagada e regravada
 na publicacao (`inject_version`/`_stamp` no `tool-aegro-cli`), e o unico efeito
@@ -85,16 +89,21 @@ repositorio e a do plugin, em `.claude-plugin/`.
 
 ## Corpo
 
-Titulos de secao, nesta grafia, na ordem que fizer sentido para a skill —
-use so os que ela precisa:
+Titulos de secao, na ordem que fizer sentido para a skill — use so os que ela
+precisa:
 
 `Objetivo` · `Quando usar` · `Vocabulario` · `Pre-requisitos` ·
 `Sequencia de passos` · `Referencia de comandos` · `Regras de negocio` ·
 `Validacoes e erros comuns` · `Anti-padroes` · `Limitacoes` ·
 `Proximos workflows`
 
-Nao invente variante (`Referencia Completa de Comandos`, `Vocabulario do
-Dominio`). A variacao nao carrega informacao e atrapalha quem procura.
+Secao que o vocabulario nao previu pode existir. O que nao pode e **acrescentar
+palavra a uma que ja existe**: `Referencia Completa de Comandos` ao lado de
+`Referencia de comandos`, `Vocabulario do Dominio` ao lado de `Vocabulario`,
+`Limitacoes Atuais` ao lado de `Limitacoes`. A palavra a mais nao carrega
+informacao e faz parecer outra secao. O crivo cobra isso; caixa (`Quando Usar`
+contra `Quando usar`) ele nao cobra, porque ninguem procura errado por causa
+dela.
 
 Todo exemplo de comando que **escreve** passa `--farm "<fazenda>"`. Nao existe
 fazenda selecionada implicita: `AEGRO_ACTIVE_FARM` saiu em 28/07/2026, e o
@@ -115,6 +124,10 @@ E responda a pergunta do template: **que linha desta PR muda o que o agente
 faz?** Se a resposta for "nenhuma", a mudanca provavelmente pertence ao corpo do
 commit.
 
-Peca review. Em agosto de 2026, cinco PRs somaram 53 dias parados sem nenhuma
-ter conflito real — quatro delas nunca pediram review a ninguem. O CODEOWNERS
-auto-solicita, mas confira que o pedido saiu.
+O crivo le o `SKILL.md` e tambem os `reference/*.md` da skill: as regras de corpo
+valem para os dois. Foi por olhar so o `SKILL.md` que um nome de cliente
+sobreviveu em dois arquivos de referencia.
+
+Peca review, e confira que o pedido saiu. `main` exige uma aprovacao e ninguem
+tem bypass, entao PR sem revisor pedido nao entra — fica parada. O CODEOWNERS
+auto-solicita, mas conferir custa um segundo.

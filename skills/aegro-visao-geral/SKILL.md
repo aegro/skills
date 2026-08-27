@@ -117,7 +117,7 @@ O valor deste workflow esta na **sintese cruzada**:
 - Safra de Soja sem atividades ha 15 dias
 ```
 
-## Alertas e Proximos Workflows
+## Proximos workflows
 
 | Alerta detectado | Proximo workflow |
 |------------------|------------------|

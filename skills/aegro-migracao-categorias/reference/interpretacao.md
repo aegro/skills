@@ -108,7 +108,7 @@ Aquela categoria precisa de destino explicito.
 A categoria oficial do elemento esta arquivada ou e sintetica. Guard que existe
 porque, sem ele, o destino de `@element` escaparia dos guards do `resolve_map`,
 viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
-**aborta o lote inteiro**. Descobrir isso na conta 9.000 de 23.583 seria caro.
+**aborta o lote inteiro**. Descobrir isso no meio de um lote grande seria caro.
 
 ### `revenue-item-apportioned-noop` — o segundo no-op medido
 
@@ -213,9 +213,8 @@ Sai com **codigo 1** quando algo tentado falhou.
 | Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
 | Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
 
-E existe uma **quarta**, sem causa identificada: 38 de 1.234 contas (19/08/2026)
-responderam 200 e nao gravaram, sendo estruturalmente identicas a centenas que
-gravaram. Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e
+E existe uma **quarta**, sem causa identificada: cerca de 3% das contas
+respondem 200 e nao gravam, sendo estruturalmente identicas as que gravaram. Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e
 o `verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
 lista com link.
 
@@ -239,8 +238,7 @@ distincao importa:
    [tool-aegro-cli#100](https://github.com/aegro/tool-aegro-cli/issues/100), que e
    onde o dossie vive.
 
-**A regra do local fechado, medida em staging 2026-08-14 com separacao perfeita em
-23 contas:** o PATCH publico nao persiste quando
+**A regra do local fechado:** o PATCH publico nao persiste quando
 `costApportionSummary.stockLocationEntries[]` referencia um **local de estoque
 fechado** — local que responde ao `stock location get` mas **nao aparece** no
 `stock locations list`.

@@ -291,11 +291,11 @@ fechada e o CLI recusa qualquer coisa fora dela.
 
 ### 4.1 Planilha pela metade nao bloqueia nada
 
-Metade em branco e o estado **normal** (na planilha real: 896 de 1.777 linhas
-sem destino). Isso **nao** impede migrar as outras.
+Metade em branco e o estado **normal**: costuma vir cerca de metade das linhas
+sem destino. Isso **nao** impede migrar as outras.
 
 1. Compile as linhas completas e rode com elas.
-2. Meca o que falta antes de perguntar: "faltam 896 linhas" e ruido; "faltam 12
+2. Meca o que falta antes de perguntar: "faltam N linhas" e ruido; "faltam 12
    grupos que somam 3.620 lancamentos, e 3 deles sao 2.900" e uma conversa.
 3. Pergunte **uma vez, em lote**, do maior para o menor.
 4. Siga. O que ficou sem destino vira `unresolved`, e `unresolved` **nunca e
@@ -324,7 +324,7 @@ Forma do arquivo:
 ```json
 {
   "version": 1,
-  "farm": "FAZENDAS RAIZES AGRO",
+  "farm": "Fazenda Exemplo",
   "rules": [
     {"from": "Salarios (antigo)", "to": "Salarios - Agricultura",
      "when": {"anyTags": ["SALARIO AGRICULTURA"]}},
@@ -724,8 +724,8 @@ identificada**:
 
 | O que acontece | Frequencia esperada |
 |---|---|
-| **Nao gravou em silencio.** A API responde 200, o ledger registra OK, a conta continua na categoria antiga. Nao e nenhuma das causas conhecidas: reproduzivel com concorrencia 1, releitura minutos depois confirma, e as contas sao identicas a centenas que gravaram | **38 de 1.234** (3,1%) |
-| **Gravou, e o total da conta mudou 1 centavo** — para cima ou para baixo. A soma dos itens continua certa; e o total que o servidor recalcula ao regravar `inputs` | **26 de 783** de nivel item (3,3%); nenhuma de nivel conta |
+| **Nao gravou em silencio.** A API responde 200, o ledger registra OK, a conta continua na categoria antiga. Nao e nenhuma das causas conhecidas: reproduzivel com concorrencia 1, releitura minutos depois confirma, e as contas sao identicas a centenas que gravaram | **cerca de 3%** |
+| **Gravou, e o total da conta mudou 1 centavo** — para cima ou para baixo. A soma dos itens continua certa; e o total que o servidor recalcula ao regravar `inputs` | **cerca de 3%** das de nivel item; nenhuma de nivel conta |
 
 **Nao invente causa e nao bloqueie por palpite** (secao 10, item 8). E **nao
 decida sozinho o que fazer**: as duas coisas mexem em como o cliente fecha o mes,

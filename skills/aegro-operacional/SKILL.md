@@ -16,7 +16,7 @@ description: >-
 Referencia completa do dominio operacional da Fazenda Aegro (`farm::5711512de4b0e15eb04da4d0`, ~67k ha).
 Cobre autenticacao, gestao de fazendas, tags, empresas, ordens de compra e a orquestracao de fluxos entre dominios.
 
-## Vocabulario do Dominio
+## Vocabulario
 
 | Termo | Definicao | Exemplo |
 |-------|-----------|---------|
@@ -257,7 +257,7 @@ aegro tags list --farm "Fazenda Aegro" --relation-type MACHINE --relation-type V
 aegro elements list --farm "Fazenda Aegro" --category DEFENSIVE --category FERTILIZER
 ```
 
-## Referencia de Comandos
+## Referencia de comandos
 
 ### farms
 

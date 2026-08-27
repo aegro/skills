@@ -233,7 +233,8 @@ propria**; so faca quando o usuario pedir explicitamente para anexar num
 elemento.
 
 ```bash
-aegro files attach --farm "<fazenda>" --entity element --key element::<id> \n  --file ./bula.pdf --execute
+aegro files attach --farm "<fazenda>" --entity element --key element::<id> \
+  --file ./bula.pdf --execute
 ```
 
 **So elemento CRIADO NA FAZENDA aceita anexo.** Elemento **importado** (do

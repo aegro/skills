@@ -8,7 +8,7 @@ description: >-
   Sempre dry-run antes de execute. Detecta se o usuario e do time Aegro (staging-first)
   ou cliente (producao direta). Use quando pedirem "dar entrada em nota fiscal",
   "listar notas nao lancadas", "lancar essa NF-e como conta/pedido", "conciliar os
-  itens da nota", "launch SEFAZ invoice", "give entry to a received invoice". NAO use
+  itens da nota"; EN "launch SEFAZ invoice", "give entry to a received invoice". NAO use
   para lancar conta manual sem nota (use /aegro-lancamento-financeiro), lancamento em
   massa por planilha, ou NFS-e municipal (fora do recorte v1 -> revisar na UI).
 ---

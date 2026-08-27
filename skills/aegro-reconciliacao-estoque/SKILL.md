@@ -1,7 +1,8 @@
 ---
 name: aegro-reconciliacao-estoque
 description: >-
-  Explica divergencia entre o estoque registrado no Aegro, o consumo lancado
+  Explica, pela CLI `aegro`, divergencia entre o estoque registrado no Aegro,
+  o consumo lancado
   em atividades de campo e os lancamentos financeiros, apontando a causa
   provavel de cada diferenca. Use quando pedirem "o estoque nao bate",
   "sobrou/faltou insumo", "divergencia de estoque", "auditoria de insumos",

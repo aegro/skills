@@ -167,7 +167,7 @@ de plano (1 grupo na maioria, 2 no Avancado) e serve para um conjunto de safras
 reutilizado entre lancamentos — gastar o unico slot da fazenda por lancamento estoura
 a cota. Detalhes e modos de falha em `/aegro-patrimonial`.
 
-## Limitacoes Atuais
+## Limitacoes
 
 | Bug | Impacto | Workaround |
 |-----|---------|------------|

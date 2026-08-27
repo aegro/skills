@@ -18,6 +18,9 @@ on:
       - "skills/**"
       - "scripts/lint_skills.py"
       - ".github/workflows/lint-skills.yml"
+      # O padrao manda "mudou uma regra aqui, mude la". Sem este caminho, a PR
+      # que muda so o CLAUDE.md e justamente a que nunca roda o crivo.
+      - "CLAUDE.md"
   push:
     branches: [main]
   workflow_dispatch:
