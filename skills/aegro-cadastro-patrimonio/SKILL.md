@@ -1,5 +1,6 @@
 ---
 name: aegro-cadastro-patrimonio
+requires-cli: 0.19.0
 description: >-
   Cadastra ativos da fazenda no Aegro pela CLI — maquina, veiculo, silo,
   benfeitoria, pivo e estacao meteorologica — e deixa o ativo pronto para

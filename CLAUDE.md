@@ -82,6 +82,18 @@ O valor tem de ser `X.Y.Z` e nada mais. `0.19`, `>=0.19.0` ou um comentario na
 mesma linha (`0.19.0  # primeira release com --execute`) sao pisos que a CLI nao
 consegue comparar — ela ignora, e o piso nunca avisa. O crivo recusa.
 
+Declare `requires-cli` quando a skill citar comando ou flag que nao existe em
+toda versao suportada. O `aegro skills install` compara com a versao instalada e
+**avisa, sem bloquear** — a skill instala do mesmo jeito. Use o numero da
+primeira release que tem o recurso (`git tag --contains <commit>` no
+tool-aegro-cli), nunca a versao corrente por reflexo: um piso alto demais faz
+todo mundo receber aviso inutil, e aviso inutil e aviso ignorado.
+
+**Nunca declare uma versao que ainda nao saiu no PyPI.** Se a skill precisa
+documentar comportamento que so existe no `dev`, escreva a regra de forma que
+valha nas duas versoes e diga a partir de quando o CLI passa a cobrar — como em
+`aegro-financeiro`, na secao de parcela a prazo.
+
 **Nao existe `version:` por skill.** Ela era mantida a mao, apagada e regravada
 na publicacao (`inject_version`/`_stamp` no `tool-aegro-cli`), e o unico efeito
 observavel dela era gerar conflito entre PRs. A unica versao mantida a mao no
