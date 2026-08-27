@@ -51,7 +51,7 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 |---|---|
 | Listar safras existentes (evitar duplicar) | `aegro crops list` |
 | Listar talhoes p/ vincular | `aegro glebes list` |
-| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...] [--measuring-unit <un>] [--stock-location-key <key>]` |
+| Criar safra (vinculando talhoes) | `aegro crops create --farm "<fazenda>" --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...] [--measuring-unit <un>] [--stock-location-key <key>]` |
 | Ver a safra criada | `aegro crops get <crop_key>` |
 
 Dica: `crops create` aceita `--dry-run` (mostra o que seria enviado, sem gravar)
