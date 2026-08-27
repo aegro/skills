@@ -107,8 +107,8 @@ lote. Siga sempre esta ordem:
 2. **Verifique por leitura** — nao confie so no "criado com sucesso". Confira no
    App ou via `aegro assets get <key>` que os campos chegaram como esperado (e
    nao, por exemplo, uma data invalida virando erro). Ha caminho de escrita no
-   Aegro que responde sucesso sem gravar, e a releitura e o que separa um do
-   outro.
+   Aegro que responde sucesso sem que a alteracao valha, e a releitura e o que
+   separa um do outro.
 3. **So depois que a amostra conferir**, importe o resto, apos confirmacao
    explicita do usuario.
 

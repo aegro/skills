@@ -100,10 +100,11 @@ Relacionamentos-chave:
    e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
    sao pagas via `realize`. **Vencimento e valor de parcela ja lancada mudam
    pela tela do Aegro, nunca pelo `update-bill`**: `installments` so existe no
-   schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch —
-   mandar o array num PATCH e descarte silencioso com resposta 200 (debito
-   API-017, serv-core#5386). O CLI passou a recusar o campo antes de enviar
-   (exit 4); o comando de lote esta planejado em tool-aegro-cli#117.
+   schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch. A API
+   **ignora campo que nao declara, e isso e por desenho** — quem chama e que
+   precisa ler o contrato antes. O CLI passou a fazer isso por voce: recusa o
+   campo antes de enviar (exit 4). O comando de lote esta planejado em
+   tool-aegro-cli#117.
 
 3. **Formato de valor monetario**: a spec atual unificou em
    `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
@@ -649,10 +650,10 @@ motivos medidos:
   e o **registro que voce criou la**. O batch de `create-bills` continua
   *name-based* de proposito — assim re-resolve cadastro criado depois do ultimo
   restore, num ambiente ou no outro.
-- **Sucesso em staging nao e prova.** Existe caminho de escrita que responde 200
-  sem gravar (serv-core#5386, serv-core#5505). O que protege e a tabela de
-  conferencia (`--complete`) **antes** e a releitura **depois**, nos dois
-  ambientes.
+- **Sucesso em staging nao e prova.** Existe caminho de escrita que aceita um
+  campo **declarado no contrato** e responde 200 sem que a alteracao valha
+  (serv-core#5505). O que protege e a tabela de conferencia (`--complete`)
+  **antes** e a releitura **depois**, nos dois ambientes.
 
 Nao sugira staging a clientes.
 

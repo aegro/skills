@@ -75,7 +75,7 @@ O que limita o estrago e o tamanho do primeiro lote. Siga sempre esta ordem:
 2. **Verifique por leitura** — nao confie so no "criado com sucesso". Confira
    via `aegro companies get <key>` ou `aegro companies list` que os campos
    chegaram como esperado. Ha caminho de escrita no Aegro que responde sucesso
-   sem gravar, e a releitura e o que separa um do outro.
+   sem que a alteracao valha, e a releitura e o que separa um do outro.
 3. **So depois que a amostra conferir**, importe o resto, apos confirmacao
    explicita do usuario.
 

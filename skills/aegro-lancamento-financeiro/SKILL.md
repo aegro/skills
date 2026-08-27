@@ -56,8 +56,8 @@ Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). **Parcelas
 nascem no proprio `create-bill`** (campo `installments`) -- nao existe CRUD
 avulso de parcela na API. Para ajustar a **conta**, use `financial update-bill`
 (PATCH) ou o app; para ajustar **parcela** (vencimento ou valor), so pela tela:
-`installments` nao existe no schema do patch, e mandar o array la responde 200
-sem gravar nada (o CLI recusa antes de enviar).
+`installments` nao existe no schema do patch, e a API ignora campo que nao
+declara — por desenho, nao por defeito. O CLI recusa o campo antes de enviar.
 
 - **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
   anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API

@@ -393,8 +393,9 @@ esta no ambiente, nao no comando:
   nao. Mesmo assim, prefira o **NUMERO da nota** e os nomes (categoria, safra,
   fornecedor) a chaves: eles re-resolvem no ambiente certo, e cadastro criado
   depois do ultimo restore existe num ambiente e nao no outro.
-- **Sucesso em staging nao e prova.** Ha caminho de escrita no Aegro que responde
-  200 sem gravar (serv-core#5386, serv-core#5505).
+- **Sucesso em staging nao e prova.** Ha caminho de escrita no Aegro que aceita
+  um campo **declarado no contrato** e responde 200 sem que a alteracao valha
+  (serv-core#5505). Releia sempre.
 
 O que protege de verdade, nos dois ambientes:
 
