@@ -83,11 +83,22 @@ mesma linha (`0.19.0  # primeira release com --execute`) sao pisos que a CLI nao
 consegue comparar — ela ignora, e o piso nunca avisa. O crivo recusa.
 
 Declare `requires-cli` quando a skill citar comando ou flag que nao existe em
-toda versao suportada. O `aegro skills install` compara com a versao instalada e
-**avisa, sem bloquear** — a skill instala do mesmo jeito. Use o numero da
-primeira release que tem o recurso (`git tag --contains <commit>` no
-tool-aegro-cli), nunca a versao corrente por reflexo: um piso alto demais faz
-todo mundo receber aviso inutil, e aviso inutil e aviso ignorado.
+toda versao suportada. Use o numero da **primeira** release que tem o recurso
+(`git tag --contains <commit>` no tool-aegro-cli), nunca a versao corrente por
+reflexo: um piso alto demais faz todo mundo receber aviso inutil, e aviso inutil
+e aviso ignorado.
+
+Confira a tag no branch certo. O trunk do tool-aegro-cli e o `dev`, e ele fica a
+frente do PyPI: `git tag --contains` num commit que so esta no `dev` devolve
+vazio, e vazio quer dizer "ainda nao saiu", nao "esta em todas". Foi assim que
+quatro pisos sairam errados aqui — `files attach` parecia 0.19.0 e e 0.21.0.
+
+Quem compara e o `aegro skills install`/`sync`, que **avisa, sem bloquear** — a
+skill instala do mesmo jeito. O comparador entrou na **v0.22.0**: em CLI mais
+antiga o campo e lido por ninguem, entao o piso protege quem ja atualizou e nao
+alcanca quem mais precisaria dele. Por isso o piso nao substitui a ressalva no
+corpo quando a diferenca muda o que o agente deve fazer — veja
+`aegro-financeiro` e `aegro-entrada-nota-fiscal`.
 
 **Nunca declare uma versao que ainda nao saiu no PyPI.** Se a skill precisa
 documentar comportamento que so existe no `dev`, escreva a regra de forma que

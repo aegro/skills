@@ -1,5 +1,6 @@
 ---
 name: aegro-estoquista
+requires-cli: 0.21.0
 description: >-
   Dominio de estoque e insumos do Aegro pela CLI — itens de estoque (posicao
   de um insumo em um local), locais de armazenagem, movimentacoes, elementos e
