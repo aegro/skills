@@ -16,3 +16,4 @@ data, numero, PR. E justamente o que nao pode entrar no corpo de uma skill.
 | [0001](0001-sem-version-por-skill.md) | nao existe `version:` no frontmatter |
 | [0002](0002-titulo-palavra-a-mais-nao-caixa.md) | o crivo cobra palavra a mais no titulo, nao caixa |
 | [0003](0003-crivo-le-os-reference.md) | as regras de corpo valem para `reference/*.md` |
+| [0004](0004-crivo-na-pr-drift-agendado.md) | o crivo roda na PR; o drift, semanalmente |
