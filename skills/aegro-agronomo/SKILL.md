@@ -320,14 +320,19 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Parametros pareados** (ambos presentes ou ambos ausentes):
 - `--precipitation` + `--precipitation-unit` (ex: `mm`)
-- `--temperature` + `--temperature-unit` (ex: `CELSIUS`)
+- `--temperature` + `--temperature-unit` (simbolo: `ºC`)
 
 **Independentes:** `--humidity` (%), `--pressure` (hPa).
+
+> ⚠️ **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`.** A API resolve a
+> unidade pelo simbolo, entao `--temperature-unit CELSIUS` volta `422` com
+> `Unidade não encontrada para o símbolo 'CELSIUS'`. Cuidado ao copiar: o `º` e o
+> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0).
 
 ```bash
 aegro weather create --farm "<fazenda>" --weather-station-key weatherstation::ws001 --date 2026-03-12 \
   --precipitation 12.5 --precipitation-unit mm \
-  --temperature 28.0 --temperature-unit CELSIUS --humidity 65.0
+  --temperature 28.0 --temperature-unit "ºC" --humidity 65.0
 ```
 
 ### 4.7 Elementos / Insumos (`aegro elements`)
@@ -443,7 +448,11 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 | Bug | Sintoma | Workaround |
 |-----|---------|------------|
 | **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
-| **#6** `weather create` | `POST /weather-logs` → 500 | Registrar clima pela interface web. Leitura funciona normal. |
+
+**`weather create` funciona.** O `POST /weather-logs` grava normal — era o bug #6
+desta tabela, e o workaround de registrar clima pela interface web nao vale mais. O
+erro que sobra ali e o `422` de unidade da secao 4.6: parametro errado, nao defeito
+do endpoint.
 
 **Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
 Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).

@@ -524,19 +524,6 @@ aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1"
 aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --apportionment
 ```
 
-## Bugs e Workarounds
-
-### Bug #6: `weather-logs` POST retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/weather-logs`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `d68b29a6-8f78-4448-b8c3-85e5f55b445a`
-
-**Impacto:** Impossivel criar registros meteorologicos via CLI/API. O GET individual funciona, e a estacao meteorologica existe (`asset::57d299c3e4b059f24e3f99b0`).
-
-**Workaround:** Registrar dados climaticos diretamente no Aegro App (interface web).
-
 ## Anti-padroes
 
 ### 1. Nao crie evento de patrimonio sem local de estoque
@@ -592,11 +579,7 @@ aegro assets create-machine --farm "Fazenda Aegro" \
   --machine-type TRACTOR
 ```
 
-### 4. Nao crie estacao meteorologica esperando registrar dados via API
-
-O Bug #6 bloqueia criacao de `weather-logs` via API. Se criar estacao meteorologica via CLI, os registros climaticos precisarao ser inseridos pelo Aegro App.
-
-### 5. Nao esqueca o tipo de maquina (machineType) para MACHINE
+### 4. Nao esqueca o tipo de maquina (machineType) para MACHINE
 
 O campo `machineType` e **obrigatorio** para patrimonios tipo `MACHINE`. Sem ele, a criacao falha com HTTP 422.
 
@@ -609,7 +592,7 @@ aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacture
 aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacturer "John Deere" --machine-type TRACTOR
 ```
 
-### 6. Nao passe `quantity` como numero solto em `inputs`
+### 5. Nao passe `quantity` como numero solto em `inputs`
 
 `quantity` e um objeto com `unit` e `magnitude`. Numero solto e recusado pela CLI
 antes de chegar na API — `INVALID_INPUTS`, **exit 4**.
@@ -626,7 +609,7 @@ aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "
   --inputs '[{"elementKey": "element::filtro01", "quantity": {"unit": "un", "magnitude": 2}}]'
 ```
 
-### 7. Nao paralelize chamadas de escrita da CLI
+### 6. Nao paralelize chamadas de escrita da CLI
 
 Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si — observado em 2026-08-10 (CLI v0.16.0): com 5 chamadas paralelas, 2 de 5 falharam; com 3 paralelas, ~1,4% de falha; sequencial, 0 falhas.
 
@@ -666,7 +649,7 @@ done < keys.txt
 
 Sempre valide o payload com `--dry-run` em 1 registro antes de rodar o lote com `--execute`.
 
-### 8. Nao junte stdout e stderr ao capturar `--output json`
+### 7. Nao junte stdout e stderr ao capturar `--output json`
 
 Em raras situacoes (retry apos erro 5xx), a CLI pode emitir uma linha de warning que, com `2>&1`, se mistura ao JSON e quebra o parse. Redirecione apenas o stdout — mas isso reduz o risco, nao elimina: se o warning sair pelo proprio stdout (nao pelo stderr), o arquivo fica contaminado mesmo sem `2>&1`. Valide sempre o arquivo com um parser JSON antes de consumi-lo; se o parse falhar, descarte a resposta e repita a chamada.
 
