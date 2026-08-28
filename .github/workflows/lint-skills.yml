@@ -7,9 +7,8 @@
 #
 # O que NAO esta aqui, de proposito: conferir se cada comando `aegro` citado
 # existe, e se todo exemplo de escrita passa `--farm`. As duas coisas exigem a
-# CLI publicada e mudam quando o CLI muda, sem relacao com a PR — cobrar aqui
-# deixaria vermelha a PR de quem nao mexeu em contrato nenhum, e o autor
-# aprenderia a ignorar o vermelho. Vao no job agendado de drift.
+# CLI publicada; vao no job agendado de drift.
+# Por que: docs/decisions/0004-crivo-na-pr-drift-agendado.md
 name: Lint skills
 
 on:
