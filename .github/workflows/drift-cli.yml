@@ -1,9 +1,6 @@
 # Drift entre as skills e a CLI `aegro` publicada.
 #
-# Por que agendado e nao na PR: as checagens dependem da CLI publicada e mudam
-# quando o CLI muda, sem relacao com o commit em revisao. Cobrar na PR deixaria
-# vermelha a PR de quem nao mexeu em contrato nenhum, e o autor aprenderia a
-# ignorar o vermelho. Mesmo raciocinio do `openapi-drift.yml` do tool-aegro-cli.
+# Por que agendado e nao na PR: docs/decisions/0004-crivo-na-pr-drift-agendado.md
 #
 # Instala a `aegro` do PyPI de proposito: o alvo e o que o cliente tem na
 # maquina, nao o que esta no `dev` do CLI.
