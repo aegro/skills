@@ -386,16 +386,16 @@ esta no ambiente, nao no comando:
 
 - **O que voce lanca la some.** Staging e restaurado por completo a partir de um
   snapshot de producao **todo dia as 03:15 BRT** — sem merge, sem preservar
-  escrita. Em 07/08/2026, 44 de 68 ajustes conferidos por uma EV voltaram ao
-  valor original tres dias depois.
+  escrita. Ajuste conferido a mao volta ao valor original no restore seguinte,
+  e a maioria volta.
 - **As chaves sao as MESMAS de producao** (e uma copia, com os mesmos `_id`).
   Uma chave achada em staging vale em prod; o **registro que voce criou la**,
   nao. Mesmo assim, prefira o **NUMERO da nota** e os nomes (categoria, safra,
   fornecedor) a chaves: eles re-resolvem no ambiente certo, e cadastro criado
   depois do ultimo restore existe num ambiente e nao no outro.
 - **Sucesso em staging nao e prova.** Ha caminho de escrita no Aegro que aceita
-  um campo **declarado no contrato** e responde 200 sem que a alteracao valha
-  (serv-core#5505). Releia sempre.
+  um campo **declarado no contrato** e responde 200 sem que a alteracao valha.
+  Releia sempre.
 
 O que protege de verdade, nos dois ambientes:
 

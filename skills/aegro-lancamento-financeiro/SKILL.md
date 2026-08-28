@@ -239,7 +239,7 @@ Os dois caminhos que funcionam hoje:
 | A nota esta na SEFAZ | `/aegro-entrada-nota-fiscal` -> `received-fiscal-documents launch-bill --stock-location "<local>"` (concilia os itens **e** movimenta) |
 | Nao ha nota na SEFAZ (so o PDF) | lance a conta aqui **e** a movimentacao em separado, por `/aegro-estoquista` (`stock entry`) — sao dois registros, e diga isso ao usuario |
 
-Enquanto `create-bill` nao ganhar a flag (tool-aegro-cli#113), **nao prometa
+Enquanto `create-bill` nao tiver a flag, **nao prometa
 estoque por este caminho**.
 
 ### Conta em Moeda Estrangeira (USD)

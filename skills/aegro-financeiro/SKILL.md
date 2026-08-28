@@ -102,9 +102,9 @@ Relacionamentos-chave:
    pela tela do Aegro, nunca pelo `update-bill`**: `installments` so existe no
    schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch. A API
    **ignora campo que nao declara, e isso e por desenho** — quem chama e que
-   precisa ler o contrato antes. O CLI passou a fazer isso por voce: recusa o
-   campo antes de enviar (exit 4). O comando de lote esta planejado em
-   tool-aegro-cli#117.
+   precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o campo antes
+   de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa. Nao existe
+   comando de lote para parcela.
 
 3. **Formato de valor monetario**: a spec atual unificou em
    `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
@@ -120,7 +120,7 @@ Relacionamentos-chave:
    sair (exit 4), porque a API a aceitaria, descartaria em silencio e
    responderia 200. Parcela nao se altera por aqui (ver regra 2).
 
-5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela** (a reversao existe na API interna, que e o caminho que a tela usa; comando de CLI planejado em tool-aegro-cli#119).
+5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
 
 6. **Apropriacao de custo (financialApportion)**: ha DOIS tipos no produto —
    **direta** (lancamento aponta para 1+ safras) e **salva**
@@ -643,16 +643,16 @@ motivos medidos:
 
 - **O que se lanca la some.** O ambiente inteiro e restaurado a partir de um
   snapshot de producao **todo dia as 03:15 BRT** — restore de cluster, sem merge
-  e sem preservar escrita. Em 07/08/2026, 44 de 68 ajustes de estoque
-  conferidos voltaram ao valor original tres dias depois, por isso.
+  e sem preservar escrita. Ajuste de estoque conferido a mao volta ao valor
+  original no restore seguinte.
 - **As chaves NAO diferem entre os ambientes.** Staging e uma copia de producao,
   com os mesmos `_id`: uma chave achada em staging vale em prod. O que nao vale
   e o **registro que voce criou la**. O batch de `create-bills` continua
   *name-based* de proposito — assim re-resolve cadastro criado depois do ultimo
   restore, num ambiente ou no outro.
 - **Sucesso em staging nao e prova.** Existe caminho de escrita que aceita um
-  campo **declarado no contrato** e responde 200 sem que a alteracao valha
-  (serv-core#5505). O que protege e a tabela de conferencia (`--complete`)
+  campo **declarado no contrato** e responde 200 sem que a alteracao valha.
+  O que protege e a tabela de conferencia (`--complete`)
   **antes** e a releitura **depois**, nos dois ambientes.
 
 Nao sugira staging a clientes.

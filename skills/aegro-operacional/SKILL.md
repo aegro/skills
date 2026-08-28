@@ -68,7 +68,7 @@ escrito la. Tres consequencias praticas, e as tres ja custaram tempo em campo:
 1. **Sessoes e logins sao invalidados**: toda sessao de trabalho em staging
    comeca verificando a autenticacao, e refazer o login no dia seguinte e o
    fluxo normal.
-2. **O que voce lancou la some.** Em 07/08/2026, 44 de 68 ajustes de estoque
+2. **O que voce lancou la some.** A maioria dos ajustes de estoque
    conferidos por uma EV voltaram ao valor original tres dias depois. Staging
    serve para conhecer um comando novo, **nao como validacao** de que a operacao
    vai valer.
