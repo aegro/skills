@@ -35,7 +35,7 @@ Carregue este domain skill antes de iniciar:
 
 Fazenda dita em **cada comando** com `--farm "<Fazenda|farm::key>"` — nao por `farms select`.
 O estado do `farms select` e global por maquina, e uma sessao paralela troca o alvo
-da outra sem avisar: foi assim que, em 11/08/2026, a entrega de dois pedidos de
+da outra sem avisar: foi assim que a entrega de dois pedidos de
 compra foi gravada em producao na fazenda errada, deixando o estoque negativo e
 duas manutencoes custeadas em R$ 0,00 sem nenhuma mensagem de erro. Em sessao de
 agente, ligue tambem `AEGRO_SAFE_MODE=1`, que recusa escrita cuja fazenda nao veio

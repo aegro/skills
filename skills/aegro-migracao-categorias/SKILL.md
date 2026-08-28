@@ -283,8 +283,7 @@ O resumo do que muda na sua cabeca:
 Voce pode ser flexivel na entrada porque a saida nao e: o `when` e uma whitelist
 fechada e o CLI recusa qualquer coisa fora dela.
 
-**Tres erros da planilha real que so aparecem na hora de escrever** (medidos em
-19/08/2026, planilha de 1.777 linhas):
+**Tres erros da planilha real que so aparecem na hora de escrever:**
 
 | Erro | Como aparece | O que fazer |
 |---|---|---|
@@ -417,11 +416,10 @@ lido individualmente e contado — rota nunca perde conta em silencio.
 ### 5.1 Declare o escopo da corrida (`sources`)
 
 **Categoria de origem que nao tem regra tem que estar em `sources`, ou os
-lancamentos dela desaparecem.** Em campo (19/08/2026) a migracao foi dividida em
-11 lotes de categorias; nos lotes onde parte das categorias nao tinha regra, elas
-nao foram varridas, e seus lancamentos nao apareceram nem como "sem destino" —
-**95 lancamentos**, achados so porque alguem comparou a contagem entre duas
-rodadas.
+lancamentos dela desaparecem.** Quando a migracao e dividida em lotes de
+categorias, nos lotes onde parte das categorias nao tem regra elas nao sao
+varridas, e seus lancamentos nao aparecem nem como "sem destino" — somem
+calados. **Compare a contagem entre rodadas**: e o unico jeito de perceber.
 
 ```json
 {
@@ -686,11 +684,10 @@ Se algum dia o CLI nao tiver a flag, a versao manual e um de/para so com
 porque `rules` nao pode ser vazio. Foi assim que a terceira causa de
 `falhaSilenciosa` apareceu, antes de existir `--stratify-by`.
 
-**Evidencia nova, e mais forte que a anterior** (19/08/2026): um plano de 1.272
-lancamentos tinha 7 classes, e uma delas tinha **1 unico lancamento** — justamente
-o que a API recusa por apropriacao de custo por item. O canario de 55
-estratificado o encontrou; um `--limit 50` seco tinha ~4% de chance de toca-lo.
-Classe de 1 em 1.272 e exatamente o que estratificar existe para achar.
+Uma classe inteira do plano pode ter **um unico lancamento**, e ser justamente o
+que a API recusa por apropriacao de custo por item. Amostra sem estratificar tem
+poucos por cento de chance de toca-lo; classe rara e exatamente o que
+estratificar existe para achar.
 
 **Como distribuir entre lotes:** proporcional ao tamanho do lote, mas **nunca
 menos que o numero de classes daquele lote** — abaixo disso a estratificacao nao
@@ -807,11 +804,8 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
    **guard faltando ou causa nova** — pare e investigue
    ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
    opcional.
-3. **Recorrente MIGRA por default — isso mudou em 20/08/2026.** O no-op silencioso
-   do FNC-184 foi corrigido (serv-core#5304) e esta em **producao desde a release
-   `v2026.08.17-114950`** (17/08/2026), em staging desde 13/08 — conferido por
-   conteudo de branch no serv-core e **provado por releitura** em staging.
-   O que voce precisa fazer com isso:
+3. **Recorrente MIGRA por default.** O no-op silencioso do FNC-184 foi corrigido
+   no servidor e esta em producao. O que voce precisa fazer com isso:
    - **nao repita "o Aegro nao grava recorrente"**. Era verdade e nao e mais; a
      tela tambem foi corrigida.
    - o `plan` **avisa** quantos recorrentes entraram, nomeando a release. Repasse:

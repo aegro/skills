@@ -58,7 +58,8 @@ RE_MCP = re.compile(r"\b(list|get|create|select|update|delete)_[a-z][a-z_]+\b")
 # Rastro de investigacao: data de medicao/conferencia no corpo da skill. Os tres
 # formatos, porque tirar as barras escondia a linha do crivo sem tirar o rastro.
 RE_DATA_MEDICAO = re.compile(
-    r"(Conferid[oa]|Medid[oa]|Validad[oa]s?|Verificad[oa]|Testad[oa]|Reconferid[oa])"
+    r"(Conferid[oa]|Medid[oa]|Validad[oa]s?|Verificad[oa]|Testad[oa]|Reconferid[oa]"
+    r"|Observad[oa]|Registrad[oa]|Apurad[oa]|Levantad[oa])"
     r"[^.\n]{0,80}(?:\d{2}/\d{2}/(?:20)?\d{2}|20\d{2}-\d{2}-\d{2})",
     re.I,
 )
@@ -67,7 +68,16 @@ RE_DATA_MEDICAO = re.compile(
 # muda a decisao; o denominador e a evidencia, e evidencia vai na PR. Exige tres
 # digitos ou separador de milhar para nao pegar contagem de instrucao legitima
 # ("parcela 1 de 12").
-RE_DENOMINADOR = re.compile(r"\b\d[\d.]* de (?:\d{3,}|\d{1,3}\.\d{3})\b")
+RE_DENOMINADOR = re.compile(r"\b\d[\d.]* de \d[\d.]*\b")
+
+# Data solta em prosa (`Em 11/08/2026`, `(19/08/2026)`). A regra que exigia um
+# verbo antes nao pegava nenhuma delas, e havia 21 no repositorio.
+RE_DATA_SOLTA = re.compile(r"\b\d{2}/\d{2}/20\d{2}\b")
+
+# Procedencia entre parenteses: `(serv-core#5304)`. Link markdown continua
+# valendo — `[tool-aegro-cli#100](url)` diz ONDE anexar um achado, que e
+# instrucao, e nao de onde veio a afirmacao.
+RE_PROCEDENCIA = re.compile(r"\((?:serv-core|tool-aegro-cli|aegro/[a-z-]+)#\d+\)")
 
 TITULOS = (
     "Objetivo",
@@ -119,13 +129,42 @@ def frontmatter(texto: str) -> tuple[dict[str, str], str] | None:
     return campos, texto[m.end() :]
 
 
-def checar_corpo(nome: str, corpo: str) -> list[str]:
-    """Checagens que valem para qualquer markdown da skill, nao so o SKILL.md.
+def fora_de_bloco(corpo: str):
+    """Rende (numero da linha, texto) so das linhas fora de ``` ... ```.
 
-    Vale para `reference/*.md` tambem: foi por olhar so o SKILL.md que um nome de
-    cliente sobreviveu em dois arquivos de referencia.
+    Saida de comando em exemplo tem data e numero de verdade — uma NF-e emitida
+    em 15/07/2026 e dado, nao rastro. Prosa nao precisa de nenhum dos dois.
     """
+    em_bloco = False
+    for numero, linha in enumerate(corpo.splitlines(), 1):
+        if linha.lstrip().startswith("```"):
+            em_bloco = not em_bloco
+            continue
+        if not em_bloco:
+            yield numero, linha
+
+
+def checar_corpo(nome: str, corpo: str) -> list[str]:
+    """Checagens que valem para qualquer markdown da skill, nao so o SKILL.md."""
     faltas: list[str] = []
+
+    for numero, linha in fora_de_bloco(corpo):
+        if RE_DATA_SOLTA.search(linha):
+            faltas.append(
+                f"{nome}:{numero}: data no corpo — vai no corpo da PR, nao na skill: "
+                f"“{linha.strip()[:60]}…”"
+            )
+        procedencia = RE_PROCEDENCIA.search(linha)
+        if procedencia is not None:
+            faltas.append(
+                f"{nome}:{numero}: numero de PR como procedencia "
+                f"({procedencia.group(0)}) — vai no corpo da PR"
+            )
+        for m in RE_DENOMINADOR.finditer(linha):
+            faltas.append(
+                f"{nome}:{numero}: denominador de medicao (“{m.group(0)}”) — "
+                f"fica a taxa, o denominador vai no corpo da PR"
+            )
 
     for morto in sorted({m.group(0) for m in RE_MCP.finditer(corpo)}):
         faltas.append(
@@ -137,12 +176,6 @@ def checar_corpo(nome: str, corpo: str) -> list[str]:
         trecho = re.sub(r"\s+", " ", m.group(0))[:70]
         faltas.append(
             f"{nome}: data de medicao no corpo — vai no corpo da PR, nao na skill: “{trecho}…”"
-        )
-
-    for m in RE_DENOMINADOR.finditer(corpo):
-        faltas.append(
-            f"{nome}: denominador de medicao no corpo (“{m.group(0)}”) — "
-            f"fica a taxa, o denominador vai no corpo da PR"
         )
 
     for linha in corpo.splitlines():

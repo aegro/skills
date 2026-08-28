@@ -27,7 +27,7 @@ Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confi
 no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
 alvo da outra sem avisar.
 
-Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+Ja aconteceu em producao: a entrega de dois pedidos de compra foi gravada na
 fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
 entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
 na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
@@ -286,7 +286,7 @@ O que o comando faz por voce:
   **A fazenda NAO entra nessa lista** — diga `--farm` em todo comando de escrita.
   `--farm-key` nao substitui: ele alimenta o corpo da requisicao de endpoints
   internos, enquanto `--farm` escolhe a credencial. Deixar a fazenda ser inferida
-  da sessao e o que gravou lancamento na fazenda errada em 11/08/2026.
+  da sessao e o que ja gravou lancamento na fazenda errada.
 - **Pergunta so o que falta**: sem TTY, campos faltantes/ambiguos saem como um
   envelope `needs_input` (status, resolved, inferred, missing, ambiguous, preview)
   e **nada e executado**. Resolva os pontos e reinvoque. Use `--complete` para

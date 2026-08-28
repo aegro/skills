@@ -89,7 +89,7 @@ O que limita o estrago e o tamanho do primeiro lote. Siga sempre esta ordem:
 > **`--farm <nome|farm::key>`** — passe os dois explicitamente em cada comando. A
 > flag `--farm` e preferivel ao `farms select`, porque viaja com o comando: nao
 > depende de arquivo global que outra sessao possa ter trocado. (A env var
-> `AEGRO_ACTIVE_FARM` foi removida em 28/07/2026.)
+> `AEGRO_ACTIVE_FARM` nao existe mais.)
 
 ## Fluxo de Importacao
 
