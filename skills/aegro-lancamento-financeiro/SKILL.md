@@ -1,7 +1,15 @@
 ---
 name: aegro-lancamento-financeiro
-description: Guia para criar e gerenciar contas a pagar e receber corretamente
-version: 0.10.0
+description: >-
+  Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
+  categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
+  de montar o comando, e entrega o link direto do lancamento criado. Foco na
+  sequencia de decisoes, nao na sintaxe. Use quando pedirem "lancar uma
+  conta", "registrar despesa", "conta a pagar", "conta a receber", "cadastrar
+  o pagamento do fornecedor"; EN "create a bill", "record an expense". NAO use
+  para dar entrada em NF-e recebida (use /aegro-entrada-nota-fiscal), para
+  conciliar extrato (use /aegro-conciliacao-bancaria) nem como referencia de
+  comandos do dominio (use /aegro-financeiro).
 ---
 
 # Lancamento Financeiro
@@ -49,7 +57,7 @@ avulso de parcela na API. Para ajustar um lancamento existente, use
 - **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
   anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API
   key falha ANTES de criar. Em conta ja existente:
-  `aegro files attach --entity bill --key bill::<id> --file ./nota.pdf --execute`.
+  `aegro files attach --farm "<fazenda>" --entity bill --key bill::<id> --file ./nota.pdf --execute`.
   Se o create passar e o anexo falhar, o stderr traz `attachRetry` com `--url` --
   rode ele, NUNCA repita o create (duplicaria a conta).
 

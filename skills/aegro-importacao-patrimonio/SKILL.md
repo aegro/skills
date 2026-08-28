@@ -1,7 +1,13 @@
 ---
 name: aegro-importacao-patrimonio
-description: Importar patrimonio em lote a partir de uma planilha modelo (maquinas, veiculos, silos, benfeitorias, pivos, estacoes)
-version: 0.5.3
+description: >-
+  Importa a frota e os bens de uma fazenda para o Aegro pela CLI a partir de
+  uma planilha no modelo Aegro: valida e mapeia as colunas, mostra previa para
+  conferencia e cria os ativos sem duplicar. Use quando pedirem "importar
+  patrimonio", "subir a frota", "cadastrar maquinas em lote", "planilha de
+  patrimonio"; EN "import assets in bulk". NAO use para cadastrar um ativo so
+  (use /aegro-cadastro-patrimonio) nem para importar fornecedores (use
+  /aegro-importacao-fornecedores).
 ---
 
 # Importacao de Patrimonio em Lote

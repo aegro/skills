@@ -1,7 +1,13 @@
 ---
 name: aegro-analise-rentabilidade
-description: Calcular ROI, custo por hectare e margem bruta da safra
-version: 0.5.3
+description: >-
+  Calcula os indicadores de rentabilidade de uma safra pela CLI aegro — custo
+  por hectare, custo por saca, margem bruta e ROI — cruzando custos
+  realizados, area dos talhoes e producao colhida. Use quando pedirem "qual a
+  rentabilidade da safra", "custo por hectare", "custo por saca", "margem da
+  soja", "deu lucro", "ROI da safra"; EN "profitability of the crop", "cost
+  per hectare". NAO use para fechar a safra (use /aegro-fechamento-safra) nem
+  para lancar ou corrigir custo (use /aegro-financeiro).
 ---
 
 # Analise de Rentabilidade

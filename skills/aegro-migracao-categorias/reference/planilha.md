@@ -78,8 +78,8 @@ planilha esta dizendo "conta que tem essas quatro tags vai para Venda Soja".
 - Isso e **E**, e o primitivo correto e **`allTags`** (o CLI testa
   `procuradas <= tags` do lancamento).
 - `anyTags` seria **OU**, e esta errado aqui. Uma tag comum como
-  `FAZENDA RAIZES` aparece em dezenas de combinacoes que vao para destinos
-  diferentes — um `anyTags: ["FAZENDA RAIZES"]` casaria todas elas e mandaria
+  `TAG DA FAZENDA` aparece em dezenas de combinacoes que vao para destinos
+  diferentes — um `anyTags: ["TAG DA FAZENDA"]` casaria todas elas e mandaria
   tudo para um destino so.
 - **E o `verify` nao acusaria**: a conta saiu da categoria antiga, entao a
   migracao "funcionou". O erro so aparece no relatorio do cliente, meses depois.

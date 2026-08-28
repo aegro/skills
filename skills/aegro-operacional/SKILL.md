@@ -1,7 +1,15 @@
 ---
 name: aegro-operacional
-description: Dominio operacional do Aegro - fazendas, autenticacao, tags e orquestracao entre dominios
-version: 0.10.2
+requires-cli: 0.21.0
+description: >-
+  Dominio operacional do Aegro pela CLI — fazendas, autenticacao, agrupadores
+  (tags), empresas, pedidos de compra, anexos de arquivo e os links diretos
+  que abrem a entidade no app. E a skill de orquestracao: define a fazenda
+  explicita em toda escrita e as regras que valem entre dominios. Use quando
+  pedirem "trocar de fazenda", "listar fazendas", "criar agrupador", "anexar
+  arquivo", "gerar o link do lancamento", "pedido de compra"; EN "switch
+  farm", "attach a file". NAO use para lancar conta (use /aegro-financeiro)
+  nem para atividade de campo (use /aegro-agronomo).
 ---
 
 # Dominio Operacional
@@ -9,7 +17,7 @@ version: 0.10.2
 Referencia completa do dominio operacional da Fazenda Aegro (`farm::5711512de4b0e15eb04da4d0`, ~67k ha).
 Cobre autenticacao, gestao de fazendas, tags, empresas, ordens de compra e a orquestracao de fluxos entre dominios.
 
-## Vocabulario do Dominio
+## Vocabulario
 
 | Termo | Definicao | Exemplo |
 |-------|-----------|---------|
@@ -250,7 +258,7 @@ aegro tags list --farm "Fazenda Aegro" --relation-type MACHINE --relation-type V
 aegro elements list --farm "Fazenda Aegro" --category DEFENSIVE --category FERTILIZER
 ```
 
-## Referencia de Comandos
+## Referencia de comandos
 
 ### farms
 
@@ -291,8 +299,8 @@ com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
 | `aegro files attach` | Vincula arquivo(s) a uma entidade existente | `--entity`, `--key`, `--file/-f` (sobe e vincula) ou `--url` (vincula chave S3 ja subida), `--execute` |
 | `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
 
-Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses), todas
-validadas ao vivo em 24/08/2026: `realization` (`activityLog::`), `bill`,
+Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
+`realization` (`activityLog::`), `bill`,
 `purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
 `bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
 (vincular `--url` funciona ate com API key); as demais usam a API interna e
@@ -400,8 +408,8 @@ planilha viram dois agrupadores iguais, porque cada uma e um `create` valido.
 Se criar errado, o desfazer e o arquivamento (nao existe `delete` no CLI):
 
 ```bash
-aegro tags archive tag::abc --execute     # sai da selecao, historico preservado
-aegro tags unarchive tag::abc --execute   # reversivel
+aegro tags archive --farm "<fazenda>" tag::abc --execute     # sai da selecao, historico preservado
+aegro tags unarchive --farm "<fazenda>" tag::abc --execute   # reversivel
 ```
 
 **`archive`/`unarchive` exigem login OAuth** (`aegro auth login`): a API publica
@@ -456,6 +464,22 @@ aegro purchase-orders create --farm "Fazenda Aegro" \
 # Listar compras de um fornecedor
 aegro purchase-orders list --farm "Fazenda Aegro" --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
 ```
+
+**Remessa lancada por engano: apague, nao compense.** `delete-shipment` apaga a
+remessa **e** os lancamentos de estoque que ela gerou, no mesmo caminho. Lancar
+uma segunda remessa para "corrigir" nao resolve: a primeira ja conta para o
+`deliveryProgress`, e o pedido fica com entrega em dobro.
+
+```bash
+# A chave da remessa sai no get-internal do pedido
+aegro purchase-orders get-internal --farm "<fazenda>" <pedido>
+aegro purchase-orders delete-shipment --farm "<fazenda>" \
+  --shipping-key <chave-da-remessa> --purchase-order-key <chave-do-pedido> --dry-run
+aegro purchase-orders delete-shipment --farm "<fazenda>" \
+  --shipping-key <chave-da-remessa> --purchase-order-key <chave-do-pedido> --execute
+```
+
+Usa a API interna (`DELETE /app/rest/shippings/{id}`) — exige `aegro auth login`.
 
 ## Orquestracao Entre Dominios
 
@@ -639,14 +663,31 @@ Um elemento participa de tres dominios simultaneamente:
 
 ## Bugs Conhecidos e Retry
 
+### Versao do CLI: leia o aviso antes de culpar a skill
+
+O CLI avisa no stderr quando ha versao mais nova no PyPI. **Nao engula o
+aviso** — deriva de versao e a causa comum de "o comando nao aceita essa flag"
+e de skill que parece errada. Se a maquina esta atras, atualize antes de
+investigar:
+
+```bash
+pip install -U aegro && aegro --version
+```
+
+### 5xx no criar NAO garante que nada foi criado
+
+Em `activities create-plan`/`create-realization`, um 5xx pode ter gravado o
+registro assim mesmo. O CLI avisa e tenta conferir na listagem — mas ele
+distingue "conferi e nao achei" de "nao consegui conferir". **Nunca repita o
+create as cegas depois de um 5xx**: confira a listagem primeiro, ou voce cria
+o registro em duplicidade.
+
 ### Resumo de Bugs Ativos
 
 | # | Endpoint | Severidade | Dominio Afetado | Workaround |
 |---|----------|------------|-----------------|------------|
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
-
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 > A numeracao tem buracos de proposito: os numeros sao compartilhados entre
 > as skills deste repo, entao renumerar aqui quebraria as referencias de la.

@@ -1,7 +1,17 @@
 ---
 name: aegro-financeiro
-description: Dominio financeiro do Aegro - lancamentos, parcelas, categorias, contas bancarias e empresas
-version: 0.9.2
+requires-cli: 0.21.0
+description: >-
+  Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
+  parcelas, categorias, contas bancarias, empresas e pedidos de compra:
+  vocabulario, contrato de cada comando, regras de negocio e armadilhas. Use
+  quando precisar da sintaxe ou da regra exata de um comando financeiro, "como
+  funciona parcela no Aegro", "quais campos o create-bill aceita", "listar
+  contas", "baixar parcela"; EN "financial commands reference", "how do
+  installments work". NAO use como guia passo a passo de lancamento (use
+  /aegro-lancamento-financeiro), para conciliacao bancaria (use
+  /aegro-conciliacao-bancaria) nem para migracao de categoria em massa (use
+  /aegro-migracao-categorias).
 ---
 
 # Aegro Financeiro
@@ -34,7 +44,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Lancamento financeiro    | `bill`                 | Registro contabil pai. Agrupa uma ou mais parcelas.                                        |
 | Parcela                  | `installment`          | Fracao de pagamento de um lancamento. Possui valor, vencimento e status.                   |
 | Categoria financeira     | `fin-categories`       | Classificacao contabil hierarquica, UMA por lancamento no nivel da bill; em bills com `inputs`, cada item pode ter a sua PROPRIA (ver regra 12). SYNTHETIC (nao recebe lancamento) ou ANALYTIC (recebe). **NAO e "agrupador financeiro"** - ver linha abaixo. |
-| Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --relation-type BILL`. |
+| Agrupador financeiro     | `tags` (`relationType=BILL`) | Rotulo transversal do lancamento; um lancamento pode ter VARIOS. E a aba "Financeiro" da tela Cadastros > Agrupadores. **NAO e categoria financeira** e nao tem hierarquia nem codigo contabil. Comando: `aegro tags create --farm "<fazenda>" --relation-type BILL`. |
 | Tipo de operacao (bill)  | `--operation-type`     | REVENUE (receita) ou EXPENSE (despesa). Usado no filtro de installments.                   |
 | Tipo de operacao (cat)   | `--operation-type`     | CREDITOR (credora) ou DEBTOR (devedora). Usado em categorias financeiras.                  |
 | Status da parcela        | `--status`             | PAID (paga) ou NOT_PAID (pendente).                                                       |
@@ -181,12 +191,34 @@ Relacionamentos-chave:
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
-| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key`, `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
+| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
 > nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
 > `installments`) e sao pagas via `realize`.
+
+**Apropriacao direta por patrimonio:** `--apportion-asset "<nome|asset::key>"`
+joga o custo do lancamento para uma maquina ou benfeitoria, em vez de (ou junto
+com) a safra. Combine com `--apportion-crop` quando o custo for de uma maquina
+dentro de uma safra: a safra vira o reflexo do custo do patrimonio, rateado por
+area.
+
+Dois limites da API publica que mudam o resultado:
+
+- **1 patrimonio por lancamento**, e **somente despesa** (`EXPENSE`). Em receita
+  o write e recusado.
+- Com `--inputs`, os insumos entram como **custo da maquina e NAO dao entrada no
+  estoque** — o grupo de apropriacao e unico: ou patrimonio, ou estoque. Se o que
+  voce quer e estoque, nao passe `--apportion-asset`.
+
+```bash
+aegro financial create-bill --farm "<fazenda>" \
+  --description "Pneu do trator CT07" --total-amount 4800 \
+  --cash-flow EXPENSE --payment-method INSTALLMENT \
+  --category "Manutencao" --bank-account "<conta>" \
+  --apportion-asset "CT07" --apportion-crop "Soja 26/27" --dry-run
+```
 
 **Anexos (nota fiscal, comprovante, boleto):**
 - `create-bill --attach ./nota.pdf` (repetivel) cria a conta e anexa o arquivo
@@ -199,7 +231,7 @@ Relacionamentos-chave:
 - **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
   com `--url` — rode ELE; repetir o create duplicaria a conta.
 - Transferencia bancaria tambem aceita anexo:
-  `aegro files attach --entity bank-transfer --key bankTransfer::<id> ...`
+  `aegro files attach --farm "<fazenda>" --entity bank-transfer --key bankTransfer::<id> ...`
   (re-save dentro de periodo financeiro FECHADO falha com erro de validacao,
   por design).
 
@@ -548,8 +580,32 @@ financeiro por produtor rural.
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
-(campo `installments`); correcoes via `update-bill` (PATCH) ou pelo app.
-Nao ha "unrealize" (desfazer pagamento).
+(campo `installments`). Nao ha "unrealize" (desfazer pagamento).
+
+**`update-bill` NAO altera parcela.** `installments` so existe no schema de
+criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
+com a conta inteira — indistinguivel de sucesso. Nunca tente mudar parcela por
+aqui, em nenhuma versao: vencimento e valor de parcela ja lancada mudam **pela
+tela**.
+
+A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
+`--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
+Ate a v0.21.0 o comando aceita e voce recebe o 200 mudo — a releitura parece
+certa e a parcela nao mudou.
+
+### Parcela a prazo exige conta bancaria
+
+**Sempre passe `--bank-account` junto com `--installments`.** A parcela que vem
+no payload **nao herda** a conta do lancamento: sem a flag ela nasce sem conta
+bancaria e o dinheiro nao tem de onde sair. Isso vale em qualquer versao — e
+defeito da API publica (API-018), nao do CLI.
+
+A partir da v0.22.0 o CLI cobra a conta antes de enviar: no preenchimento
+interativo pergunta, em modo nao-interativo falha. Ate a v0.21.0 ele aceita sem
+a flag e a parcela nasce torta em silencio, entao **confira a conta na releitura**.
+
+Nao ofereca `--payment-method PROMPT` para contornar: PROMPT cria parcela **ja
+paga** (secao acima), que e outra coisa.
 
 ### fin-categories create exige todos os 6 campos
 

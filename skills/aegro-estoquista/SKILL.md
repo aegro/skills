@@ -1,7 +1,15 @@
 ---
 name: aegro-estoquista
-description: Dominio de estoque e insumos do Aegro - itens, locais, movimentacoes, catalogos e elementos
-version: 0.7.2
+requires-cli: 0.21.0
+description: >-
+  Dominio de estoque e insumos do Aegro pela CLI — itens de estoque (posicao
+  de um insumo em um local), locais de armazenagem, movimentacoes, elementos e
+  catalogos. Use quando pedirem "quanto tem de adubo", "saldo de estoque",
+  "cadastrar insumo", "transferir entre locais", "dar entrada de produto no
+  estoque", "historico do item"; EN "stock balance", "create an input". NAO
+  use para explicar divergencia entre estoque e consumo (use
+  /aegro-reconciliacao-estoque) nem para dar entrada de NF-e (use
+  /aegro-entrada-nota-fiscal).
 ---
 
 # Aegro Estoquista
@@ -226,7 +234,8 @@ propria**; so faca quando o usuario pedir explicitamente para anexar num
 elemento.
 
 ```bash
-aegro files attach --entity element --key element::<id> --file ./bula.pdf --execute
+aegro files attach --farm "<fazenda>" --entity element --key element::<id> \
+  --file ./bula.pdf --execute
 ```
 
 **So elemento CRIADO NA FAZENDA aceita anexo.** Elemento **importado** (do
@@ -237,10 +246,10 @@ no elemento proprio.
 
 **Da para saber ANTES de tentar**: o campo `isImported` de `aegro elements
 list` (API publica) prediz o resultado — `true` = importado, nao vai
-funcionar. Medido em staging (25/08/2026): acertou em 24 de 24 casos.
+funcionar — o campo prediz o resultado de forma confiavel.
 
-Nao e caso de borda: na mesma medicao (staging, 25/08/2026, amostra
-estratificada de **52 elementos**), **28 foram barrados — 54%**. A proporcao
+Nao e caso de borda: **pouco mais da metade do catalogo e importada** e portanto
+recusa anexo. A proporcao
 varia muito por categoria:
 
 | Categoria | Aceita | Barrado |

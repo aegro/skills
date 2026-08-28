@@ -1,7 +1,15 @@
 ---
 name: aegro-agronomo
-description: Dominio agronomico do Aegro - safras, talhoes, atividades, colheitas, clima e insumos de producao
-version: 0.6.3
+requires-cli: 0.21.0
+description: >-
+  Dominio agronomico do Aegro pela CLI — safras, talhoes na safra, atividades
+  planejadas e realizadas, romaneios de colheita, clima e insumos de producao:
+  vocabulario, comandos e regras. Use quando pedirem "registrar atividade",
+  "plantio", "aplicacao de defensivo", "colheita", "romaneio", "quanto colhi",
+  "atividades da safra"; EN "record a field activity", "harvest log". NAO use
+  para criar a safra ou o talhao do zero (use /aegro-cadastro-safra e
+  /aegro-cadastro-talhoes) nem para custo e rentabilidade (use
+  /aegro-analise-rentabilidade).
 ---
 
 # Agronomo - Dominio Agronomico do Aegro
@@ -12,7 +20,7 @@ fertilizantes). Base para todos os workflows agronomicos.
 
 ---
 
-## 1. Vocabulario do Dominio
+## 1. Vocabulario
 
 | Termo Aegro | Termo API | Definicao |
 |-------------|-----------|-----------|
@@ -87,7 +95,7 @@ Produtividade (sc/ha) = Peso Descontado Total (kg) / Area (ha) / 60
 
 ---
 
-## 4. Referencia Completa de Comandos
+## 4. Referencia de comandos
 
 ### 4.1 Safras (`aegro crops`)
 
@@ -148,7 +156,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 - `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
 - A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado retorna 404, indistinguivel de "nao existe".
 - E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
-- **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao (verificado em staging, 2026-08-05). Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
+- **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao. Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
 - **Sem `AEGRO_SAFE_MODE=1` nao ha trava: `delete-*` sem flag nenhuma apaga na hora**, sem preview e sem confirmacao. Com `AEGRO_SAFE_MODE=1`, escrever exige `--execute` e `--farm` explicito (senao `SAFE_MODE_BLOCKED` / `IMPLICIT_FARM_BLOCKED`).
 - O `--dry-run` **so imprime a requisicao que seria enviada** - nao chama o servidor, entao nao confirma que a chave existe, que ela e daquela fazenda, nem quanta coisa a cascata vai levar junto. Para prever de verdade **o que sera apagado**, consulte antes: `activities get <ACTIVITY_KEY>` e `activities realizations --activity-key <ACTIVITY_KEY>`.
 
@@ -179,7 +187,8 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
   existe e voce criaria uma segunda. Rode o retry que o CLI emitiu:
 
   ```bash
-  aegro files attach --entity realization --key activityLog::<id>     --url "<chave S3 que saiu no stderr>" --execute
+  aegro files attach --farm "<fazenda>" --entity realization --key activityLog::<id> \
+    --url "<chave S3 que saiu no stderr>" --execute
   ```
 
   Reanexar a mesma chave S3 e no-op (a saida traz `saved: false`), entao o
@@ -286,8 +295,19 @@ aegro harvest-logs create --farm "<fazenda>" \
   --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901"
 ```
 
+**Romaneio com destino (silo) sai em um comando so.** Com `--destination-key`,
+se o servidor descartar o silo no create, o CLI completa por PATCH e confere
+por releitura — a saida ja e o registro relido. Se a completacao falhar, o
+comando **falha dizendo que o romaneio ja existe**: nunca repita o `create`,
+use o `update` que ele sugere, ou voce duplica o romaneio.
+
+**Campo desconhecido no `--body` e recusado antes de enviar** (exit 4). Nao e
+frescura do CLI: a API aceitaria a requisicao, descartaria o campo e
+responderia sucesso — o romaneio ficaria sem o dado e a releitura pareceria
+certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
+
 **Anexo no romaneio** (foto da nota, ticket de balanca):
-`aegro files attach --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
+`aegro files attach --farm "<fazenda>" --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
 (exige OAuth; releitura de conferencia inclusa). Consulta:
 `aegro files list-attachments --entity harvest-log --key harvestLog::<id>`.
 
@@ -424,8 +444,6 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 |-----|---------|------------|
 | **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
 | **#6** `weather create` | `POST /weather-logs` → 500 | Registrar clima pela interface web. Leitura funciona normal. |
-
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
 
 **Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
 Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).

@@ -1,7 +1,15 @@
 ---
 name: aegro-patrimonial
-description: Dominio de patrimonio do Aegro - ativos, maquinas, veiculos, abastecimentos e manutencoes
-version: 0.7.2
+requires-cli: 0.21.0
+description: >-
+  Dominio de patrimonio do Aegro pela CLI — maquinas, veiculos, silos,
+  benfeitorias, pivos e estacoes, mais abastecimentos de combustivel e
+  manutencoes, com apropriacao de custo por safra e por subconjunto de
+  talhoes. Use quando pedirem "abastecimento", "horimetro", "manutencao da
+  maquina", "consumo de diesel", "custo da frota"; EN "fuel supply", "machine
+  maintenance". NAO use para cadastrar o ativo pela primeira vez (use
+  /aegro-cadastro-patrimonio) nem para importar a frota em lote (use
+  /aegro-importacao-patrimonio).
 ---
 
 # Dominio Patrimonial
@@ -230,8 +238,7 @@ flag quando ha mais de uma.
 
 Restringe o **custo**, nao o percentual: a area de rateio do lancamento passa a ser a
 soma dos talhoes escolhidos. Numa safra de 100 ha em tres talhoes (20, 30 e 50 ha),
-selecionar o agrupador que cobre 20+30 faz a area apropriada cair de 100 para 50 ha —
-medido em staging em 14/08/2026.
+selecionar o agrupador que cobre 20+30 faz a area apropriada cair de 100 para 50 ha.
 
 #### Como falha (e nunca em silencio)
 
@@ -364,7 +371,7 @@ aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 ```
 
 **Anexo no patrimonio** (foto, nota de compra):
-`aegro files attach --entity asset --key asset::<id> --file ./foto.jpg --execute`
+`aegro files attach --farm "<fazenda>" --entity asset --key asset::<id> --file ./foto.jpg --execute`
 (exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
 serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
 `--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
@@ -519,8 +526,6 @@ aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --a
 
 ## Bugs e Workarounds
 
-**Conferido em producao em 21/08/2026:** as listagens que antes davam 500 voltaram a funcionar — `glebes list`, `crop-glebes list`, `fuel-supplies list` e `maintenances list`, inclusive filtrando por patrimonio e por periodo, e paginando. Os itens de **escrita** (POST) nao foram reconferidos — testar exigiria criar registro em producao.
-
 ### Bug #6: `weather-logs` POST retorna HTTP 500
 
 **Severidade:** Media
@@ -607,7 +612,7 @@ aegro assets create-machine --farm "Fazenda Aegro" --name "Trator" --manufacture
 ### 6. Nao passe `quantity` como numero solto em `inputs`
 
 `quantity` e um objeto com `unit` e `magnitude`. Numero solto e recusado pela CLI
-antes de chegar na API — `INVALID_INPUTS`, **exit 4** (verificado em 14/08/2026).
+antes de chegar na API — `INVALID_INPUTS`, **exit 4**.
 
 ```bash
 # ERRADO - quantity como numero

@@ -1,0 +1,131 @@
+# Drift entre as skills e a CLI `aegro` publicada.
+#
+# Por que agendado e nao na PR: as checagens dependem da CLI publicada e mudam
+# quando o CLI muda, sem relacao com o commit em revisao. Cobrar na PR deixaria
+# vermelha a PR de quem nao mexeu em contrato nenhum, e o autor aprenderia a
+# ignorar o vermelho. Mesmo raciocinio do `openapi-drift.yml` do tool-aegro-cli.
+#
+# Instala a `aegro` do PyPI de proposito: o alvo e o que o cliente tem na
+# maquina, nao o que esta no `dev` do CLI.
+name: Drift skills x CLI
+
+on:
+  schedule:
+    # Segunda 12:15 UTC = 09:15 America/Sao_Paulo (Brasil sem horario de verao).
+    # Quinze minutos depois do openapi-drift, para os dois nao competirem.
+    - cron: "15 12 * * 1"
+  workflow_dispatch:
+  # Na PR, so confere que o script compila e que o parser roda — nao precisa da
+  # CLI, entao nao fica vermelho por motivo alheio a PR. Sem isto, um script de
+  # drift quebrado entrava verde e ficava calado ate a segunda seguinte.
+  pull_request:
+    paths:
+      - "scripts/drift_cli.py"
+      - ".github/workflows/drift-cli.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: drift-cli
+  cancel-in-progress: false
+
+jobs:
+  # Na PR: so o script tem de estar de pe. Sem CLI, sem rede, sem segredo.
+  sanidade:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compilar e exercitar o parser
+        run: |
+          python -m py_compile scripts/drift_cli.py
+          python - <<'EOF'
+          import importlib.util, pathlib, sys
+
+          spec = importlib.util.spec_from_file_location("d", "scripts/drift_cli.py")
+          d = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(d)
+
+          total = escritas = 0
+          for sk in sorted(pathlib.Path("skills").glob("aegro-*/SKILL.md")):
+              for _g, _c, _linha, escreve in d.comandos_citados(sk.read_text(encoding="utf-8")):
+                  total += 1
+                  escritas += bool(escreve)
+          print(f"{total} exemplos, {escritas} de escrita")
+          if total == 0:
+              sys.exit("parser nao achou exemplo nenhum — provavelmente quebrou")
+          EOF
+
+  drift:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar a CLI publicada
+        run: |
+          python -m pip install --upgrade pip
+          pip install aegro
+          aegro --version
+
+      # Uma rodada so. Rodar duas vezes gastava o dobro de subprocessos e, pior,
+      # podia dar duas respostas diferentes — o gate dizia uma coisa e o corpo
+      # da issue mostrava outra.
+      - name: Conferir drift
+        id: drift
+        run: |
+          set +e
+          python scripts/drift_cli.py --md > drift.md
+          md_rc=$?
+          set -e
+          if [ "$md_rc" -ge 2 ]; then
+            echo "::error::drift_cli.py falhou (rc=$md_rc); nao da para afirmar drift."
+            exit "$md_rc"
+          fi
+          if grep -q '^### ' drift.md; then
+            echo "tem_drift=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tem_drift=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat drift.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Titulo fixo e busca antes de criar. Com a data no titulo, um drift que
+      # ninguem corrige rendia uma issue nova por semana, para sempre — e vinte
+      # issues iguais sao vinte issues que ninguem le.
+      - name: Abrir ou atualizar a issue do drift
+        if: steps.drift.outputs.tem_drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITULO: "Drift: skills x CLI publicada"
+        run: |
+          set -euo pipefail
+          {
+            echo "As skills citam comando ou flag que a \`aegro\` publicada nao tem mais,"
+            echo "ou exemplo de escrita sem \`--farm\`."
+            echo
+            echo "CLI conferida: \`$(aegro --version 2>&1 | head -1)\`."
+            echo
+            cat drift.md
+            echo
+            echo "Aberto por \`.github/workflows/drift-cli.yml\`."
+          } > corpo.md
+
+          existente=$(gh issue list --state open --search "in:title $TITULO" \
+            --json number,title \
+            --jq "[.[] | select(.title == \"$TITULO\")] | .[0].number // empty")
+
+          if [ -n "$existente" ]; then
+            gh issue comment "$existente" --body-file corpo.md
+            echo "Comentado na issue #$existente."
+          else
+            gh issue create --title "$TITULO" --body-file corpo.md --label documentation
+            echo "Issue criada."
+          fi

@@ -1,0 +1,40 @@
+# Crivo mecanico das skills, na PR.
+#
+# So checagens que se resolvem lendo o repositorio: frontmatter, contrato da
+# description, nome de ferramenta morta, rastro de investigacao no corpo. Nao
+# precisa de rede, nem da CLI, nem de segredo — entao nunca fica vermelho por
+# motivo alheio a PR em revisao.
+#
+# O que NAO esta aqui, de proposito: conferir se cada comando `aegro` citado
+# existe, e se todo exemplo de escrita passa `--farm`. As duas coisas exigem a
+# CLI publicada e mudam quando o CLI muda, sem relacao com a PR — cobrar aqui
+# deixaria vermelha a PR de quem nao mexeu em contrato nenhum, e o autor
+# aprenderia a ignorar o vermelho. Vao no job agendado de drift.
+name: Lint skills
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "scripts/lint_skills.py"
+      - ".github/workflows/lint-skills.yml"
+      # O padrao manda "mudou uma regra aqui, mude la". Sem este caminho, a PR
+      # que muda so o CLAUDE.md e justamente a que nunca roda o crivo.
+      - "CLAUDE.md"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Crivo das skills
+        run: python scripts/lint_skills.py

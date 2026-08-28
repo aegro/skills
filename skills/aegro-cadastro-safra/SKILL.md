@@ -1,7 +1,13 @@
 ---
 name: aegro-cadastro-safra
-description: Cria uma safra no Aegro vinculando talhoes JA existentes da fazenda (tipo, periodo obrigatorio, nome padrao), usando a CLI aegro
-version: 0.2.0
+description: >-
+  Cria uma safra no Aegro pela CLI vinculando talhoes que JA existem na
+  fazenda: tipo de cultura, periodo obrigatorio, nome no padrao da casa, e o
+  link direto da safra criada. Use quando pedirem "criar safra", "abrir safra
+  nova", "cadastrar soja 25/26", "iniciar o ciclo da lavoura"; EN "create a
+  crop season". NAO use para cadastrar talhao (use /aegro-cadastro-talhoes),
+  para registrar atividade na safra (use /aegro-agronomo) nem para encerrar a
+  safra (use /aegro-fechamento-safra).
 ---
 
 # Cadastro de Safra no Aegro
@@ -45,7 +51,7 @@ Para **cadastrar os talhoes** (manual ou por KML), va para
 |---|---|
 | Listar safras existentes (evitar duplicar) | `aegro crops list` |
 | Listar talhoes p/ vincular | `aegro glebes list` |
-| Criar safra (vinculando talhoes) | `aegro crops create --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...] [--measuring-unit <un>] [--stock-location-key <key>]` |
+| Criar safra (vinculando talhoes) | `aegro crops create --farm "<fazenda>" --type <TIPO> --name <nome> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--glebe-key <key> ...] [--measuring-unit <un>] [--stock-location-key <key>]` |
 | Ver a safra criada | `aegro crops get <crop_key>` |
 
 Dica: `crops create` aceita `--dry-run` (mostra o que seria enviado, sem gravar)
