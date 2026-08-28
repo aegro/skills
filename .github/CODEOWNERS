@@ -1,0 +1,17 @@
+# Quem revisa as skills públicas do Aegro.
+#
+# Por que isto existe: em agosto de 2026 cinco PRs ficaram paradas somando
+# 53 dias de espera. Nenhuma tinha conflito real e todas tinham as threads
+# resolvidas — faltava uma aprovação, e quatro delas nunca pediram review a
+# ninguém. A ruleset da organização exige 1 aprovação de outra pessoa em
+# `main`; nada no repositório convocava essa pessoa.
+#
+# O GitHub pula o autor ao auto-solicitar review. Com dois donos, a PR de um
+# cai automaticamente no colo do outro, que é o comportamento desejado.
+#
+# Nota: `require_code_owner_review` está desligado na ruleset da org, então
+# este arquivo AUTO-SOLICITA mas não bloqueia. É o suficiente para o problema
+# que ele resolve — PR nascer sem destinatário. Tornar bloqueante depende do
+# time de plataforma.
+
+*   @antonioaab @franciscogborja
