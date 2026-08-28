@@ -91,31 +91,41 @@ Duas abas:
 | `Outro` | `OTHER` |
 | `Não é uma Máquina` | — (so aparece quando `tipo` != Máquina; ignorar) |
 
-## Ordem Obrigatoria de Ambientes: Staging -> Verificacao -> Prod
+## Ordem Obrigatoria: Lote Pequeno -> Verificacao -> Resto
 
 Importacao em prod mexe em dados **reais** do cliente e **nao tem delete em
 lote** — um mapeamento errado e trabalhoso de desfazer (um `update-*` por
-ativo). Por isso, **nunca importe direto em prod**. Siga sempre esta ordem:
+ativo). A protecao **nao** e importar em staging antes: aquele ambiente e
+reposto de producao todo dia as 03:15 BRT, entao a carga de la desaparece e nao
+prova que a de prod vai valer. O que limita o estrago e o tamanho do primeiro
+lote. Siga sempre esta ordem:
 
-1. **Importe primeiro em staging** (`--env staging`), numa fazenda de teste.
-   Rode o fluxo completo (passos 1 a 6 abaixo) contra staging.
-2. **Verifique manualmente algumas entradas** depois da carga em staging —
-   nao confie so no "criado com sucesso". Confira no App de staging ou via
-   `aegro assets get <key> --env staging`. Faca spot-check de uma amostra que
-   cubra: cada `tipo` presente, o mapeamento `sub_tipo -> machineType`, datas
-   convertidas, `isImplement`, valor/medidor. Confirme que os campos chegaram
-   como esperado (e nao, por exemplo, uma data invalida virando erro).
-3. **So depois de o staging conferir**, repita a mesma importacao em prod
-   (`--env prod`), apos confirmacao explicita do usuario.
+1. **Importe um lote pequeno primeiro** (5 a 10 ativos), no ambiente do
+   trabalho, escolhido para **cobrir cada caso** da planilha: cada `tipo`
+   presente, o mapeamento `sub_tipo -> machineType`, uma data que precise de
+   conversao, `isImplement`, valor/medidor.
+2. **Verifique por leitura** — nao confie so no "criado com sucesso". Confira no
+   App ou via `aegro assets get <key>` que os campos chegaram como esperado (e
+   nao, por exemplo, uma data invalida virando erro). Ha caminho de escrita no
+   Aegro que responde sucesso sem que a alteracao valha, e a releitura e o que
+   separa um do outro.
+3. **So depois que a amostra conferir**, importe o resto, apos confirmacao
+   explicita do usuario.
+
+> Um ensaio em `staging` (`--env staging`) continua util para **conhecer o
+> comando** e ver a forma da saida — e as chaves de la sao as mesmas de
+> producao, porque o ambiente e uma copia. Mas o que voce **criou** la morre no
+> restore das 03:15 BRT: nao use como validacao.
 
 Essa ordem existe para pegar bugs de mapeamento (ex: data so com hora gerando
-400, `machineType` faltando gerando 422) no ambiente seguro, antes de tocar o
-cliente real.
+400, `machineType` faltando gerando 422) numa duzia de ativos, e nao na planilha
+inteira do cliente.
 
 ## Fluxo de Importacao
 
-> Rode este fluxo inteiro em **staging** primeiro. So replique em **prod**
-> depois da verificacao manual (ver secao acima). O `--env` controla o alvo.
+> Rode este fluxo inteiro **no ambiente do trabalho**, comecando por um lote
+> pequeno: o passo 5 cria a amostra e o 5b confere por leitura. So depois da
+> conferencia vai o resto (ver secao acima). O `--env` controla o alvo.
 
 ### 1. Ler a planilha
 
@@ -153,14 +163,14 @@ trabalhosa de desfazer (nao ha delete em lote).
 Antes de criar, liste o que ja existe e pule duplicatas por nome:
 
 ```bash
-# cubra TODOS os tipos presentes na planilha - um list por tipo (troque --env conforme o alvo):
-aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output json
-aegro assets list --farm "<fazenda>" --env staging --type VEHICLE --output json
-aegro assets list --farm "<fazenda>" --env staging --type GARNER --output json
-aegro assets list --farm "<fazenda>" --env staging --type IMMOBILIZED --output json
-aegro assets list --farm "<fazenda>" --env staging --type PIVOT --output json
-aegro assets list --farm "<fazenda>" --env staging --type WEATHER_STATION --output json
-# ou: aegro assets list --env staging --search "<nome>"  para conferir um nome especifico
+# cubra TODOS os tipos presentes na planilha - um list por tipo (--env do alvo):
+aegro assets list --farm "<fazenda>" --env prod --type MACHINE --output json
+aegro assets list --farm "<fazenda>" --env prod --type VEHICLE --output json
+aegro assets list --farm "<fazenda>" --env prod --type GARNER --output json
+aegro assets list --farm "<fazenda>" --env prod --type IMMOBILIZED --output json
+aegro assets list --farm "<fazenda>" --env prod --type PIVOT --output json
+aegro assets list --farm "<fazenda>" --env prod --type WEATHER_STATION --output json
+# ou: aegro assets list --env prod --search "<nome>"  para conferir um nome especifico
 ```
 
 Compare nomes de forma tolerante (ignorando acento/maiusculas). Alerte o usuario
@@ -212,23 +222,23 @@ aegro assets create-pivot --farm "<fazenda>" \
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. Capture a `key` retornada de cada ativo.
 
-**Alvo:** passe `--env staging` no primeiro passe e `--env prod` so na
-replicacao final (ver "Ordem Obrigatoria de Ambientes"). Os mesmos comandos
-valem para os dois ambientes; muda so o `--env`.
+**Alvo:** `--env` explicito em **todo** comando, apontando para o ambiente do
+trabalho (ver "Ordem Obrigatoria: Lote Pequeno -> Verificacao -> Resto"). Comece
+pelo lote pequeno; os mesmos comandos servem para o resto da carga.
 
-### 5b. Verificar (obrigatorio apos o passe em staging)
+### 5b. Verificar (obrigatorio apos o lote pequeno)
 
-Depois de criar em staging, **confira manualmente uma amostra** antes de
-pensar em prod. Use as chaves capturadas:
+Depois de criar a amostra, **confira por leitura** — nunca pela mensagem de
+sucesso — antes de mandar o resto. Use as chaves capturadas:
 
 ```bash
-aegro assets get --farm "<fazenda>" <key> --env staging --output table
+aegro assets get --farm "<fazenda>" <key> --env prod --output table
 # ou conferir por tipo:
-aegro assets list --farm "<fazenda>" --env staging --type MACHINE --output table
+aegro assets list --farm "<fazenda>" --env prod --type MACHINE --output table
 ```
 
 Cheque uma amostra que cubra cada `tipo`, o `machineType`, datas, `isImplement`
-e valor/medidor. So avance para prod quando a amostra estiver correta.
+e valor/medidor. So importe o resto quando a amostra estiver correta.
 
 ### 6. Relatorio final
 

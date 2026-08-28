@@ -46,13 +46,18 @@ nomes.
   que devolve uma **tabela de conferencia** por linha (status + nomes resolvidos).
 - **Priorize o acerto**: rode com `--complete` (ou `--dry-run`) primeiro para
   conferir o que foi resolvido/inferido e o que falta, **antes** de executar.
-- **Staging-first** (uso interno): lance com `--env staging`, confira na UI, e
-  promova com `--env prod` rodando o mesmo arquivo. Nao sugira staging a clientes.
+- **Lote pequeno primeiro** (uso interno): escreva algumas linhas no ambiente
+  do trabalho, releia o que gravou, e so entao mande o resto. Um ensaio em
+  `--env staging` serve para conhecer o comando, **nao como validacao**: aquele
+  ambiente e reposto de producao todo dia as 03:15 BRT e o que foi lancado la
+  desaparece. Nao sugira staging a clientes.
 
 Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). **Parcelas
 nascem no proprio `create-bill`** (campo `installments`) -- nao existe CRUD
-avulso de parcela na API. Para ajustar um lancamento existente, use
-`financial update-bill` (PATCH) ou o app.
+avulso de parcela na API. Para ajustar a **conta**, use `financial update-bill`
+(PATCH) ou o app; para ajustar **parcela** (vencimento ou valor), so pela tela:
+`installments` nao existe no schema do patch, e a API ignora campo que nao
+declara — por desenho, nao por defeito. O CLI recusa o campo antes de enviar.
 
 - **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
   anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API
@@ -211,6 +216,31 @@ verificar que tudo foi criado corretamente.
 3. Conferir que a soma dos itens = total da nota -- **a API grava como total a
    soma dos itens**, ignorando o total enviado (frete/desconto fora dos itens
    somem em silencio)
+4. **Itens NAO movimentam estoque.** `inputs` define categoria por produto e o
+   rateio de custo, e nada mais: sem um grupo de apropriacao de estoque no
+   corpo, o servidor salva a conta e **nao gera movimentacao nenhuma**, sem erro
+   e sem aviso (`StockLogServiceImpl`: `costApportion == null` -> nenhum
+   `stockLog`). Nao existe formato de `--inputs` que mude isso.
+
+### Entrada de Estoque: nao sai pelo lancamento manual
+
+Se a pessoa pediu que a nota **entrasse no estoque**, diga isso **antes de
+executar** — nao depois. O `create-bill` nao tem flag que monte o grupo
+`STOCK_INPUTS` (as duas que existem, `--apportion-crop` e `--apportion-asset`,
+produzem `CROP_PRORATE` e `ASSET_PRORATE`), entao a conta sai correta no
+financeiro e o estoque fica intocado. Foi exatamente o que aconteceu em campo:
+pediu-se entrada de estoque, veio "criado com sucesso", e a operadora descobriu
+depois.
+
+Os dois caminhos que funcionam hoje:
+
+| Situacao | Caminho |
+|---|---|
+| A nota esta na SEFAZ | `/aegro-entrada-nota-fiscal` -> `received-fiscal-documents launch-bill --stock-location "<local>"` (concilia os itens **e** movimenta) |
+| Nao ha nota na SEFAZ (so o PDF) | lance a conta aqui **e** a movimentacao em separado, por `/aegro-estoquista` (`stock entry`) — sao dois registros, e diga isso ao usuario |
+
+Enquanto `create-bill` nao tiver a flag, **nao prometa
+estoque por este caminho**.
 
 ### Conta em Moeda Estrangeira (USD)
 

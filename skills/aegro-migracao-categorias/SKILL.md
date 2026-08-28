@@ -141,7 +141,9 @@ pergunte:
    que precisa fazer tudo de uma vez.
 3. **A planilha esta completa?** Parcial nao bloqueia nada (secao 4.1). Traga
    isso para a abertura em vez de descobrir depois.
-4. **Ambiente e fazenda.** Staging primeiro? Qual fazenda, nomeada?
+4. **Ambiente e fazenda.** Qual fazenda, nomeada? (Um ensaio em staging serve
+   para conhecer o comando; **nao como validacao** — o ambiente e reposto de
+   producao as 03:15 BRT e leva junto o que foi migrado la.)
 
 Depois das respostas, **anuncie o custo e so entao rode** (secao 2).
 

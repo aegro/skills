@@ -98,8 +98,13 @@ Relacionamentos-chave:
 2. **NAO existe CRUD avulso de parcela na API publica**: os unicos endpoints
    de installments sao `filter`, `realizeList`
    e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
-   sao pagas via `realize`. Para corrigir parcela/valor, use
-   `financial update-bill` (PATCH) ou o app.
+   sao pagas via `realize`. **Vencimento e valor de parcela ja lancada mudam
+   pela tela do Aegro, nunca pelo `update-bill`**: `installments` so existe no
+   schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch. A API
+   **ignora campo que nao declara, e isso e por desenho** — quem chama e que
+   precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o campo antes
+   de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa. Nao existe
+   comando de lote para parcela.
 
 3. **Formato de valor monetario**: a spec atual unificou em
    `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
@@ -108,9 +113,14 @@ Relacionamentos-chave:
    formato com `currencyCode`.
 
 4. **update-bill e PATCH (JSON Merge Patch)**: envie apenas os campos a alterar.
-   Nao existe update de parcela avulsa (ver regra 2).
+   O patch aceita `bankAccountKey`, `companyKey`, `description`,
+   `discountAmount`, `entryDate`, `financialApportion`, `financialCategoryKey`,
+   `inputs`, `paymentMethod`, `producerKey`, `receipt`, `tags` e `totalAmount` —
+   **e nada mais**. Chave de topo fora dessa lista e RECUSADA pelo CLI antes de
+   sair (exit 4), porque a API a aceitaria, descartaria em silencio e
+   responderia 200. Parcela nao se altera por aqui (ver regra 2).
 
-5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API — correcao apenas pelo app.
+5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
 
 6. **Apropriacao de custo (financialApportion)**: ha DOIS tipos no produto —
    **direta** (lancamento aponta para 1+ safras) e **salva**
@@ -347,13 +357,13 @@ arquivo JSON com uma lista de lancamentos *name-based* (mesmos campos) e devolve
 uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
 
 ```bash
-# Tabela de conferencia (nao executa): apresente-a ao usuario e so avance
-# para a escrita depois que ele aprovar linha a linha
-aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging --complete
+# 1o passo - PREVIA: `--complete` monta a tabela de conferencia e NAO grava
+# nada. Apresente-a ao usuario e espere a aprovacao linha a linha.
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod --complete
 
-# Lancar em staging (apos aprovacao da tabela); conferir na UI de staging e,
-# com nova confirmacao explicita do usuario, promover trocando --env
-aegro financial create-bills --farm "<fazenda>" --batch contas.json --env staging
+# 2o passo - ESCRITA (e so aqui que grava), no ambiente do trabalho.
+# A rede de seguranca e o lote pequeno primeiro + releitura do que gravou; um
+# ensaio em staging nao prova nada (ver secao 5, multi-env).
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod
 ```
 
@@ -525,8 +535,9 @@ aegro purchase-orders create --farm "<fazenda>" --company "Corteva" --order-date
   --gross-amount 9472.10 --currency USD --currency-exchange-rate 5.1395 \
   --items '[{"product":"Joint Oil","quantity":380,"quantityDelivered":0,"measuringUnit":"L","unitAmount":24.9266,"totalAmount":9472.10}]'
 
-# Lote com tabela de conferencia (staging primeiro, depois --env prod)
-aegro purchase-orders create-batch --farm "<fazenda>" --from-file pedidos.json --env staging --complete
+# Lote com tabela de conferencia: aprove a tabela linha a linha e so entao
+# escreva, no ambiente do trabalho (--complete nao escreve nada)
+aegro purchase-orders create-batch --farm "<fazenda>" --from-file pedidos.json --env prod --complete
 ```
 
 ---
@@ -580,13 +591,14 @@ financeiro por produtor rural.
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
-(campo `installments`). Nao ha "unrealize" (desfazer pagamento).
+(campo `installments`). Nao ha "unrealize": baixa errada se desfaz **pela
+tela do Aegro**.
 
 **`update-bill` NAO altera parcela.** `installments` so existe no schema de
 criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
 com a conta inteira — indistinguivel de sucesso. Nunca tente mudar parcela por
 aqui, em nenhuma versao: vencimento e valor de parcela ja lancada mudam **pela
-tela**.
+tela do Aegro**.
 
 A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
 `--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
@@ -625,11 +637,25 @@ Todos os endpoints de listagem (`installments`, `fin-categories list`, `bank-acc
 
 `--env prod|staging` (ou `AEGRO_ENV`) seleciona base URL e credenciais por
 ambiente -- cada ambiente tem credenciais proprias (`aegro auth login --env staging`).
-`staging` (`app.staging.aegro.io`) e homologacao, **uso interno**: lance ali,
-confira, e so entao promova para `prod`. As chaves diferem entre ambientes, por
-isso o batch de `create-bills` e *name-based* e re-resolvido por ambiente -- a
-promocao staging->prod e rodar o mesmo arquivo trocando `--env`. Nao sugira
-staging a clientes.
+`staging` (`app.staging.aegro.io`) e **uso interno** e serve para conhecer um
+comando novo. **Nao serve como prova de que a operacao vai valer**, por tres
+motivos medidos:
+
+- **O que se lanca la some.** O ambiente inteiro e restaurado a partir de um
+  snapshot de producao **todo dia as 03:15 BRT** — restore de cluster, sem merge
+  e sem preservar escrita. Ajuste de estoque conferido a mao volta ao valor
+  original no restore seguinte.
+- **As chaves NAO diferem entre os ambientes.** Staging e uma copia de producao,
+  com os mesmos `_id`: uma chave achada em staging vale em prod. O que nao vale
+  e o **registro que voce criou la**. O batch de `create-bills` continua
+  *name-based* de proposito — assim re-resolve cadastro criado depois do ultimo
+  restore, num ambiente ou no outro.
+- **Sucesso em staging nao e prova.** Existe caminho de escrita que aceita um
+  campo **declarado no contrato** e responde 200 sem que a alteracao valha.
+  O que protege e a tabela de conferencia (`--complete`)
+  **antes** e a releitura **depois**, nos dois ambientes.
+
+Nao sugira staging a clientes.
 
 ---
 
@@ -697,10 +723,12 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 1. **Nao invente comandos de parcela.** `create-installment`,
    `update-installment` e `delete-installment` NAO existem (nem no CLI nem na
    API). Parcelas nascem no `create-bill` (campo `installments`); pagamento via
-   `realize`; correcao via `update-bill` (PATCH) ou pelo app.
+   `realize`; **correcao de vencimento ou valor pela tela do Aegro** — o
+   `update-bill` responde 200 e nao grava (ver secao 5).
 
-2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize. Realize e
-   irreversivel pela API — confirme antes de executar; correcao so pelo app.
+2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize na API publica.
+   Realize e irreversivel por ela — confirme antes de executar; a correcao e
+   pela tela.
 
 3. **Nao misture formatos de moeda.** Envie `{"currencyCode": "BRL", "amount": X}`
    (MoneyPublicResource unificado na spec atual). Em ordem de compra,
