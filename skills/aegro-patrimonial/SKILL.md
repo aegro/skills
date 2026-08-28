@@ -23,7 +23,7 @@ Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confi
 no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
 alvo da outra sem avisar.
 
-Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+Ja aconteceu em producao: a entrega de dois pedidos de compra foi gravada na
 fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
 entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
 na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
@@ -546,8 +546,8 @@ manutencao, com ou sem `--inputs`: o servidor recusa qualquer evento sem local d
 estoque (422 `invalid.asset-event.stock-location.key.required`). Nao e "registro
 informativo" — e erro.
 
-A CLI barra isso localmente, com **exit 4**, inclusive no `--dry-run` (verificado em
-14/08/2026); versoes antigas so falhavam quando havia `--inputs`.
+A CLI barra isso localmente, com **exit 4**, inclusive no `--dry-run`. Versao
+antiga so falhava quando havia `--inputs`.
 
 ```bash
 # ERRADO - vai falhar (exit 4 na CLI, 422 no servidor)
@@ -628,7 +628,7 @@ aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "
 
 ### 7. Nao paralelize chamadas de escrita da CLI
 
-Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si — observado em 2026-08-10 (CLI v0.16.0): com 5 chamadas paralelas, 2 de 5 falharam; com 3 paralelas, ~1,4% de falha; sequencial, 0 falhas.
+Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si, e a taxa de falha cresce com a concorrencia. **Rode sequencial**: e o unico modo sem falha.
 
 ```bash
 # ERRADO - paralelismo gera 409 esporadico

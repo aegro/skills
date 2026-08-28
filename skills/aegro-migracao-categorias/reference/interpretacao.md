@@ -29,12 +29,9 @@ O lancamento e recorrente. O PATCH da API publica em bill recorrente **respondia
 banco). Numa base de folha isso significaria "migrei 3 mil contas" com zero
 persistido.
 
-**Isso foi corrigido** por serv-core#5304 (commit `cf73a8dff5`), e o fix esta em
-**producao desde a release `v2026.08.17-114950`** (17/08/2026), em staging desde
-13/08 — conferido por conteudo de branch, e a gravacao provada em staging por
-releitura direta de um recorrente migrado.
+**Isso foi corrigido no servidor** e esta em producao.
 
-Desde 20/08/2026 o `plan` **migra recorrente por default**. `--no-allow-recurrent`
+O `plan` **migra recorrente por default**. `--no-allow-recurrent`
 volta a bloquear, e serve para um caso so: servidor mais antigo que aquela release
 (o CLI nao sabe a versao do que esta chamando). O que fica de fora e o recorrente
 **com parcela paga E itens** (`settled-recurrence-inputs`); no nivel da conta ele
@@ -64,11 +61,10 @@ override e decisao por CONTA: um destino unico seria escrito em todos os itens,
 colapsando duas categorias antigas numa so — com status `planned` e ninguem
 percebendo.
 
-**Como isso aparece na pratica:** quando a cauda vira override em massa. Em
-campo (14/08/2026), o contorno para recortar por data de pagamento gerou **305
-overrides**, e a verificacao de que nenhum deles tinha itens em mais de uma
-origem foi feita **a mao, conta a conta**. Naquele recorte deu zero; numa base
-onde ocorra, seria valor gravado errado em silencio.
+**Como isso aparece na pratica:** quando a cauda vira override em massa. O
+contorno de recortar por data de pagamento gera override as centenas, e conferir
+que nenhum deles tem itens em mais de uma origem so da para fazer **a mao, conta
+a conta**. Onde ocorrer, e valor gravado errado em silencio.
 
 **Caminho:** troque o override por **regra**, que decide item a item (a regra
 cuja origem e a categoria daquele item). Nao contorne com mais override, e nao
@@ -113,9 +109,9 @@ viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
 ### `revenue-item-apportioned-noop` — o segundo no-op medido
 
 Conta de **receita** com itens **e** rateio de safra: o PATCH publico responde
-**vazio** e nao grava nada. Medido 0 de 8, enquanto todas as combinacoes vizinhas
-gravaram (receita item sem rateio 3/3, receita no nivel da conta 12/12, despesa
-item com rateio 5/5 e sem rateio 15/15). `recurrence` era nulo nas 8, entao **nao
+**vazio** e nao grava nada. **Nenhuma** dessas grava, e **todas** as combinacoes
+vizinhas gravam: receita com item sem rateio, receita no nivel da conta, despesa
+com item (com ou sem rateio). `recurrence` e nulo nelas, entao **nao
 e o FNC-184**.
 
 Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
@@ -131,9 +127,9 @@ O rateio de custo da conta aponta para um **local de estoque fechado**: local qu
 responde ao `stock location get` mas **nao aparece** no `stock locations list`. O
 PATCH publico responde 200 **com o corpo da conta** e nao grava.
 
-Separacao perfeita em 23 contas (staging, 2026-08-14): 15 de 15 falharam apontando
-para o local fora da listagem, 0 de 8 nos locais que aparecem. Detalhe completo,
-incluindo o que foi descartado, na secao 4.1.
+A separacao e perfeita: **toda** conta que aponta para local fora da listagem
+falha, e **nenhuma** das que apontam para local que aparece falha. Detalhe na
+secao 4.1.
 
 **Nao existe campo de status** — a listagem publica traz so `key`, `name` e
 `farmKey`. O discriminante e "aparece na listagem?", uma inferencia, nao um
@@ -155,9 +151,9 @@ aparecer no meio de mil escritas confundida com falha de verdade.
 **So vale no nivel do ITEM.** No nivel da conta o payload nao toca `inputs`, e a
 mesma conta migra normalmente.
 
-Medido: **1 lancamento em 1.272** (19/08/2026), encontrado pelo canario
-estratificado — um `--limit 50` seco nao o tocaria. Para a EV: *"esse tem o custo
-dividido item por item, e o Aegro so deixa mexer nele pela tela"*.
+E raro a ponto de so aparecer em canario estratificado — amostra seca nao o
+toca. Para a EV: *"esse tem o custo dividido item por item, e o Aegro so deixa
+mexer nele pela tela"*.
 
 Caso classico: o local foi **substituido por um novo de nome quase identico** e as
 contas antigas continuaram apontando para o fechado. Suspeite sempre que a fazenda
@@ -209,7 +205,7 @@ Sai com **codigo 1** quando algo tentado falhou.
 
 | Causa | Sintoma na API | `blockedReason` |
 |---|---|---|
-| **FNC-184** — bill recorrente (**corrigido no servidor**, em producao desde 17/08/2026; desde 20/08 o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
+| **FNC-184** — bill recorrente (**corrigido no servidor** e em producao; o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
 | Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
 | Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
 
@@ -243,10 +239,9 @@ distincao importa:
 fechado** — local que responde ao `stock location get` mas **nao aparece** no
 `stock locations list`.
 
-- 15 de 15 contas apontando para o local fechado falharam;
-- 0 de 8 apontando para locais que aparecem na listagem falharam;
-- as falhas vao de 2023-08 a 2024-10, com 1 a 7 itens, em L/kg/un/m — **nenhuma**
-  dessas dimensoes separa, so o local.
+- toda conta apontando para local fechado falha;
+- nenhuma apontando para local que aparece na listagem falha;
+- data, numero de itens e unidade **nao** separam — so o local.
 
 Naquela fazenda o local fechado havia sido **substituido por um novo de nome quase
 identico** (so sem um ponto). As contas antigas continuaram apontando para o
