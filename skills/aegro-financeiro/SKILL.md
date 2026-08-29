@@ -1,14 +1,15 @@
 ---
 name: aegro-financeiro
-requires-cli: 0.21.0
+requires-cli: 0.23.0
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
-  parcelas, categorias, contas bancarias, empresas e pedidos de compra:
-  vocabulario, contrato de cada comando, regras de negocio e armadilhas. Use
-  quando precisar da sintaxe ou da regra exata de um comando financeiro, "como
-  funciona parcela no Aegro", "quais campos o create-bill aceita", "listar
-  contas", "baixar parcela"; EN "financial commands reference", "how do
-  installments work". NAO use como guia passo a passo de lancamento (use
+  parcelas, categorias, contas bancarias, empresas, pedidos de compra e
+  contratos de venda: vocabulario, contrato de cada comando, regras de negocio
+  e armadilhas. Use quando precisar da sintaxe ou da regra exata de um comando
+  financeiro, "como funciona parcela no Aegro", "quais campos o create-bill
+  aceita", "listar contas", "baixar parcela", "criar contrato de venda",
+  "rateio por item"; EN "financial commands reference", "how do installments
+  work", "sale contracts". NAO use como guia passo a passo de lancamento (use
   /aegro-lancamento-financeiro), para conciliacao bancaria (use
   /aegro-conciliacao-bancaria) nem para migracao de categoria em massa (use
   /aegro-migracao-categorias).
@@ -113,26 +114,47 @@ Relacionamentos-chave:
    formato com `currencyCode`.
 
 4. **update-bill e PATCH (JSON Merge Patch)**: envie apenas os campos a alterar.
-   O patch aceita `bankAccountKey`, `companyKey`, `description`,
-   `discountAmount`, `entryDate`, `financialApportion`, `financialCategoryKey`,
-   `inputs`, `paymentMethod`, `producerKey`, `receipt`, `tags` e `totalAmount` —
-   **e nada mais**. Chave de topo fora dessa lista e RECUSADA pelo CLI antes de
-   sair (exit 4), porque a API a aceitaria, descartaria em silencio e
-   responderia 200. Parcela nao se altera por aqui (ver regra 2).
+   O patch aceita `apportionMode`, `bankAccountKey`, `companyKey`,
+   `description`, `discountAmount`, `entryDate`, `financialApportion`,
+   `financialApportionGroups`, `financialCategoryKey`, `inputs`,
+   `paymentMethod`, `producerKey`, `receipt`, `tags` e `totalAmount` — **e nada
+   mais**. Chave de topo fora dessa lista e RECUSADA pelo CLI antes de sair
+   (exit 4), porque a API a aceitaria, descartaria em silencio e responderia
+   200. `financialApportion` e `financialApportionGroups` na MESMA requisicao
+   tambem sao recusados localmente (os dois descrevem a apropriacao; `null` em
+   qualquer um deles, sozinho, apaga). Parcela nao se altera por aqui (ver
+   regra 2).
 
 5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
 
-6. **Apropriacao de custo (financialApportion)**: ha DOIS tipos no produto —
-   **direta** (lancamento aponta para 1+ safras) e **salva**
-   (`cropProrateGroup`, rateio pre-definido com percentuais, ex.:
-   "Administrativo" 50% milho / 50% soja). Via API publica: a direta existe
-   (`financialApportion: {"type": "CROP_PRORATE", "cropKeys": [...]}`; tambem
-   ASSET_PRORATE/STOCK_INPUTS/STOCK_HARVEST/APPORTION_LATER). Com **multiplas
-   safras**, a divisao e automatica e **proporcional a area de cada safra** —
-   nao ha como definir percentuais na direta; percentuais so existem na salva.
-   A salva e **somente-leitura** (`crop-prorate/filter` e GET) — nao da para
-   aplica-la num lancamento nem criar grupos via API. NAO use
-   `cropProrateGroupKey` na raiz do bill: e aceito e ignorado em silencio.
+6. **Apropriacao de custo**: ha DOIS eixos no produto, e desde a spec de
+   28/08/2026 (CLI 0.23.0) os dois sao GRAVAVEIS pela API publica.
+
+   **Forma** (`apportionMode`): `WHOLE_BILL` (lancamento inteiro num destino,
+   descrito por `financialApportion` OU por `financialApportionGroups` com 1
+   grupo) ou `PER_ITEM` (item a item: `financialApportionGroups` com um grupo
+   por destino; cada grupo declara em `inputs[]` quais itens cobre —
+   `{order, quantity}` — e TODA a quantidade de cada item precisa estar em
+   algum grupo, uma vez so; divisao incompleta = 422; o mesmo item pode se
+   dividir entre grupos; `share` e read-only, calculado pelo servidor). No CLI:
+   `create-bill --apportion-mode PER_ITEM --apportion-groups '<JSON>'`. No
+   PATCH, lancamento apropriado a mais de um destino recusa `inputs` SOZINHO
+   (422): reenvie `financialApportionGroups` na mesma requisicao — os vinculos
+   sao conferidos contra os itens novos.
+
+   **Origem das safras** (dentro de `financialApportion` ou de cada grupo):
+   direta (`cropKeys`, divisao automatica proporcional a area — sem percentuais
+   manuais) ou **salva** (`cropProrateGroupKey`, rateio pre-definido com
+   percentuais, ex.: "Administrativo" 50% milho / 50% soja). Os dois campos sao
+   **mutuamente exclusivos**. Vincular ao rateio salvo faz editar o rateio
+   atualizar a conta. No CLI: `create-bill --crop-prorate-group
+   cropProrateGroup::<id>` (chaves em `aegro crops prorates`). ARMADILHA de
+   leitura: lancamento vinculado a rateio salvo vem com `cropKeys: []` e o
+   vinculo em `cropProrateGroupKey` — quem le so `cropKeys` ve vazio; o
+   agregado com percentuais esta em `costApportionSummary.cropEntries`.
+   (Criar/editar o GRUPO salvo segue sendo pela tela; o que a API ganhou foi
+   gravar o VINCULO. Ate a 0.22.0, `cropProrateGroupKey` era ignorado em
+   silencio na escrita.)
 
 7. **Tipos de empresa sao repetiveis**: Uma empresa pode ser simultaneamente PROVIDER, CLIENT e TRANSPORTER. Use `--type PROVIDER --type CLIENT`.
 
@@ -201,7 +223,7 @@ Relacionamentos-chave:
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | (nenhum)                                                                             |
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
-| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
+| `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--crop-prorate-group` (rateio salvo; exclusivo com `--apportion-crop`), `--apportion-groups` (JSON; rateio por item, exclusivo com as 3 flags anteriores), `--apportion-mode` (WHOLE_BILL/PER_ITEM), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
@@ -538,6 +560,59 @@ aegro purchase-orders create --farm "<fazenda>" --company "Corteva" --order-date
 # Lote com tabela de conferencia: aprove a tabela linha a linha e so entao
 # escreva, no ambiente do trabalho (--complete nao escreve nada)
 aegro purchase-orders create-batch --farm "<fazenda>" --from-file pedidos.json --env prod --complete
+```
+
+### 4.6 sale-contracts (contratos de venda) — CLI >= 0.23.0
+
+Contrato de venda da producao (planos Avancado/Premium; tela Contratos).
+Escrita pela API publica; **leitura so pela API interna** (a publica nao tem
+GET/list): `get`, `list` e `deliveries` exigem `aegro auth login` (OAuth).
+
+| Comando            | Tipo   | Parametros obrigatorios                      | Parametros opcionais |
+|--------------------|--------|----------------------------------------------|----------------------|
+| `create`           | POST   | `--company` (nome ou chave), itens (`--product`+`--quantity`+`--unit-amount` ou `--total-amount`; OU `--items` JSON) | `--crop`, `--date` (hoje se omitida), `--expected-delivery-date`, `--contract-code`, `--description`, `--producer`, `--gross-amount`, `--discount-amount`, `--unit` (default kg), `--tag` (repetivel), `--dry-run` |
+| `update <key>`     | PATCH  | `--body` (JSON Merge Patch)                  | `--dry-run` |
+| `delete <key>`     | DELETE | (nenhum)                                     | `--dry-run` |
+| `get <key>`        | GET    | (nenhum; interna, OAuth)                     | `--output` |
+| `deliveries <key>` | GET    | (nenhum; interna, OAuth)                     | `--output` |
+| `list`             | POST   | (nenhum; interna, OAuth)                     | `--company`, `--crop`, `--tag` (repetivel), `--search`, `--contract-code`, `--start-date`/`--end-date` (data do CONTRATO), `--delivery-start`/`--delivery-end` (previsao de entrega), `--page`, `--page-size`, `--sort-descending` |
+
+Regras que mudam o resultado (todas medidas em staging, 28/08/2026):
+
+- **Sempre BRL** (moeda != BRL = 422 `must-be-brl`) e **item em unidade de
+  MASSA** (kg, t, ...; `un`/`L` = 422 `must-be-mass`) — contrato de venda e de
+  grao/producao.
+- **O total NAO e recalculado da soma dos itens** (diferente do bill!): o
+  servidor grava o `grossAmount` que voce mandar, mesmo divergente. O CLI usa
+  a soma dos itens quando `--gross-amount` e omitido e avisa no stderr quando
+  diverge. `netAmount` = gross − desconto, calculado pelo servidor.
+- **Read-only**: `number`, `netAmount`, `lastModified` e os 4 eixos de
+  progresso (`billProgress`, `shippingProgress`, `harvestProgress`,
+  `nfeProgress` — projecao dos registros vinculados, omitidos quando zerados).
+  O `update` recusa esses campos ANTES de enviar (exit 4).
+- **DELETE e exclusao logica SEM restauracao pela API**, e contrato com
+  progresso nao exclui (422). `get` de contrato excluido/inexistente devolve
+  "nao encontrado" com exit 3 (o endpoint interno responde 204 vazio, nao 404).
+- **`--search` nao cobre o codigo do contrato do comprador** — para ele use
+  `--contract-code` (match exato).
+- **Vincular** lancamento/colheita/remessa/NF-e ao contrato e fluxo de TELA
+  (paineis Conferencia / Movimentacoes fisicas / Financeiro); `deliveries`
+  mostra o estado dos pares (saidas sem NF-e, NF-es sem saida, pareados).
+
+```bash
+# Contrato de 60 t de soja para a ADM, entrega em dezembro
+aegro sale-contracts create --farm "<fazenda>" \
+  --company "ADM DO BRASIL" --crop "Soja 25/26" \
+  --product "SOJA" --quantity 60000 --unit-amount 2.00 \
+  --expected-delivery-date 2026-12-15 --contract-code CTR-2026-0099 --execute
+
+# Acompanhar: eixos de progresso e movimentacoes fisicas
+aegro sale-contracts get saleContract::<id>
+aegro sale-contracts deliveries saleContract::<id>
+
+# Adiar a entrega sem tocar no resto
+aegro sale-contracts update saleContract::<id> \
+  --body '{"expectedDeliveryDate":"2027-01-31"}' --execute
 ```
 
 ---
