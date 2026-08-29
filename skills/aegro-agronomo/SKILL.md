@@ -324,7 +324,7 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Independentes:** `--humidity` (%), `--pressure` (hPa).
 
-> ⚠️ **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`.** A API resolve a
+> **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`.** A API resolve a
 > unidade pelo simbolo, entao `--temperature-unit CELSIUS` volta `422` com
 > `Unidade não encontrada para o símbolo 'CELSIUS'`. Cuidado ao copiar: o `º` e o
 > **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0). No stderr do
