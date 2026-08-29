@@ -66,6 +66,7 @@ Qual tipo de patrimonio?
 │
 └── Estacao meteorologica
     └── assets create-weather-station
+        Clima depois: unidade e o simbolo `ºC` (ordinal, nao CELSIUS) -- ver /aegro-agronomo 4.6
 ```
 
 ## Sequencia: Cadastrar Ativo

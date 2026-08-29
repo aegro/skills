@@ -126,6 +126,9 @@ FARM (farm::5711512de4b0e15eb04da4d0)
               └── precipitation: {magnitude: 15.5, unit: "mm"}
 ```
 
+Unidade de temperatura no WEATHER_LOG e o simbolo `ºC` (ordinal, nao
+`CELSIUS`) -- detalhes e exemplo completo em /aegro-agronomo secao 4.6.
+
 **Relacoes importantes:**
 - `ASSET → FUEL_SUPPLY`: Um patrimonio tem N abastecimentos
 - `ASSET → MAINTENANCE`: Um patrimonio tem N manutencoes
