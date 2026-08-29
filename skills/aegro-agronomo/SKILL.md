@@ -324,17 +324,11 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Independentes:** `--humidity` (%), `--pressure` (hPa).
 
-> **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`.** A API resolve a
-> unidade pelo simbolo, entao `--temperature-unit CELSIUS` volta `422` com
-> `Unidade não encontrada para o símbolo 'CELSIUS'`. Cuidado ao copiar: o `º` e o
-> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0). No stderr do
-> CLI essa mensagem sai escapada (`json.dumps` sem `ensure_ascii=False`,
-> `aegro/cli/_errors.py:118`) -- o que aparece de verdade e
-> `Unidade n\u00e3o encontrada para o s\u00edmbolo '\u00baC'`, nao os acentos
-> literais; grep pela forma acentuada nao acha. O lado util: e exatamente
-> esse escape que distingue `º` (`\u00ba`) de `°` (`\u00b0`) -- a olho nu
-> os dois sao identicos. Pra produzir/colar o caractere certo: copie do
-> exemplo abaixo, ou monte a partir do escape `\u00ba`.
+> **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`** -- `CELSIUS`
+> volta `422` (`Unidade não encontrada para o símbolo 'CELSIUS'`). O `º` e o
+> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0) -- a olho
+> nu sao identicos. No stderr o erro sai escapado (`\u00baC`), entao grep
+> pela forma acentuada nao acha. Copie o simbolo do exemplo abaixo.
 
 ```bash
 aegro weather create --farm "<fazenda>" --weather-station-key asset::<id da estacao> --date 2026-03-12 \
