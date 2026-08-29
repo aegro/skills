@@ -327,10 +327,17 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 > ⚠️ **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`.** A API resolve a
 > unidade pelo simbolo, entao `--temperature-unit CELSIUS` volta `422` com
 > `Unidade não encontrada para o símbolo 'CELSIUS'`. Cuidado ao copiar: o `º` e o
-> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0).
+> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0). No stderr do
+> CLI essa mensagem sai escapada (`json.dumps` sem `ensure_ascii=False`,
+> `aegro/cli/_errors.py:118`) -- o que aparece de verdade e
+> `Unidade n\u00e3o encontrada para o s\u00edmbolo '\u00baC'`, nao os acentos
+> literais; grep pela forma acentuada nao acha. O lado util: e exatamente
+> esse escape que distingue `º` (`\u00ba`) de `°` (`\u00b0`) -- a olho nu
+> os dois sao identicos. Pra produzir/colar o caractere certo: copie do
+> exemplo abaixo, ou monte a partir do escape `\u00ba`.
 
 ```bash
-aegro weather create --farm "<fazenda>" --weather-station-key weatherstation::ws001 --date 2026-03-12 \
+aegro weather create --farm "<fazenda>" --weather-station-key asset::<id da estacao> --date 2026-03-12 \
   --precipitation 12.5 --precipitation-unit mm \
   --temperature 28.0 --temperature-unit "ºC" --humidity 65.0
 ```
@@ -366,7 +373,7 @@ aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOYB
 crop::68dd6719e90f726622b7f549       cropGlebe::68dd6730e90f726622b7f555
 glebe::68dd6725e90f726622b7f550      activity::68e1a3b2f4c8901234567890
 element::68e2c5d6e7890abcdef12345    harvestlog::68e2b4c5d6789012345abcde
-weatherstation::ws001
+asset::6697d5988e266153a020e87f   (estacao meteorologica -- weather-station-key)
 ```
 
 Sempre usar a chave completa com prefixo. Os hexadecimais sao IDs MongoDB de 24 caracteres.
@@ -448,11 +455,6 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 | Bug | Sintoma | Workaround |
 |-----|---------|------------|
 | **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
-
-**`weather create` funciona.** O `POST /weather-logs` grava normal — era o bug #6
-desta tabela, e o workaround de registrar clima pela interface web nao vale mais. O
-erro que sobra ali e o `422` de unidade da secao 4.6: parametro errado, nao defeito
-do endpoint.
 
 **Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
 Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).
