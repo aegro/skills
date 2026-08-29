@@ -126,6 +126,9 @@ FARM (farm::5711512de4b0e15eb04da4d0)
               └── precipitation: {magnitude: 15.5, unit: "mm"}
 ```
 
+Unidade de temperatura no WEATHER_LOG e o simbolo `ºC` (ordinal, nao
+`CELSIUS`) -- detalhes e exemplo completo em /aegro-agronomo secao 4.6.
+
 **Relacoes importantes:**
 - `ASSET → FUEL_SUPPLY`: Um patrimonio tem N abastecimentos
 - `ASSET → MAINTENANCE`: Um patrimonio tem N manutencoes
@@ -524,20 +527,10 @@ aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1"
 aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --apportionment
 ```
 
-## Bugs e Workarounds
-
-### Bug #6: `weather-logs` POST retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/weather-logs`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `d68b29a6-8f78-4448-b8c3-85e5f55b445a`
-
-**Impacto:** Impossivel criar registros meteorologicos via CLI/API. O GET individual funciona, e a estacao meteorologica existe (`asset::57d299c3e4b059f24e3f99b0`).
-
-**Workaround:** Registrar dados climaticos diretamente no Aegro App (interface web).
-
 ## Anti-padroes
+
+> A numeracao tem buracos de proposito: os numeros sao compartilhados entre
+> as skills deste repo, entao renumerar aqui quebraria as referencias de la.
 
 ### 1. Nao crie evento de patrimonio sem local de estoque
 
@@ -591,10 +584,6 @@ aegro assets create-machine --farm "Fazenda Aegro" \
   --manufacturer "John Deere" \
   --machine-type TRACTOR
 ```
-
-### 4. Nao crie estacao meteorologica esperando registrar dados via API
-
-O Bug #6 bloqueia criacao de `weather-logs` via API. Se criar estacao meteorologica via CLI, os registros climaticos precisarao ser inseridos pelo Aegro App.
 
 ### 5. Nao esqueca o tipo de maquina (machineType) para MACHINE
 
