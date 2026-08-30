@@ -577,7 +577,7 @@ GET/list): `get`, `list` e `deliveries` exigem `aegro auth login` (OAuth).
 | `deliveries <key>` | GET    | (nenhum; interna, OAuth)                     | `--output` |
 | `list`             | POST   | (nenhum; interna, OAuth)                     | `--company`, `--crop`, `--tag` (repetivel), `--search`, `--contract-code`, `--start-date`/`--end-date` (data do CONTRATO), `--delivery-start`/`--delivery-end` (previsao de entrega), `--page`, `--page-size`, `--sort-descending` |
 
-Regras que mudam o resultado (todas medidas em staging, 28/08/2026):
+Regras que mudam o resultado (comportamento da API publica em staging):
 
 - **Sempre BRL** (moeda != BRL = 422 `must-be-brl`) e **item em unidade de
   MASSA** (kg, t, ...; `un`/`L` = 422 `must-be-mass`) — contrato de venda e de
