@@ -612,6 +612,7 @@ aegro sale-contracts deliveries saleContract::<id>
 
 # Adiar a entrega sem tocar no resto
 aegro sale-contracts update saleContract::<id> \
+  --farm "<fazenda>" \
   --body '{"expectedDeliveryDate":"2027-01-31"}' --execute
 ```
 
