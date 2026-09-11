@@ -64,11 +64,19 @@ RE_DATA_MEDICAO = re.compile(
     re.I,
 )
 
-# Denominador de medicao (`38 de 1.234`, `26 de 783`). O que fica e a taxa, que
-# muda a decisao; o denominador e a evidencia, e evidencia vai na PR. Exige tres
-# digitos ou separador de milhar para nao pegar contagem de instrucao legitima
-# ("parcela 1 de 12").
-RE_DENOMINADOR = re.compile(r"\b\d[\d.]* de \d[\d.]*\b")
+# Denominador de medicao (`38 de 1.234`, `24 de 24`). O que fica e a taxa, que
+# muda a decisao; o denominador e a evidencia, e evidencia vai na PR.
+#
+# Exige DOIS digitos dos dois lados (ou separador de milhar) para nao pegar
+# contagem de instrucao legitima — "parcela 1 de 12", "item 2 de 5". O preco
+# desse piso e um buraco declarado: um par de um digito so (`0 de 8`) passa,
+# porque nao ha como distingui-lo de "1 de 3 parcelas" sem ler a frase. Quem
+# revisa pega esse caso; o crivo nao.
+#
+# Prosa sobre codigo HTTP (`200 de 204`) tambem casa. E falso positivo, e o
+# conserto e reescrever a frase, nao afrouxar o piso.
+_NUM = r"(?:\d{1,3}(?:\.\d{3})+|\d{2,}[\d.]*)"
+RE_DENOMINADOR = re.compile(rf"\b{_NUM} de {_NUM}\b")
 
 # Data solta em prosa (`Em 11/08/2026`, `(19/08/2026)`). A regra que exigia um
 # verbo antes nao pegava nenhuma delas, e havia 21 no repositorio.
