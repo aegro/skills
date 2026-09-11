@@ -334,6 +334,6 @@ issue existente** e exige autenticacao no Jira.
 | Objetivo | Comando |
 |---|---|
 | Versao do CLI (para a evidencia) | `aegro --version` |
-| Docs de sessoes anteriores nesta maquina | `ls $AEGRO_LEARNING_DIR/feedback-*.md` |
-| Ver se o sintoma ja foi reportado | `grep -il "<sintoma>" $AEGRO_LEARNING_DIR/feedback-*.md` |
-| Diario da sessao (complemento) | `ls $AEGRO_LEARNING_DIR/journal-*.md` |
+| Docs de sessoes anteriores nesta maquina | `ls ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
+| Ver se o sintoma ja foi reportado | `grep -il "<sintoma>" ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
+| Diario da sessao (complemento) | `ls ${AEGRO_LEARNING_DIR:-.}/journal-*.md` |
