@@ -9,11 +9,9 @@ O que NAO esta aqui, de proposito: tudo que exige a CLI instalada — conferir
 se cada comando `aegro` citado existe, e se todo exemplo de escrita passa
 `--farm`. Nao da para decidir isso lendo o repositorio: `--farm` e opcao
 compartilhada (`aegro/cli/_config.py`), nao aparece na assinatura de cada
-comando, e so o `--help` real responde. Alem disso essas duas coisas mudam
-quando o CLI muda, sem relacao com a PR em revisao — cobrar na PR deixaria
-vermelha a PR de quem nao mexeu em contrato nenhum, e o autor aprenderia a
-ignorar o vermelho. Vao no job agendado de drift, no molde do
-`openapi-drift.yml` do tool-aegro-cli.
+comando, e so o `--help` real responde. Essas duas vao no job agendado de
+drift — por que agendado e nao na PR:
+docs/decisions/0004-crivo-na-pr-drift-agendado.md
 
 Uso:
   python scripts/lint_skills.py            # falha se houver violacao
