@@ -289,14 +289,17 @@ automatico e proporcional a area. Rateio com percentuais pre-definidos
 4. **Descrever a transacao** -- facilita auditoria futura
 5. **Conferir parcelamento** -- evita surpresas no fluxo de caixa
 6. **Checar duplicidade antes de lancar** -- nota reenviada gera bill dobrada
-7. **Anexos sao manuais** -- a API nao anexa arquivos ao lancamento; orientar
-   o usuario a anexar o documento pelo app apos o lancamento
+7. **Anexe no proprio lancamento** -- `create-bill --attach ./nota.pdf`
+   (repetivel, exige OAuth); em conta que ja existe, `files attach`. Nao mande
+   o usuario anexar pelo app
 8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
    categoria ja cadastrada de cada item; categoria unica na bill distorce o
    DRE por categoria
-9. **Campo "Produtor" nao sai via API** -- se o cliente organiza os
-   lancamentos por produtor rural, avisar ANTES de lancar em massa: o campo
-   nao existe na API publica e o ajuste e manual, pelo app, em cada lancamento
+9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
+   patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
+   defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'`.
+   Cliente que organiza por produtor rural nao precisa mais do app -- mas sao
+   duas chamadas por lancamento
 
 ## Entregue o Link da Conta
 

@@ -698,7 +698,6 @@ o registro em duplicidade.
 
 | # | Endpoint | Severidade | Dominio Afetado | Workaround |
 |---|----------|------------|-----------------|------------|
-| 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
 | 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
 
 > A numeracao tem buracos de proposito: os numeros sao compartilhados entre
@@ -715,7 +714,7 @@ o registro em duplicidade.
 | HTTP | Significado | Acao |
 |------|-------------|------|
 | 500 | Erro interno do servidor | Retry automatico. Se persistir, verificar tabela de bugs conhecidos |
-| 422 | Erro de validacao | Verificar campos obrigatorios e formatos. Nao faz retry |
+| 422 | Erro de validacao | Leia a mensagem: em campo de enumeracao e unidade ela **lista os valores aceitos**. Nao faz retry, e nao e bug do servidor |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
 | 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |

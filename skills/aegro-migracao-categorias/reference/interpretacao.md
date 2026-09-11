@@ -122,22 +122,35 @@ Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
 elas seriam contadas como migradas e so o `verify` descobriria depois. O bloqueio
 existe para que nem cheguem a ser escritas.
 
-Mesma conversa com a EV que o `recurrence`: nao e erro dela, e um conjunto que
-migra quando o backend consertar.
+**O sintoma era 204 sem corpo, e esse 204 sumiu do endpoint** (secao 4.1). Este
+motivo nunca teve causa nomeada, so o sintoma — entao trate-o como nao remedido
+ate alguem remedir. Conversa com a EV igual a do `recurrence`: nao e erro dela, e
+um conjunto que migra depois, sem trabalho novo.
 
-### `stock-location-closed` — o terceiro no-op, e o que travava o cliente
+### `stock-location-closed` — CORRIGIDO no servidor; o bloqueio agora e precaucao
 
 O rateio de custo da conta aponta para um **local de estoque fechado**: local que
-responde ao `stock location get` mas **nao aparece** no `stock locations list`. O
-PATCH publico responde 200 **com o corpo da conta** e nao grava.
+responde ao `stock location get` mas **nao aparece** no `stock locations list`.
 
-Separacao perfeita em 23 contas (staging, 2026-08-14): 15 de 15 falharam apontando
-para o local fora da listagem, 0 de 8 nos locais que aparecem. Detalhe completo,
-incluindo o que foi descartado, na secao 4.1.
+**A recusa que causava isso foi corrigida no servidor, e o fix esta em
+producao.** Ela nao era do local de estoque: o PATCH recusava quando o rateio
+apontava para **qualquer cadastro excluido** — patrimonio, safra, fornecedor ou
+local de estoque — e recusava calado, com **204 sem corpo**, que todo cliente le
+como sucesso. (O "200 com o corpo da conta" registrado aqui antes era leitura do
+CLI, que nao imprime o status cru; em HTTP era 204.)
 
-**Nao existe campo de status** — a listagem publica traz so `key`, `name` e
-`farmKey`. O discriminante e "aparece na listagem?", uma inferencia, nao um
-contrato da API. Se o endpoint um dia expuser status, o guard muda.
+Hoje o vinculo **ja gravado** e preservado e a conta segue editavel, igual a tela
+do Aegro. So a **criacao** de lancamento exige cadastro ativo, e referencia
+inexistente volta **422 nomeando a chave**. Nao ha mais 204 nesse endpoint.
+
+**O CLI ainda bloqueia**, e nao ha flag para desligar: essas contas continuam
+chegando como `blocked` com este motivo. Elas **nao estao em risco** — quando o
+guard sair, migram com o mesmo comando. Ate la, o caminho para um punhado delas e
+a tela (secao 4.1).
+
+**Nao existe campo de status** — a listagem publica traz so `key`, `name`,
+`farmKey` e as datas de auditoria. O discriminante do guard e "aparece na
+listagem?", uma inferencia, nao um contrato da API.
 
 ### `apportion-per-item` — recusa limpa, e nao no-op
 
@@ -175,6 +188,7 @@ pula o que tem `ok: true`.
 | `ok` | Escreveu | — |
 | `structural` | 422 de payload malformado (`financial-category.with-inputs`, `input-order.required`, `cost-apportion`, `financial-category.not-found`, `financial-category.type`) | **O lote aborta no primeiro.** E bug de plano: conserte o de/para e replaneje. Nao suba `--max-failures` |
 | `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Era a assinatura do FNC-184, hoje corrigido; num servidor atualizado isto aponta para a quarta causa, sem causa conhecida (4.1). Rode o `verify` |
+| `ok` com `result` vazio | Resposta **sem corpo** (204) lida como sucesso | Nao ha mais 204 no PATCH de rateio. Se aparecer, e causa nova: **pare** e junte as chaves |
 | `financial-close` | Fechamento financeiro recusou | Inesperado: o guard so reprova mudanca de saldo, e trocar categoria nao muda saldo. Reporte |
 | `not-found` | 404 | A conta sumiu entre o plano e a escrita. Replaneje |
 | `server` | 5xx | Ja teve retry com backoff. Se persistir, pare |
@@ -207,16 +221,29 @@ Sai com **codigo 1** quando algo tentado falhou.
 
 ### 4.1 Sao TRES as causas de `falhaSilenciosa`, e o `plan` bloqueia as tres
 
+Duas estao **corrigidas no servidor**, e a terceira perdeu o sintoma junto; o
+`plan` continua bloqueando as tres por precaucao, e so `recurrence` tem flag.
+
 | Causa | Sintoma na API | `blockedReason` |
 |---|---|---|
-| **FNC-184** — bill recorrente (**corrigido no servidor**, em producao desde 17/08/2026; desde 20/08 o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
-| Receita com itens e rateio de safra | resposta **vazia** | `revenue-item-apportioned-noop` |
-| Rateio para **local de estoque fechado** | 200 com o corpo da conta | `stock-location-closed` |
+| **FNC-184** — bill recorrente (**corrigido no servidor**; o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
+| Receita com itens e rateio de safra | **204 sem corpo** | `revenue-item-apportioned-noop` |
+| Rateio apontando para cadastro excluido (**corrigido no servidor**; era o caso do "local de estoque fechado" e o das contas com rateio de patrimonio) | **204 sem corpo** | `stock-location-closed` |
+
+**Os dois 204 vinham da mesma recusa**, que hoje nao existe mais nesse endpoint:
+o PATCH nao devolve 204 em nenhum caso de rateio. Cadastro excluido que a conta
+**ja referenciava** e preservado e a conta segue editavel; referencia inexistente
+volta **422 nomeando a chave**. O `revenue-item-apportioned-noop` nunca teve
+causa nomeada, so o sintoma — e o sintoma era esse 204: **remeca antes de
+tratar como no-op vivo.**
 
 E existe uma **quarta**, sem causa identificada: cerca de 3% das contas
-respondem 200 e nao gravam, sendo estruturalmente identicas as que gravaram. Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e
-o `verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
-lista com link.
+respondem "200" e nao gravam, sendo estruturalmente identicas as que gravaram.
+Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e o
+`verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
+lista com link. Desconfie do "200": na saida do CLI **um 204 e indistinguivel de
+um 200**, e foi exatamente essa confusao que escondeu a causa acima. Um 204 hoje
+vem de outro lugar, e e achado novo.
 
 As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
 `blocked` e **nao** em `falhaSilenciosa`. Confira o numero por motivo em
@@ -230,27 +257,28 @@ As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
 **Se `falhaSilenciosa` vier > 0 mesmo assim**, e uma destas duas coisas — e a
 distincao importa:
 
-1. **CLI sem um dos guards.** O `stock-location-closed` e recente; skill nova
-   contra CLI antigo escreve essas contas. Confira `meta.blockedByReason`: se a
-   chave nao existe, o guard nao rodou. Diagnostique como abaixo e atualize o CLI.
+1. **CLI sem um dos guards.** Skill nova contra CLI antigo escreve essas contas.
+   Confira `meta.blockedByReason`: se a chave nao existe, o guard nao rodou.
+   Contra servidor atual isso nao e mais perda — mas atualize o CLI, porque o
+   mesmo CLI antigo nao tem os outros guards.
 2. **Causa nova.** Nenhum dos tres motivos explica, e ai e achado nao mapeado:
    junte as chaves e anexe em
    [tool-aegro-cli#100](https://github.com/aegro/tool-aegro-cli/issues/100), que e
    onde o dossie vive.
 
-**A regra do local fechado:** o PATCH publico nao persiste quando
-`costApportionSummary.stockLocationEntries[]` referencia um **local de estoque
-fechado** — local que responde ao `stock location get` mas **nao aparece** no
-`stock locations list`.
+**A regra do local fechado**, que o guard do CLI ainda aplica: o plano bloqueia
+quando `costApportionSummary.stockLocationEntries[]` referencia um **local de
+estoque fechado** — local que responde ao `stock location get` mas **nao
+aparece** no `stock locations list`. **Toda** conta apontando para um local fora
+da listagem falhava, e **nenhuma** das que apontam para locais listados — nenhuma
+outra dimensao (data, numero de itens, unidade) separava.
 
-- 15 de 15 contas apontando para o local fechado falharam;
-- 0 de 8 apontando para locais que aparecem na listagem falharam;
-- as falhas vao de 2023-08 a 2024-10, com 1 a 7 itens, em L/kg/un/m — **nenhuma**
-  dessas dimensoes separa, so o local.
+O servidor ja nao recusa essas escritas (ver secao 2), entao o bloqueio hoje e
+precaucao, nao protecao.
 
-Naquela fazenda o local fechado havia sido **substituido por um novo de nome quase
-identico** (so sem um ponto). As contas antigas continuaram apontando para o
-fechado. Suspeite disso sempre que a fazenda tiver reorganizado o estoque.
+Caso classico: o local foi **substituido por um novo de nome quase identico** e as
+contas antigas continuaram apontando para o fechado. Suspeite sempre que a fazenda
+tiver reorganizado o estoque.
 
 #### Como diagnosticar em 2 minutos
 
@@ -273,18 +301,19 @@ chave responde normalmente e nao prova nada.
 Com o guard ativo elas nunca sao escritas — chegam como `blocked` e o que resta e
 **explicar e decidir**:
 
-- **A UI grava.** Medido: abrir a conta em
+- **A UI grava**, e sempre gravou: abrir a conta em
   `<host>/farm/<farmId>?billId=<billId>#farm-finance`, trocar a categoria e salvar
-  funciona e persiste. Para um punhado de contas, esse e o caminho hoje.
-- **Para muitas, espere o fix do backend.** Migrar dezenas na mao pela UI e o
-  problema original de volta. Bloqueado sai da migracao automatica e **volta para
-  a UI** — isso muda a conta do projeto, entao reporte o tamanho do balde.
-- **Se escaparam** (CLI sem guard): **nao reaplique.** E deterministico —
-  confirmado em 3 rodadas com os mesmos payloads e tambem com `--concurrency 1`.
-  Reaplicar so polui o ledger.
-- **Diga a EV o que aconteceu**, sem culpar recorrencia: "N contas ficaram de
-  fora porque o rateio delas aponta para um local de estoque que foi fechado. E
-  bug conhecido do backend, ja registrado. As outras migraram normalmente."
+  persiste. Para um punhado de contas, esse e o caminho hoje.
+- **Para muitas, nao mande a EV migrar na mao.** O servidor ja aceita essas
+  escritas; o que falta e o CLI parar de bloquear. Reporte o tamanho do balde e
+  deixe-o para a proxima rodada — dezenas pela UI e o problema original de volta.
+- **Se escaparam** (CLI sem o guard): **confira pelo `verify` antes de concluir
+  qualquer coisa.** Contra servidor atual elas gravam; o "nao reaplique" valia
+  quando a recusa ainda existia.
+- **Diga a EV o que aconteceu**, sem culpar recorrencia: "N contas ficaram de fora
+  porque o rateio delas aponta para um cadastro que foi excluido. O Aegro ja
+  aceita esses lancamentos; a ferramenta e que ainda os segura, e eles entram na
+  proxima rodada sem trabalho novo seu. As outras migraram normalmente."
 
 #### O que esta descartado (cada um com teste)
 
@@ -295,10 +324,16 @@ rateio), quantidade de itens (26, 13, 9 e 2 gravam), data do lancamento (2024 te
 falha e sucesso), e categoria oficial do elemento (mesmo elemento em falha e em
 sucesso).
 
-**Resto em aberto:** sobraram 3 falhas com rateio de **patrimonio** que esta regra
-nao explica (os patrimonios existem e estao normais). Se as chaves que falharam
-nao casarem com local fechado nenhum, e esse resto — anexe a amostra na issue #100
-em vez de tentar explicar.
+**Rateio de patrimonio tinha o mesmo sintoma, e a mesma causa:** os patrimonios
+estavam **apagados**. Eles pareciam normais porque `GET /pub/v1/assets/{key}`
+responde **200 com o corpo completo e nao expoe `isDeleted` nem status** — pela
+API nao ha como ver. **200 num get de patrimonio nao prova que ele existe**; se
+precisar decidir por isso, confirme pela tela. O servidor ja nao recusa essas
+contas.
+
+Se as chaves que falharam nao casarem com local fechado nem com cadastro
+excluido, e achado novo — anexe a amostra na issue #100 em vez de tentar
+explicar.
 
 ### 4.2 Canario verde NAO e prova. Estratifique voce mesmo
 

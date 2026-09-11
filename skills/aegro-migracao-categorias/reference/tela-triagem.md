@@ -368,13 +368,13 @@ function itensDe(a){
    ganhar um motivo novo, acrescente a explicacao junto. */
 const MOTIVOS = {
   'recurrence': ['Lancamento recorrente',
-    'O Aegro responde "salvo" e nao salva. Bloqueado de proposito; migra depois, com o mesmo comando e sem retrabalho.'],
+    'O Aegro ja grava esses lancamentos; a ferramenta ainda os segura por precaucao. Migram depois, com o mesmo comando e sem retrabalho.'],
   'settled-recurrence-inputs': ['Recorrente com parcela ja paga',
     'O Aegro recusa alterar os itens desse lancamento. A categoria da conta inteira ainda poderia ser trocada.'],
   'revenue-item-apportioned-noop': ['Receita com itens e rateio de safra',
     'Medido: o Aegro responde vazio e nao grava. Bloqueado antes da escrita para nao contar como migrado.'],
-  'stock-location-closed': ['Rateio aponta para local de estoque fechado',
-    'Medido: o Aegro responde "salvo" e nao grava. Reabrir o local (ou corrigir o rateio) resolve.'],
+  'stock-location-closed': ['Rateio aponta para cadastro excluido',
+    'O rateio aponta para um local de estoque (ou patrimonio, safra, fornecedor) que foi excluido. O Aegro ja aceita esses lancamentos; a ferramenta ainda os segura por precaucao. Migram depois, sem retrabalho.'],
   'apportion-per-item': ['Itens travados pela apropriacao de custo por item',
     'Este lancamento tem custo apropriado item por item, e o Aegro nao deixa alterar os itens por fora. A troca precisa ser feita na tela do Aegro.'],
   'override-multi-source': ['Lancamento com duas categorias antigas',

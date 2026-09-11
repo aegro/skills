@@ -48,9 +48,10 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Remocao manual            | `stock removal`        | Tipo MANUAL_REMOVAL. Registra perda, ajuste ou descarte. Sem valor monetario.              |
 | Transferencia             | `stock transfer`       | Tipo TRANSFER. Move quantidade entre dois locais. Sem valor monetario.                     |
 | Consumo por atividade     | ACTIVITY_CONSUMPTION   | Automatico. Gerado quando uma atividade agricola realizada consome insumos.                |
-| Tipo de defensivo         | `--type`               | HERBICIDE, INSECTICIDE, FUNGICIDE, ADJUVANT, BIOLOGICAL, OTHER.                           |
-| Tipo de semente           | `--type`               | SOYBEAN, CORN, WHEAT, COTTON, RICE, BEAN, COFFEE, SUGARCANE, OTHER.                       |
-| Unidade de medida         | `--unit`               | kg, L, un, t, sc (saca), mL, g, etc.                                                     |
+| Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
+| Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
+| Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
+| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. |
 | Quantidade                | `quantity`             | Objeto: `{"magnitude": X, "unit": "kg"}`. Magnitude pode ser negativa (divergencia).      |
 | Associacao financeira     | `set-categories`       | Vincula elemento a categorias financeiras de receita e/ou despesa.                         |
 
@@ -207,13 +208,13 @@ aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg
   --manufacturer "Mosaic"
 
 # Criar semente de soja
-aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOYBEAN --unit kg
+aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY --unit kg
 
 # Criar servico
-aegro elements create-service --farm "<fazenda>" --name "Pulverizacao Aerea" --unit HA
+aegro elements create-service --farm "<fazenda>" --name "Pulverizacao Aerea" --unit ha
 
-# Criar item generico
-aegro elements create-item --farm "<fazenda>" --name "Sacaria 60kg" --type GENERAL --unit UN
+# Criar item
+aegro elements create-item --farm "<fazenda>" --name "Sacaria 60kg" --type OTHER --unit un
 
 # Vincular elemento a categorias financeiras
 aegro elements set-categories --farm "<fazenda>" element::abc123 \
@@ -302,9 +303,13 @@ O campo `amount` da entrada de estoque usa `currencyCode` (nao `currency`):
 ```
 Isso e DIFERENTE do formato da parcela financeira (`{"amount": X, "currency": "BRL"}`).
 
-### create-seed retorna HTTP 500 (Bug #5)
+### Valor de enumeracao errado volta 422 dizendo o que vale
 
-A criacao de sementes via API retorna erro 500 intermitentemente. Este e um bug conhecido da API Aegro. Workaround: criar a semente pela interface web do Aegro e depois consultar via CLI com `aegro elements list --category SEED`.
+`create-seed`, `create-item` e `create-defensive` recusam `--type` fora da
+enumeracao, e qualquer `create-*` recusa `--unit` que nao seja um simbolo do
+sistema. A resposta e **422 e lista os valores aceitos** — e a lista e a fonte
+boa, mais atual que qualquer tabela nesta skill. Corrija o valor e repita; nao
+mande o usuario para a interface web.
 
 ### Ler e atualizar categorias do elemento (merge parcial, NUNCA destrutivo)
 
@@ -447,7 +452,7 @@ aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg
 
 5. **Nao envie --type ao criar fertilizante ou servico.** Esses endpoints nao aceitam tipo. Defensivo, semente e item aceitam e exigem `--type`.
 
-6. **Nao ignore o Bug #5 (create-seed).** Se `create-seed` falhar com 500, nao tente repetir varias vezes. Use a interface web do Aegro para criar a semente.
+6. **Nao chame 422 de instabilidade.** Se um `create-*` recusar, leia a mensagem: em `--type` e `--unit` ela lista os valores aceitos. Repetir a mesma chamada nao muda nada, e mandar para a interface web esconde um valor errado que vai voltar na proxima.
 
 7. **Nao confunda endpoints de movimentacao.** Entry usa `/manual-entries`, removal usa `/manual-removals`, transfer usa o endpoint raiz `/stock-logs`. Usar o endpoint errado causa erro ou comportamento inesperado.
 
