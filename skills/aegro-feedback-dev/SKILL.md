@@ -272,6 +272,11 @@ Por item (um envio por item):
   que deu errado, contornos com desfecho, desfecho, diagnostico, sugestao), com
   comando, resposta resumida, ambiente e versao - anonimizada, sem credenciais.
 
+Preparar o link e o conteudo nao e entrega: mantenha `> Entrega: pendente -
+aguardando envio do cliente` enquanto so o conteudo foi montado ou compartilhado.
+So registre `formulario AAAA-MM-DD (N itens)` depois que o cliente confirmar que
+enviou.
+
 Apresente o link e, por item, um bloco copiavel com `Resumo:` e `Descricao:`.
 Com varios itens, liste e deixe o cliente escolher quais enviar.
 
