@@ -32,8 +32,8 @@ persistido.
 **Isso foi corrigido no servidor** e esta em producao.
 
 O `plan` **migra recorrente por default**. `--no-allow-recurrent`
-volta a bloquear, e serve para um caso so: servidor mais antigo que aquela release
-(o CLI nao sabe a versao do que esta chamando). O que fica de fora e o recorrente
+volta a bloquear, e serve para um caso so: servidor que ainda nao recebeu a
+correcao do FNC-184 (o CLI nao sabe a versao do que esta chamando). O que fica de fora e o recorrente
 **com parcela paga E itens** (`settled-recurrence-inputs`); no nivel da conta ele
 migra, e a maioria e de nivel conta.
 
