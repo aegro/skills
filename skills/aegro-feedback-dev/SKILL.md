@@ -148,7 +148,10 @@ reaproveitavel por quem ler.
 
 **Nunca** credenciais, nem mascaradas. PII de cliente sempre trocada (nome ->
 `cliente_x`, fornecedor -> `fornecedor_x`, CNPJ -> `00.000.000/0001-00`).
-Prefira shape e agregado a dado bruto.
+Prefira shape e agregado a dado bruto. No modo externo, mascare tambem dado
+comercial sensivel que nao seja PII (preco negociado, config interna, numero
+financeiro do cliente) antes de montar Resumo/Descricao - a confirmacao manual
+nao substitui essa limpeza.
 
 ### 6. Escrever o doc da sessao
 
