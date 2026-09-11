@@ -319,8 +319,10 @@ issue existente** e exige autenticacao no Jira.
 
 - **Dado de cliente gravado errado em producao** -> nao espere o fim da sessao:
   escale na hora pelo Chat, com o item parcial.
-- **Mais de 5 itens numa sessao** -> algo maior quebrou. Agrupe por fluxo e mande
-  o panorama primeiro; detalhe depois do time olhar.
+- **Mais de 5 itens numa sessao** -> algo maior quebrou. Agrupe por fluxo: ate 5
+  itens seguem o formato normal (um por mensagem no Chat, um envio por item no
+  formulario); o que exceder vira um unico item de panorama, sem detalhe
+  enviado depois.
 - **O usuario nao sabe dizer o que esperava** (assumiu a tarefa no meio) -> nao
   promova o erro a bug: registre com `resultado esperado: nao reconstituido` e
   diga que falta isso.
