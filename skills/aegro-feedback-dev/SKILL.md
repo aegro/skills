@@ -184,7 +184,7 @@ registro nao foi persistido - nunca siga em silencio.
   CLI | nao saiu
 - diagnostico: <hipotese, dita como hipotese> | sem hipotese
 - dono: CLI | API | skill | a investigar
-- ocorrencias: N na sessao | ja reportado em <arquivo>
+- ocorrencias: N na sessao (ja reportado em <arquivo>, se aplicavel)
 - sugestao: <a menor melhoria que entrega o resultado esperado pelo caminho certo>
 ```
 
@@ -231,7 +231,7 @@ deu errado: <resposta resumida>
 contornos: 1) `<comando>` -> funcionou | 2) `<comando>` -> nao funcionou
 desfecho: <saiu por qual volta e a que custo, ou nao saiu>
 diagnostico: <hipotese> | sem hipotese
-dono: CLI | ocorrencias: N
+dono: CLI | ocorrencias: N (ja reportado em <arquivo>, se aplicavel)
 sugestao: <a menor melhoria que entrega o esperado pelo caminho certo>
 ```
 
