@@ -160,7 +160,10 @@ entrega e o registro para a proxima sessao. Sanitize `<tema>` antes de montar o
 caminho: slug curto (letras, numeros, hifen), rejeitando vazio, barra, contrabarra
 e `..` - o valor sai do relato e nao e confiavel como esta. Se ja existir arquivo
 do mesmo tema e dia, acrescente a hora (`feedback-AAAA-MM-DD-HHmm-<tema>.md`) em
-vez de sobrescrever. Sem `$AEGRO_LEARNING_DIR` definida, use o diretorio atual e
+vez de sobrescrever. Grave com criacao exclusiva (falha se o nome ja existir,
+nunca substitui o arquivo); em colisao mesmo com a hora, acrescente um sufixo
+curto extra e tente de novo, sem repetir o nome que colidiu. Sem
+`$AEGRO_LEARNING_DIR` definida, use o diretorio atual e
 registre no doc que foi essa a pasta; se nem isso for possivel, diga que o
 registro nao foi persistido - nunca siga em silencio.
 
