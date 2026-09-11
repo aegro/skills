@@ -127,8 +127,8 @@ Relacionamentos-chave:
 
 5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
 
-6. **Apropriacao de custo**: ha DOIS eixos no produto, e desde a spec de
-   28/08/2026 (CLI 0.23.0) os dois sao GRAVAVEIS pela API publica.
+6. **Apropriacao de custo**: ha DOIS eixos no produto, e os dois sao
+   **GRAVAVEIS** pela API publica (CLI 0.23.0).
 
    **Forma** (`apportionMode`): `WHOLE_BILL` (lancamento inteiro num destino,
    descrito por `financialApportion` OU por `financialApportionGroups` com 1
@@ -565,17 +565,19 @@ aegro purchase-orders create-batch --farm "<fazenda>" --from-file pedidos.json -
 ### 4.6 sale-contracts (contratos de venda) — CLI >= 0.23.0
 
 Contrato de venda da producao (planos Avancado/Premium; tela Contratos).
-Escrita pela API publica; **leitura so pela API interna** (a publica nao tem
-GET/list): `get`, `list` e `deliveries` exigem `aegro auth login` (OAuth).
+Escrita **e leitura** pela API publica: `get`, `list` e `deliveries` tem rota
+publica e bastam a API key. O CLI cai na API interna (OAuth) so contra servidor
+que ainda nao tem essas rotas — se `get`/`list` pedirem login, o servidor e
+antigo, nao e o contrato.
 
 | Comando            | Tipo   | Parametros obrigatorios                      | Parametros opcionais |
 |--------------------|--------|----------------------------------------------|----------------------|
 | `create`           | POST   | `--company` (nome ou chave), itens (`--product`+`--quantity`+`--unit-amount` ou `--total-amount`; OU `--items` JSON) | `--crop`, `--date` (hoje se omitida), `--expected-delivery-date`, `--contract-code`, `--description`, `--producer`, `--gross-amount`, `--discount-amount`, `--unit` (default kg), `--tag` (repetivel), `--dry-run` |
 | `update <key>`     | PATCH  | `--body` (JSON Merge Patch)                  | `--dry-run` |
 | `delete <key>`     | DELETE | (nenhum)                                     | `--dry-run` |
-| `get <key>`        | GET    | (nenhum; interna, OAuth)                     | `--output` |
-| `deliveries <key>` | GET    | (nenhum; interna, OAuth)                     | `--output` |
-| `list`             | POST   | (nenhum; interna, OAuth)                     | `--company`, `--crop`, `--tag` (repetivel), `--search`, `--contract-code`, `--start-date`/`--end-date` (data do CONTRATO), `--delivery-start`/`--delivery-end` (previsao de entrega), `--page`, `--page-size`, `--sort-descending` |
+| `get <key>`        | GET    | (nenhum)                                     | `--output` |
+| `deliveries <key>` | GET    | (nenhum)                                     | `--output` |
+| `list`             | POST   | (nenhum)                                     | `--company`, `--crop`, `--tag` (repetivel), `--search`, `--contract-code`, `--start-date`/`--end-date` (data do CONTRATO), `--delivery-start`/`--delivery-end` (previsao de entrega), `--page`, `--page-size`, `--sort-descending` |
 
 Regras que mudam o resultado (comportamento da API publica em staging):
 
@@ -591,8 +593,10 @@ Regras que mudam o resultado (comportamento da API publica em staging):
   `nfeProgress` — projecao dos registros vinculados, omitidos quando zerados).
   O `update` recusa esses campos ANTES de enviar (exit 4).
 - **DELETE e exclusao logica SEM restauracao pela API**, e contrato com
-  progresso nao exclui (422). `get` de contrato excluido/inexistente devolve
-  "nao encontrado" com exit 3 (o endpoint interno responde 204 vazio, nao 404).
+  progresso nao exclui (422). `get` de contrato excluido devolve "nao
+  encontrado" com **exit 3**, igual ao de chave inexistente — os dois casos sao
+  indistinguiveis pela API, entao nao leia exit 3 como "essa chave nunca
+  existiu".
 - **`--search` nao cobre o codigo do contrato do comprador** — para ele use
   `--contract-code` (match exato).
 - **Vincular** lancamento/colheita/remessa/NF-e ao contrato e fluxo de TELA
