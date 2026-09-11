@@ -49,7 +49,8 @@ contexto esta inteiro.
 relatorio: termine o que da para terminar (ou desista junto com ele) e so entao
 mostre o item e ofereca o envio. Carregar a skill nao autoriza parar a tarefa
 para escrever documento. Excecao unica: **dado de cliente gravado errado em
-producao** - escale na hora, com o que tiver.
+producao** - escale na hora, com o que tiver. A urgencia encurta a espera pelo
+"sim" de confirmacao antes do envio - nao a dispensa.
 
 **Nao reporte** quando o tropeco foi seu e nao custou nada ao usuario: erro que
 voce corrigiu na sequencia, comando que funcionou na segunda tentativa depois de
