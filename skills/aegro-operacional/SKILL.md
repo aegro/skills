@@ -337,6 +337,13 @@ Regras que evitam retrabalho:
   `activities create-realization`/`update-realization`. Em falha parcial
   (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
   repita o create** (duplicaria o registro).
+- **Dois comandos ja anexam sozinhos, sem flag**: da **v0.24.0** em diante o
+  `received-fiscal-documents launch-bill` e o `launch-purchase-order` sobem a
+  DANFE da nota no proprio create (`--no-attach-danfe` desliga). Antes de
+  anexar em conta ou pedido que veio de NF-e, confira com
+  `files list-attachments` — anexar de novo deixa a mesma DANFE duas vezes.
+  Anexo que falha ali nao derruba o lancamento: o registro nasce sem ele, e o
+  envelope traz `anexo`/`anexoVerificacao` dizendo o que houve.
 - **Nao da para anexar** (o CLI recusa explicando, sem gastar upload):
   planejamento de atividade (so a realizacao ganhou o campo);
   abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta

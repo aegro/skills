@@ -262,6 +262,11 @@ aegro financial create-bill --farm "<fazenda>" \
   --file ./nota.pdf --execute` (append com releitura de conferencia) a um
   `update-bill --attach` (que tambem funciona, mas mistura duas mutacoes).
 - Consultar: `aegro files list-attachments --entity bill --key bill::<id>`.
+- **Conta vinda de NF-e ja chega com a DANFE.** A partir da **v0.24.0** o
+  `received-fiscal-documents launch-bill` anexa no proprio create; anexar de
+  novo deixa a mesma DANFE duas vezes. Ate a **v0.23.0** ela nasce sem anexo —
+  e ai sim o anexo e um passo a parte. Confira com `files list-attachments`
+  antes de anexar em conta que voce nao criou nesta sessao.
 - **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
   com `--url` — rode ELE; repetir o create duplicaria a conta.
 - Transferencia bancaria tambem aceita anexo:

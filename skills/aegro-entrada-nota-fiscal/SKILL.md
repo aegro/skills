@@ -124,6 +124,9 @@ Opcoes do `launch-bill` que replicam a UI web:
   movimenta o estoque de **PRODUCAO** — e o que da **baixa** numa venda de graos.
 - `--apportion-crop "Safra X"` (rateio), `--asset <id>`, `--tag`,
   `--description`, `--producer`, `--force`.
+- `--no-attach-danfe` desliga o anexo automatico da DANFE. A partir da
+  **v0.24.0** a conta nasce com a DANFE anexada; ate a **v0.23.0** nasce sem, e
+  o anexo e um passo a parte (ver Comportamentos conhecidos).
 
 ### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
 
@@ -455,6 +458,9 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Unidade da nota nao reconhecida (ex. SC) gravava `measuringUnit: "ENUM_NOT_FOUND"` em silencio. Na **v0.17.0+** o `conciliate` grava a unidade do **elemento** e o `launch-bill` recusa mapeamento com defeito. | Siga o conserto que o proprio comando indica: `conciliate <doc> --unit CODIGO=un` e/ou `--conversion-rate CODIGO=fator`. O de/para e reusado por (fazenda, fornecedor, item) — fator errado contamina a proxima nota. |
 | Dry-run serializa localmente e **nao valida nomes no servidor** (categoria/tag/conta com typo passam). | Checagem 1 da conferencia do dry-run (secao 5): resolva cada nome via listagem antes do execute. |
 | `items <numero>` ambiguo pede a key completa mas nao lista os candidatos. | Rode `list` com `--texto <numero>` (ou a janela de datas) para ver os candidatos e escolher a key. |
+| A partir da **v0.24.0** o `launch-bill` e o `launch-purchase-order` anexam a DANFE no proprio create (`--no-attach-danfe` desliga); ate a **v0.23.0** o registro nasce sem anexo e nada avisa. | Na v0.24.0+ **nao anexe de novo** depois de lancar: um `files attach` ali deixa a mesma DANFE duas vezes na conta. Ate a v0.23.0, baixe com `danfe <doc> -o nota.pdf` e anexe com `files attach --entity bill --key bill::<id> --file nota.pdf --execute`. |
+| Anexo que falha **nao** bloqueia o lancamento: o registro e criado sem ele. O aviso sai no stderr e o envelope traz `anexo.status: "falhou"`, com o `status` geral em `partial` — nunca `verified`. | Leia o `anexo` do JSON antes de dar o lancamento por completo. Para reanexar, use a chave S3 que o aviso traz (`files attach --url ...`) — **nunca** `--file`, que sobe o arquivo de novo e deixa duas copias. Nao relance o comando: o registro ja existe. |
+| Conteudo que nao e PDF (pacote com mais de um arquivo) **nao** vira anexo, e o lancamento segue sem ele. | E aviso, nao erro: a conta esta certa. Baixe a DANFE com `danfe <doc>` e anexe por `files attach` se o cliente exige anexo. |
 
 ## Diario de sessao (modo interno / EV)
 
