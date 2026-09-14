@@ -261,6 +261,39 @@ Erros sao emitidos em stderr no formato JSON, nunca misturados com stdout:
 {"error": {"code": "VALIDATION_ERROR", "message": "Campo 'name' e obrigatorio", "details": {"field": "name"}}}
 ```
 
+### Rede que intercepta HTTPS (proxy corporativo)
+
+Em maquina de empresa cujo proxy re-assina o trafego HTTPS, o certificado que o
+servidor apresenta e o do proxy — e o CLI nao confia nele por default. O caso
+que mais custa tempo e o do UPLOAD (`files upload`/`attach`, `--attach`,
+`--file`), porque o S3 e o unico host fora do dominio Aegro naquele caminho, e
+dai a falha fica parecendo defeito do anexo.
+
+**Da versao 0.24 em diante** o erro nomeia o problema (exit 1):
+
+```json
+{"error": {"code": "TLS_TRUST_ERROR", "message": "Certificado HTTPS rejeitado ao falar com s3.amazonaws.com. ... A rede provavelmente intercepta HTTPS (proxy/firewall corporativo) com um CA que este cliente nao conhece. Tentei: CA do operador, certifi, trust store do sistema. Aponte AEGRO_CA_BUNDLE para o certificado raiz da sua rede (peca a TI) ..."}}
+```
+
+NAO repita o comando e NAO reporte como instabilidade do Aegro — as duas coisas
+so gastam tempo, porque a falha e da maquina, nao do servico. O conserto e
+apontar a CA da rede:
+
+```bash
+export AEGRO_CA_BUNDLE=/caminho/para/ca-da-empresa.pem   # SSL_CERT_FILE tambem vale; AEGRO_CA_BUNDLE vence
+```
+
+O arquivo vem do suporte de TI. Se a variavel apontar para um caminho que nao
+existe ou nao carrega, o CLI avisa com `CONFIG_ERROR` (exit 1) em vez de
+ignorar em silencio. **Nunca sugira desabilitar a verificacao de certificado**:
+nao existe flag para isso no CLI, e isso e de proposito.
+
+**Ate a 0.23** o mesmo caso saia como `API_ERROR` com `status: 502` e a
+mensagem generica `Erro de conexao com o servico Aegro: ConnectError`, que le
+como servico fora do ar. Se voce ver ISSO num upload que falha sempre no mesmo
+ponto, e provavelmente o mesmo problema: peca a atualizacao do CLI
+(`uv tool upgrade aegro`) antes de investigar o Aegro.
+
 ### Parametros Repetiveis
 
 Flags que aceitam multiplos valores usam repeticao:
