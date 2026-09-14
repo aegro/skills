@@ -10,10 +10,8 @@ compartilhada (`aegro/cli/_config.py`), entao ela nao aparece no `def` de cada
 comando. Extrator estatico erra — e errou, dizendo que `tags archive` nao
 aceitava `--farm` quando aceita.
 
-Por que agendado e nao na PR: as duas checagens dependem da CLI publicada e
-mudam quando o CLI muda, sem relacao com a PR em revisao. Na PR, deixariam
-vermelha a PR de quem nao mexeu em contrato nenhum, e o autor aprenderia a
-ignorar o vermelho. Mesmo raciocinio do `openapi-drift.yml` do tool-aegro-cli.
+Por que agendado e nao na PR:
+docs/decisions/0004-crivo-na-pr-drift-agendado.md
 
 Uso:
   python scripts/drift_cli.py           # exit 1 se houver drift
