@@ -173,7 +173,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 **Anexos na realizacao (`--file` / `aegro files attach`):**
 - A realizacao aceita **anexo de arquivo** (ficha de aplicacao, receituario
   agronomico, ordem de servico) — e a unica entidade com anexo em escrita na
-  API publica (desde 20/08/2026). **Planejamento NAO tem anexo**: nao anuncie
+  API publica. **Planejamento NAO tem anexo**: nao anuncie
   nem tente anexar em plano (`create-plan`/`update-plan` nao tem `--file`).
 - `create-realization --file ficha.pdf` (repetivel) sobe o arquivo e manda a
   referencia no PROPRIO POST — uma requisicao de escrita so. O upload usa a API

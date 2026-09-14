@@ -87,7 +87,7 @@ aegro auth login --env staging
 
 **Erro 401 em staging no inicio do dia e comportamento esperado, NAO bug.** Nao
 gaste tempo diagnosticando nem reporte como falso positivo no feedback de dev —
-o reset diario ja e conhecido (registrado na rodada de feedback de 2026-08-10).
+o reset diario ja e conhecido.
 So investigue um 401 de staging se ele persistir **depois** de um
 `aegro auth login --env staging` bem-sucedido na mesma sessao.
 
@@ -120,7 +120,7 @@ operador de servicos atendendo varios clientes — **passe `--farm` em cada
 comando**. O `state.json` e global por maquina: o `farms select` de uma sessao
 troca o alvo de todas as outras, silenciosamente.
 
-**A env var `AEGRO_ACTIVE_FARM` foi removida** (28/07/2026). Tres caminhos para a
+**A env var `AEGRO_ACTIVE_FARM` nao existe mais.** Tres caminhos para a
 mesma coisa era a propria fonte da confusao, e ela nao resolvia o caso principal:
 num harness de agente, um `export` de shell **nao persiste** entre chamadas de
 tool. Se a variavel ainda estiver definida no ambiente, os comandos de API falham
@@ -349,10 +349,9 @@ Regras que evitam retrabalho:
 - **Anexo em elemento e caso RARO — nao ofereca por conta propria.** Poucas
   pessoas anexam arquivo a elemento do catalogo; so faca quando o usuario
   pedir explicitamente. Quando fizer, saiba que `isImported: true` em
-  `elements list` significa que NAO vai funcionar (previu 24 de 24 casos
-  medidos), e que isso vale para boa parte do catalogo — 28 de 52 barrados
-  (54%) numa amostra estratificada de staging em 25/08/2026, sendo 8 de 8 em
-  FERTILIZER. Detalhe por categoria em `/aegro-estoquista`.
+  `elements list` significa que NAO vai funcionar — e isso vale para pouco mais
+  da metade do catalogo, com FERTILIZER perto de 100%. Detalhe por categoria em
+  `/aegro-estoquista`.
 
 ### tags (= Agrupadores)
 
