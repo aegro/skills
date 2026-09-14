@@ -797,11 +797,12 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
 
 1. **Toda escrita e proposta, nunca silencio.** Mostre o agregado e peca
    confirmacao antes de cada `apply --execute`. A EV decide; voce conduz.
-2. **Escrita que responde 200 pode nao ter gravado.** Sao **tres** causas
+2. **Escrita que responde sucesso pode nao ter gravado.** Sao **tres** causas
    medidas de no-op silencioso, e o `plan` bloqueia as tres: `recurrence`,
-   `revenue-item-apportioned-noop` e `stock-location-closed`. Confira o numero por
-   motivo em `meta.blockedByReason`. `falhaSilenciosa > 0` num CLI atual significa
-   **guard faltando ou causa nova** — pare e investigue
+   `revenue-item-apportioned-noop` e `stock-location-closed` — as tres ja
+   corrigidas ou contornadas no servidor, entao hoje o bloqueio e precaucao.
+   Confira o numero por motivo em `meta.blockedByReason`. `falhaSilenciosa > 0`
+   num CLI atual significa **guard faltando ou causa nova** — pare e investigue
    ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
    opcional.
 3. **Recorrente MIGRA por default.** O no-op silencioso do FNC-184 foi corrigido
@@ -811,11 +812,11 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
    - o `plan` **avisa** quantos recorrentes entraram, nomeando a release. Repasse:
      e escrita que antes nao acontecia.
    - `--no-allow-recurrent` e o escape, e serve para um caso so: **servidor mais
-     antigo que aquela release** (serv-core local desatualizado, por exemplo). O
-     CLI nao tem como saber a versao — quem sabe e quem roda.
+     antigo que o fix** (serv-core local desatualizado, por exemplo). O CLI nao tem
+     como saber a versao — quem sabe e quem roda.
    - sobra o 422 de recorrente **com parcela paga E itens**, bloqueado como
-     `settled-recurrence-inputs`. No nivel da conta a mesma conta migra, e a maioria
-     e de nivel conta: medido, 22 com parcela paga e **zero** barradas.
+     `settled-recurrence-inputs`. No nivel da conta a mesma conta migra, e a
+     maioria e de nivel conta.
    - canario + verify continuam obrigatorios, **nao** por causa do FNC-184, e sim
      porque nenhuma escrita em massa aqui vai sem canario.
 4. **Nunca chute destino.** Sem regra e sem override, o lancamento fica

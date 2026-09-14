@@ -248,9 +248,10 @@ Apresente:
 - Pulados (duplicata ou sem nome)
 - Erros (linha, motivo — ex: 422 por `machineType` faltando)
 
-Guarde as chaves: nao ha listagem confiavel de abastecimentos/manutencoes
-depois (Bugs #3 e #4 do dominio), entao as chaves dos ativos sao a referencia
-para os proximos passos.
+Guarde as chaves dos ativos: sao a referencia dos proximos passos, e o que liga
+cada linha da planilha ao que ficou no Aegro. A listagem posterior de eventos
+funciona — `fuel-supplies list` e `maintenances list` aceitam `--asset-key` e
+periodo.
 
 ## Validacoes e Erros Comuns
 

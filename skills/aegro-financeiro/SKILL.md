@@ -59,7 +59,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Documento fiscal         | `fiscalNumber`         | Objeto aninhado com `code`, `fiscalNumberType` (CPF/CNPJ) e `countryCode`.                |
 | Item do lancamento       | `inputs`               | Insumo/produto dentro da bill. Cada item pode ter categoria financeira PROPRIA.            |
 | Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA - **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
-| Produtor                 | (nao exposto)          | Empresa "produtor" que organiza lancamentos no produto. NAO existe na API publica.         |
+| Produtor                 | `producerKey`          | Empresa "produtor" que organiza lancamentos no produto. Aceito no create e no patch; pelo CLI, so via `update-bill --body`. |
 
 ---
 
@@ -198,12 +198,14 @@ Relacionamentos-chave:
     elemento quando existir (ver 4.1.1). CRITICO: com `inputs`, o `totalAmount`
     enviado e **IGNORADO** e recalculado como a SOMA dos `amount` dos itens.
 
-13. **Campo "Produtor" NAO existe na API publica**: no produto, bill e parcelas
-    tem um produtor (empresa) que organiza os dados — as parcelas herdam o
-    produtor da bill. Nenhum recurso publico expoe esse campo: lancamento criado
-    via API fica **sem produtor**, e o ajuste so pode ser feito pelo app.
-    Se o cliente organiza os lancamentos por produtor, avise antes de lancar
-    em massa.
+13. **Campo "Produtor" existe na API publica**: no produto, bill e parcelas tem
+    um produtor (empresa) que organiza os dados — as parcelas herdam o produtor
+    da bill. `producerKey` e aceito na criacao e no PATCH, e a leitura devolve
+    `producer` inteiro. **Pelo CLI so da para definir depois**: `create-bill` nao
+    tem `--producer` nem `--body`, entao o caminho e criar e em seguida
+    `update-bill --body '{"producerKey": "company::<id>"}'`. Cliente que organiza
+    por produtor rural nao precisa mais do app — mas sao duas chamadas por
+    lancamento; avise antes de lancar em massa.
 
 ---
 
@@ -660,12 +662,19 @@ total como a soma dos `amount` dos itens. Divergencia entre soma dos itens e
 total da nota (frete, desconto, arredondamento) muda o valor do lancamento em
 silencio — confira a soma antes de criar.
 
-### Campo "Produtor" nao e suportado via API
+### Campo "Produtor": existe na API, so nao no `create-bill` do CLI
 
-Bill e parcelas tem produtor (empresa) no produto, mas nenhum endpoint publico
-expoe o campo (nem na escrita, nem na leitura). Lancamento criado via API fica
-sem produtor; ajuste apenas pelo app. Relevante para clientes que organizam o
-financeiro por produtor rural.
+`producerKey` e aceito na **criacao** e no **PATCH** do lancamento, e a leitura
+devolve `producer` com a empresa inteira. O `create-bill` do CLI nao tem flag
+nem `--body`, entao pelo CLI o produtor entra num segundo passo:
+
+```bash
+aegro financial update-bill bill::<id> --farm "<fazenda>"   --body '{"producerKey": "company::<id>"}' --dry-run
+```
+
+A chave vem de `companies list`. Para clientes que organizam o financeiro por
+produtor rural isso resolve a correcao em massa — conte duas chamadas por
+lancamento.
 
 ### Parcelas: sem CRUD avulso na API
 

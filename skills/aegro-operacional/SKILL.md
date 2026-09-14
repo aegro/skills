@@ -672,7 +672,7 @@ Um elemento participa de tres dominios simultaneamente:
 
 **Regra:** Criar o elemento e vincular categorias financeiras antes de usar em atividades e estoque.
 
-## Bugs Conhecidos e Retry
+## Validacoes e erros comuns
 
 ### Versao do CLI: leia o aviso antes de culpar a skill
 
@@ -693,15 +693,6 @@ distingue "conferi e nao achei" de "nao consegui conferir". **Nunca repita o
 create as cegas depois de um 5xx**: confira a listagem primeiro, ou voce cria
 o registro em duplicidade.
 
-### Resumo de Bugs Ativos
-
-| # | Endpoint | Severidade | Dominio Afetado | Workaround |
-|---|----------|------------|-----------------|------------|
-| 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
-
-> A numeracao tem buracos de proposito: os numeros sao compartilhados entre
-> as skills deste repo, entao renumerar aqui quebraria as referencias de la.
-
 ### Logica de Retry
 
 - **3 tentativas** com backoff exponencial (1s, 2s, 4s)
@@ -712,8 +703,8 @@ o registro em duplicidade.
 
 | HTTP | Significado | Acao |
 |------|-------------|------|
-| 500 | Erro interno do servidor | Retry automatico. Se persistir, verificar tabela de bugs conhecidos |
-| 422 | Erro de validacao | Verificar campos obrigatorios e formatos. Nao faz retry |
+| 500 | Erro interno do servidor | Retry automatico. Se persistir com os mesmos dados, e achado novo: junte comando e resposta e reporte, em vez de repetir |
+| 422 | Erro de validacao | Leia a mensagem: em campo de enumeracao e unidade ela **lista os valores aceitos**. Nao faz retry, e nao e bug do servidor |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
 | 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |

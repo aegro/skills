@@ -55,7 +55,7 @@ FARM (fazenda)
 │   ├── CROP_PRORATE (rateios entre talhoes)
 │   └── HARVEST_DISCOUNTS (config umidade/impureza)
 └── ELEMENT (insumos globais)
-    ├── SEED (tipo: SOYBEAN, CORN...) ├── DEFENSIVE (tipo: HERBICIDE...)
+    ├── SEED (tipo: SOY, CORN...)     ├── DEFENSIVE (tipo: HERBICIDE...)
     ├── FERTILIZER                    └── ITEM / SERVICE
 ```
 
@@ -269,8 +269,15 @@ aegro activities delete-realization activityLog::68dd6730e90f726622b7f560 --exec
 
 | Comando | Argumentos/Opcoes |
 |---------|-------------------|
+| `harvest-logs list` | `--crop-key` (obrig., repetivel), `--identifier`, `--silo`, `--glebe-key`, `--start-date`, `--end-date`, `--tag`, `--receipt`, `--limit` |
 | `harvest-logs get <key>` | posicional |
 | `harvest-logs create` | ver parametros abaixo |
+| `harvest-logs update <key>` | posicional, `--body` (PATCH parcial). Mutacao: `--dry-run`/`--execute`, `--farm` |
+
+**`get` prova que o romaneio existe.** Romaneio excluido na tela responde **204**,
+o mesmo terminal de chave inexistente — nao mais 200 com o corpo. Entao 200 no
+`get` e confirmacao de que o registro esta vigente, e `update` sobre excluido
+responde 404 sem tocar no dado.
 
 **Parametros `create`:** `--crop-key` (obrig.), `--date` (obrig., YYYY-MM-DD), `--crop-glebe` (repetivel),
 `--calculation-mode` (AUTOMATIC/MANUAL, default AUTOMATIC), `--seed-key`, `--destination-key`,
@@ -295,11 +302,12 @@ aegro harvest-logs create --farm "<fazenda>" \
   --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901"
 ```
 
-**Romaneio com destino (silo) sai em um comando so.** Com `--destination-key`,
-se o servidor descartar o silo no create, o CLI completa por PATCH e confere
-por releitura — a saida ja e o registro relido. Se a completacao falhar, o
-comando **falha dizendo que o romaneio ja existe**: nunca repita o `create`,
-use o `update` que ele sugere, ou voce duplica o romaneio.
+**Romaneio com destino (silo) sai em um comando so.** O `--destination-key` agora
+**grava no proprio create** — o servidor deixou de descartar o silo. O CLI mantem
+a completacao por PATCH e a conferencia por releitura como rede, e a saida ja e o
+registro relido. Se a completacao falhar, o comando **falha dizendo que o romaneio
+ja existe**: nunca repita o `create`, use o `update` que ele sugere, ou voce
+duplica o romaneio.
 
 **Campo desconhecido no `--body` e recusado antes de enviar** (exit 4). Nao e
 frescura do CLI: a API aceitaria a requisicao, descartaria o campo e
@@ -352,8 +360,8 @@ Categorias agro: `SEED`, `DEFENSIVE`, `FERTILIZER`.
 aegro elements list --farm "<fazenda>" --category SEED
 aegro elements list --farm "<fazenda>" --category DEFENSIVE --type HERBICIDE
 aegro elements create-defensive --farm "<fazenda>" --name "Roundup Original" --type HERBICIDE --unit L --manufacturer Monsanto
-aegro elements create-fertilizer --farm "<fazenda>" --name "MAP Granulado" --unit KG --manufacturer Mosaic
-aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOYBEAN --unit KG --manufacturer TMG
+aegro elements create-fertilizer --farm "<fazenda>" --name "MAP Granulado" --unit kg --manufacturer Mosaic
+aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY --unit kg --manufacturer TMG
 ```
 
 **Opcao global:** Todos os comandos aceitam `--output` / `-o` com `json` (padrao), `table` ou `csv`.
@@ -444,14 +452,12 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 
 ---
 
-## 6. Bugs e Workarounds Conhecidos
+## 6. Validacoes e erros comuns
 
-| Bug | Sintoma | Workaround |
-|-----|---------|------------|
-| **#5** `elements create-seed` | `POST /elements/seeds` → 500 | Cadastrar sementes pela interface web. Leitura funciona normal. |
-
-**Regra geral:** Endpoints de escrita sao mais propensos a 500. Testar com dados minimos.
-Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).
+**Leia a mensagem antes de chamar de bug.** Campo de enumeracao ou unidade com
+valor errado volta **422 listando os valores aceitos** — inclusive `type` de
+elemento e `measuringUnit`. Nao repita a chamada e **nao mande o usuario para a
+interface web**: corrija o valor que a resposta nomeia.
 
 ---
 
@@ -459,8 +465,12 @@ Se falhar, orientar usuario a usar a interface web (app.aegro.com.br).
 
 1. **Listar atividades sem `--crop-key`:** Retorna TODAS as safras misturadas. Sempre filtrar por safra.
 
-2. **Criar plano sem verificar crop-glebes:** Antes de `create-plan` com `--crop-glebe-key`,
-   confirmar existencia com `crops glebes <crop_key>`. Chaves invalidas causam erro silencioso.
+2. **Tratar `--crop-glebe-key` como se nao fosse conferido:** o servidor resolve a
+   chave na escrita e **recusa com 422** o que nao existe, nao e da fazenda ou nao
+   pertence a safra da atividade — e o GET seguinte devolve as mesmas chaves. Nao
+   ha mais vinculo que some nem chave de outra safra gravada calada. Continue
+   listando `crop-glebes list <crop_key>` para **escolher** a chave certa; so nao
+   trate o 422 como bug.
 
 3. **Confundir `plan` com `get-plan`:**
    - `activities plan <ACTIVITY_KEY>` → endpoint `/activities/{key}/plan`
