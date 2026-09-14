@@ -699,7 +699,6 @@ o registro em duplicidade.
 | # | Endpoint | Severidade | Dominio Afetado | Workaround |
 |---|----------|------------|-----------------|------------|
 | 5 | `elements/seeds` POST 500 | Media | Catalogo | Cadastrar sementes manualmente no Aegro App |
-| 6 | `weather-logs` POST 500 | Media | Climatico | Registrar dados climaticos manualmente no Aegro App |
 
 > A numeracao tem buracos de proposito: os numeros sao compartilhados entre
 > as skills deste repo, entao renumerar aqui quebraria as referencias de la.
