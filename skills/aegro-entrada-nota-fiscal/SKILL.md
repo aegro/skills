@@ -132,8 +132,7 @@ criacao, irreversivel via API - correcao so pelo app). Quando o usuario diz
 que a nota "e a vista" - ou a nota vem sem duplicatas - ele normalmente
 descreve a **condicao de pagamento** (vencimento na data da nota), nao uma
 ordem para dar baixa.
-Traducao correta (padrao do time de Servicos, reuniao CLI <> Servicos
-31/07/2026 - ENTRADA-135):
+Traducao correta:
 
 | O que foi dito / esta na nota | Flag | Efeito |
 |---|---|---|

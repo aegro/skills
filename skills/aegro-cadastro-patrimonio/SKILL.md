@@ -35,7 +35,7 @@ Carregue este domain skill antes de iniciar:
 
 Fazenda dita em **cada comando** com `--farm "<Fazenda|farm::key>"` — nao por `farms select`.
 O estado do `farms select` e global por maquina, e uma sessao paralela troca o alvo
-da outra sem avisar: foi assim que, em 11/08/2026, a entrega de dois pedidos de
+da outra sem avisar: foi assim que a entrega de dois pedidos de
 compra foi gravada em producao na fazenda errada, deixando o estoque negativo e
 duas manutencoes custeadas em R$ 0,00 sem nenhuma mensagem de erro. Em sessao de
 agente, ligue tambem `AEGRO_SAFE_MODE=1`, que recusa escrita cuja fazenda nao veio
@@ -66,7 +66,7 @@ Qual tipo de patrimonio?
 │
 └── Estacao meteorologica
     └── assets create-weather-station
-        ATENCAO: Bug #6 impede criar weather-logs via API
+        Clima depois: unidade e o simbolo `ºC` (ordinal, nao CELSIUS) -- ver /aegro-agronomo 4.6
 ```
 
 ## Sequencia: Cadastrar Ativo
@@ -168,14 +168,11 @@ de plano (1 grupo na maioria, 2 no Avancado) e serve para um conjunto de safras
 reutilizado entre lancamentos — gastar o unico slot da fazenda por lancamento estoura
 a cota. Detalhes e modos de falha em `/aegro-patrimonial`.
 
-## Limitacoes
+## Depois de criar, confira
 
-| Bug | Impacto | Workaround |
-|-----|---------|------------|
-| **#6** `weather create` → HTTP 500 | Impossivel criar registros meteorologicos | Registrar pelo Aegro App |
-
-**Consequencia:** guardar a chave retornada continua sendo bom habito para conferir
-o registro logo apos criar, mas a listagem posterior via CLI **funciona** — `fuel-supplies list` e `maintenances list` aceitam `--asset-key` e periodo.
+Guardar a chave retornada continua sendo bom habito para conferir o registro logo
+apos criar, e a listagem posterior via CLI **funciona** — `fuel-supplies list` e
+`maintenances list` aceitam `--asset-key` e periodo.
 
 ## Formato de Resposta
 

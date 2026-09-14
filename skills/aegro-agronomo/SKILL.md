@@ -173,7 +173,7 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 **Anexos na realizacao (`--file` / `aegro files attach`):**
 - A realizacao aceita **anexo de arquivo** (ficha de aplicacao, receituario
   agronomico, ordem de servico) — e a unica entidade com anexo em escrita na
-  API publica (desde 20/08/2026). **Planejamento NAO tem anexo**: nao anuncie
+  API publica. **Planejamento NAO tem anexo**: nao anuncie
   nem tente anexar em plano (`create-plan`/`update-plan` nao tem `--file`).
 - `create-realization --file ficha.pdf` (repetivel) sobe o arquivo e manda a
   referencia no PROPRIO POST — uma requisicao de escrita so. O upload usa a API
@@ -328,14 +328,20 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Parametros pareados** (ambos presentes ou ambos ausentes):
 - `--precipitation` + `--precipitation-unit` (ex: `mm`)
-- `--temperature` + `--temperature-unit` (ex: `CELSIUS`)
+- `--temperature` + `--temperature-unit` (simbolo: `ºC`)
 
 **Independentes:** `--humidity` (%), `--pressure` (hPa).
 
+> **A unidade de temperatura e o simbolo `ºC`, nao `CELSIUS`** -- `CELSIUS`
+> volta `422` (`Unidade não encontrada para o símbolo 'CELSIUS'`). O `º` e o
+> **ordinal masculino** (U+00BA), nao o sinal de grau `°` (U+00B0) -- a olho
+> nu sao identicos. No stderr o erro sai escapado (`\u00baC`), entao grep
+> pela forma acentuada nao acha. Copie o simbolo do exemplo abaixo.
+
 ```bash
-aegro weather create --farm "<fazenda>" --weather-station-key weatherstation::ws001 --date 2026-03-12 \
+aegro weather create --farm "<fazenda>" --weather-station-key asset::<id da estacao> --date 2026-03-12 \
   --precipitation 12.5 --precipitation-unit mm \
-  --temperature 28.0 --temperature-unit CELSIUS --humidity 65.0
+  --temperature 28.0 --temperature-unit "ºC" --humidity 65.0
 ```
 
 ### 4.7 Elementos / Insumos (`aegro elements`)
@@ -369,7 +375,7 @@ aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY 
 crop::68dd6719e90f726622b7f549       cropGlebe::68dd6730e90f726622b7f555
 glebe::68dd6725e90f726622b7f550      activity::68e1a3b2f4c8901234567890
 element::68e2c5d6e7890abcdef12345    harvestlog::68e2b4c5d6789012345abcde
-weatherstation::ws001
+asset::6697d5988e266153a020e87f   (estacao meteorologica -- weather-station-key)
 ```
 
 Sempre usar a chave completa com prefixo. Os hexadecimais sao IDs MongoDB de 24 caracteres.
@@ -446,17 +452,12 @@ aegro crops glebes --farm "<fazenda>" crop::xxx
 
 ---
 
-## 6. Bugs e Workarounds Conhecidos
+## 6. Validacoes e erros comuns
 
-| Bug | Sintoma | Workaround |
-|-----|---------|------------|
-| **#6** `weather create` | `POST /weather-logs` → 500 | Registrar clima pela interface web. Leitura funciona normal. |
-
-**Regra geral: leia a mensagem antes de chamar de bug.** Campo de enumeracao ou
-unidade com valor errado volta **422 listando os valores aceitos** — inclusive
-`type` de elemento e `measuringUnit`. O que ja foi registrado aqui como "500 na
-escrita" era isso. Nao repita a chamada e **nao mande o usuario para a interface
-web**: corrija o valor que a resposta nomeia.
+**Leia a mensagem antes de chamar de bug.** Campo de enumeracao ou unidade com
+valor errado volta **422 listando os valores aceitos** — inclusive `type` de
+elemento e `measuringUnit`. Nao repita a chamada e **nao mande o usuario para a
+interface web**: corrija o valor que a resposta nomeia.
 
 ---
 

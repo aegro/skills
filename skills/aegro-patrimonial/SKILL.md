@@ -23,7 +23,7 @@ Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confi
 no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
 alvo da outra sem avisar.
 
-Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+Ja aconteceu em producao: a entrega de dois pedidos de compra foi gravada na
 fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
 entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
 na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
@@ -125,6 +125,9 @@ FARM (farm::5711512de4b0e15eb04da4d0)
               ├── date: "2026-03-13"
               └── precipitation: {magnitude: 15.5, unit: "mm"}
 ```
+
+Unidade de temperatura no WEATHER_LOG e o simbolo `ºC` (ordinal, nao
+`CELSIUS`) -- detalhes e exemplo completo em /aegro-agronomo secao 4.6.
 
 **Relacoes importantes:**
 - `ASSET → FUEL_SUPPLY`: Um patrimonio tem N abastecimentos
@@ -524,20 +527,10 @@ aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1"
 aegro maintenances get --farm "Fazenda Aegro" "assetEvent::67f5e6a7b8c9d0e1" --apportionment
 ```
 
-## Bugs e Workarounds
-
-### Bug #6: `weather-logs` POST retorna HTTP 500
-
-**Severidade:** Media
-**Endpoint:** `POST /pub/v1/weather-logs`
-**Status:** Aberto — sem previsao de correcao
-**Correlation ID:** `d68b29a6-8f78-4448-b8c3-85e5f55b445a`
-
-**Impacto:** Impossivel criar registros meteorologicos via CLI/API. O GET individual funciona, e a estacao meteorologica existe (`asset::57d299c3e4b059f24e3f99b0`).
-
-**Workaround:** Registrar dados climaticos diretamente no Aegro App (interface web).
-
 ## Anti-padroes
+
+> A numeracao tem buracos de proposito: os numeros sao compartilhados entre
+> as skills deste repo, entao renumerar aqui quebraria as referencias de la.
 
 ### 1. Nao crie evento de patrimonio sem local de estoque
 
@@ -546,8 +539,8 @@ manutencao, com ou sem `--inputs`: o servidor recusa qualquer evento sem local d
 estoque (422 `invalid.asset-event.stock-location.key.required`). Nao e "registro
 informativo" — e erro.
 
-A CLI barra isso localmente, com **exit 4**, inclusive no `--dry-run` (verificado em
-14/08/2026); versoes antigas so falhavam quando havia `--inputs`.
+A CLI barra isso localmente, com **exit 4**, inclusive no `--dry-run`. Versao
+antiga so falhava quando havia `--inputs`.
 
 ```bash
 # ERRADO - vai falhar (exit 4 na CLI, 422 no servidor)
@@ -592,10 +585,6 @@ aegro assets create-machine --farm "Fazenda Aegro" \
   --machine-type TRACTOR
 ```
 
-### 4. Nao crie estacao meteorologica esperando registrar dados via API
-
-O Bug #6 bloqueia criacao de `weather-logs` via API. Se criar estacao meteorologica via CLI, os registros climaticos precisarao ser inseridos pelo Aegro App.
-
 ### 5. Nao esqueca o tipo de maquina (machineType) para MACHINE
 
 O campo `machineType` e **obrigatorio** para patrimonios tipo `MACHINE`. Sem ele, a criacao falha com HTTP 422.
@@ -628,7 +617,7 @@ aegro maintenances create --farm "Fazenda Aegro" --asset-key "asset::x" --date "
 
 ### 7. Nao paralelize chamadas de escrita da CLI
 
-Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si — observado em 2026-08-10 (CLI v0.16.0): com 5 chamadas paralelas, 2 de 5 falharam; com 3 paralelas, ~1,4% de falha; sequencial, 0 falhas.
+Nao ha bulk-update: operacoes em lote (ex: aplicar rateio a centenas de abastecimentos) exigem uma chamada `update` por registro. Rodar essas chamadas em paralelo causa HTTP 409 "Erro inesperado" mesmo em registros sem relacao entre si, e a taxa de falha cresce com a concorrencia. **Rode sequencial**: e o unico modo sem falha.
 
 ```bash
 # ERRADO - paralelismo gera 409 esporadico

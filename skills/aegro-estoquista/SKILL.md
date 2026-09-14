@@ -25,7 +25,7 @@ Diga a fazenda em **cada comando** com `--farm "<Fazenda|farm::key>"`. Nao confi
 no `farms select`: o estado e global por maquina, e uma sessao paralela troca o
 alvo da outra sem avisar.
 
-Em 11/08/2026, em producao, a entrega de dois pedidos de compra foi gravada na
+Ja aconteceu em producao: a entrega de dois pedidos de compra foi gravada na
 fazenda errada exatamente assim. Nada acusou o erro: o pedido apareceu 100%
 entregue, o insumo nao entrou no estoque de quem comprou, o saldo ficou negativo
 na baixa seguinte e duas manutencoes sairam custeadas em R$ 0,00.
