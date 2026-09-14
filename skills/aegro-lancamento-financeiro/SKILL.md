@@ -1,5 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
+requires-cli: 0.23.0
 description: >-
   Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
   categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
@@ -254,7 +255,13 @@ Detalhes em `/aegro-financeiro` (secao 5).
 Para o lancamento entrar no custo da safra, usar apropriacao direta:
 `--apportion-crop "Safra X"` (repetivel). Com multiplas safras, o rateio e
 automatico e proporcional a area. Rateio com percentuais pre-definidos
-(apropriacao salva) nao pode ser aplicado via API -- so pelo app.
+(apropriacao salva): desde o CLI 0.23.0 da para VINCULAR o lancamento a um
+rateio salvo existente com `--crop-prorate-group cropProrateGroup::<id>`
+(exclusivo com `--apportion-crop`; chaves em `aegro crops prorates`) — editar
+o rateio pela tela atualiza a conta. Criar/editar o grupo salvo segue sendo
+pelo app. Para apropriar ITEM A ITEM (cada produto da nota num destino),
+existe `--apportion-mode PER_ITEM` + `--apportion-groups` — regras e formato
+em /aegro-financeiro (regra 6).
 
 ## Formato de Resposta
 
