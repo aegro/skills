@@ -54,6 +54,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Ordem de compra          | `purchase-orders`      | Pedido de compra vinculado a uma empresa, com itens e valores.                             |
 | Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote.                                                 |
 | Vencimento em lote       | `update-installments`  | Altera o vencimento de parcelas JA lancadas. Atomico, com `/preview` do servidor no dry-run. |
+| Reabrir baixa            | `reopen-installments`  | Desfaz pagamento feito por engano. APAGA desconto e juros junto; exige `--confirm-undo`.   |
 | Tipo de categoria        | `--type`               | SYNTHETIC (nao recebe lancamentos, agrupa) ou ANALYTIC (recebe lancamentos diretamente).   |
 | Tipo de conta (bill)     | `--bill-type`          | PAYABLE (a pagar) ou RECEIVABLE (a receber).                                               |
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
@@ -757,8 +758,8 @@ compra nao tem Livro Caixa nenhum.
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
-(campo `installments`). Nao ha "unrealize": baixa errada se desfaz **pela
-tela do Aegro**.
+(campo `installments`). Baixa errada se desfaz com `reopen-installments` (ver
+abaixo).
 
 **`update-bill` NAO altera parcela.** `installments` so existe no schema de
 criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
@@ -819,6 +820,43 @@ Recusas nomeadas e o que fazer: parcela de **outra fazenda** (quem autoriza e o
 `--farm` do comando), **conciliacao confirmada** (desfaca antes com
 `bank-reconciliation undo`), **lote misto** de receita e despesa (separe em
 dois), **teto de 500** por operacao (divida — cada lote e atomico por si).
+
+### Baixa feita por engano: `reopen-installments`
+
+Quando a conta nasce "a vista", a parcela nasce **JA PAGA**. Se isso foi engano,
+ha volta:
+
+```bash
+# SEMPRE primeiro: mostra o que sera apagado
+aegro financial reopen-installments --farm "<fazenda>" --key installment::<id> --dry-run
+
+# so depois de o usuario confirmar
+aegro financial reopen-installments --farm "<fazenda>" --key installment::<id> \
+  --execute --confirm-undo
+```
+
+**Avise ANTES de executar, sempre:** reabrir apaga mais do que o pagamento. O
+servidor zera a data do pagamento, o valor realizado, a taxa de cambio da
+realizacao e **o desconto e os juros** — eles pertenciam aquela realizacao —, e
+devolve a conciliacao bancaria para pendente. **Desconto e juros digitados a mao
+nao se recuperam.** O `--dry-run` mostra esses valores campo a campo: mostre-os
+ao usuario e espere a confirmacao.
+
+O `--confirm-undo` e obrigatorio junto do `--execute`, e existe para isto: o
+`--execute` diz "nao e simulacao", nao diz "eu entendi que isto apaga".
+
+**Reabrir nao conserta o vencimento** — e quase sempre e ele o errado. A sequencia
+completa de um lancamento a vista feito por engano e:
+
+1. `reopen-installments` (volta para em aberto, no vencimento original)
+2. `update-installments` (corrige o vencimento)
+
+Nao da para pular a etapa 1: parcela paga e recusada pelo lote de vencimento
+(`already-paid`).
+
+Recusas proprias da reabertura: **parcela ja em aberto** (nada a desfazer — o CLI
+nomeia todas de uma vez antes de escrever) e **conciliacao confirmada** (desfaca
+a conciliacao antes).
 
 A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
 `--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
