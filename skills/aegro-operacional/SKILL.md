@@ -156,6 +156,50 @@ fontes, retorna exit code 2 (auth) com mensagem orientando o `--farm`.
 | Tabela | `--output table` | Formatado com Rich para leitura humana |
 | CSV | `--output csv` | Para export e planilhas |
 
+### Capturando a saida por programa (Windows)
+
+A CLI escreve **UTF-8** no stdout, sempre, independente do code page do console
+(ela reconfigura os streams na entrada). Quem captura tem que dizer isso:
+
+```python
+subprocess.run([...], capture_output=True, text=True,
+               encoding="utf-8", errors="replace")
+```
+
+Sem o `encoding=`, o Python usa o encoding do locale — **cp1252 no Windows** — e
+estoura `UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d`. O byte muda
+conforme o texto: cp1252 tem cinco bytes indefinidos (`0x81 0x8D 0x8F 0x90 0x9D`),
+que em UTF-8 sao o segundo byte de `Á Í Ï Ð Ý`. Por isso o erro parece aleatorio —
+so aparece quando a resposta traz maiuscula acentuada, o que e comum em nome de
+produto vindo de NF-e (`SAIDA`, `OLEO DIESEL`, `AGUA` em caixa alta). Minusculas
+acentuadas nao estouram: viram texto trocado, em silencio.
+
+Isso **nao e erro do lancamento**: a escrita acontece, quem se perde e a leitura
+da resposta. Numa rodada real isso interrompeu a conferencia de 32 lancamentos,
+que tiveram de ser reconferidos relistando com `--launched`.
+
+E **stdout carrega so o resultado**; log, aviso e progresso vao para stderr.
+Capture os dois separados, nunca `stderr=STDOUT` — misturar quebra o parse do
+JSON.
+
+### Nomes de campo: API publica x API interna
+
+Sao dois vocabularios, e filtrar pelo nome errado devolve **zero resultados em
+silencio** — que le como "nao existe" em vez de "perguntei errado".
+
+| Conceito | API publica (o que a CLI devolve na maioria dos comandos) | API interna (`/app/rest`) |
+|---|---|---|
+| valor da conta | `totalAmount`, objeto `{currencyCode, amount}` | `totalValue`, numero |
+| item movimenta estoque | nao existe no recurso publico | `inputs[].stockable` |
+
+`aegro financial bills` (listagem) e `aegro financial bill <key>` (individual)
+devolvem **o mesmo shape**, os dois com `totalAmount` — conferido em producao. O
+individual e ate mais completo: traz `financialCategory` inteiro, que a listagem
+devolve com os campos nulos.
+
+Antes de concluir "nao achei", confira se o campo do filtro existe na resposta:
+um `.get("totalValue")` numa resposta publica devolve `None` sempre.
+
 ### Paginacao
 
 - Padrao: **50 itens por pagina**, maximo 100
