@@ -53,6 +53,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Empresa                  | `companies`            | Fornecedor, cliente ou transportadora vinculado a fazenda.                                 |
 | Ordem de compra          | `purchase-orders`      | Pedido de compra vinculado a uma empresa, com itens e valores.                             |
 | Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote.                                                 |
+| Vencimento em lote       | `update-installments`  | Altera o vencimento de parcelas JA lancadas. Atomico, com `/preview` do servidor no dry-run. |
 | Tipo de categoria        | `--type`               | SYNTHETIC (nao recebe lancamentos, agrupa) ou ANALYTIC (recebe lancamentos diretamente).   |
 | Tipo de conta (bill)     | `--bill-type`          | PAYABLE (a pagar) ou RECEIVABLE (a receber).                                               |
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
@@ -750,7 +751,7 @@ pendencias do LCDPR, a errada nao.
 sem NF-e) — aquele comando usa a API publica, que nao tem o campo. E pedido de
 compra nao tem Livro Caixa nenhum.
 
-### Parcelas: sem CRUD avulso na API
+### Parcelas: sem CRUD avulso, mas o VENCIMENTO muda em lote
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
@@ -760,8 +761,42 @@ tela do Aegro**.
 **`update-bill` NAO altera parcela.** `installments` so existe no schema de
 criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
 com a conta inteira — indistinguivel de sucesso. Nunca tente mudar parcela por
-aqui, em nenhuma versao: vencimento e valor de parcela ja lancada mudam **pela
-tela do Aegro**.
+aqui, em nenhuma versao.
+
+**O vencimento, esse tem caminho:** `financial update-installments`, que usa o
+lote de parcelas por fazenda.
+
+```bash
+# uma parcela
+aegro financial update-installments --farm "<fazenda>" \
+  --key installment::<id> --due-date 2026-11-20 --dry-run
+
+# um lote (a planilha vira CSV com as colunas key,dueDate)
+aegro financial update-installments --farm "<fazenda>" --map vencimentos.csv --execute
+```
+
+Quatro coisas que mudam como voce conduz a conversa:
+
+1. **E tudo-ou-nada.** Uma parcela inelegivel recusa o lote INTEIRO e nada e
+   gravado. Nao existe "gravou metade" — entao nao ofereca conferir conta a
+   conta depois de uma recusa.
+2. **O `--dry-run` e o veredito do SERVIDOR**, nao uma simulacao: ele chama o
+   `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
+   que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
+   (quantas parcelas, quantas contas, quanto soma).
+3. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
+   letras. Reabrir a baixa hoje so pela tela do Aegro.
+4. **O VALOR da parcela nao muda** por este caminho — o endpoint nao tem o
+   campo. Se o pedido for valor, a resposta honesta e "pela tela".
+
+Como montar o lote: pegue as chaves em `aegro financial installments` (filtre
+por conta, fornecedor, status ou janela de vencimento). A chave e
+`installment::<id>` — nao a da conta.
+
+Recusas nomeadas e o que fazer: parcela de **outra fazenda** (quem autoriza e o
+`--farm` do comando), **conciliacao confirmada** (desfaca antes com
+`bank-reconciliation undo`), **lote misto** de receita e despesa (separe em
+dois), **teto de 500** por operacao (divida — cada lote e atomico por si).
 
 A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
 `--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
