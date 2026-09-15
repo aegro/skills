@@ -302,6 +302,12 @@ em /aegro-financeiro (regra 6).
 8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
    categoria ja cadastrada de cada item; categoria unica na bill distorce o
    DRE por categoria
+8b. **Baixa por engano tem volta** -- conta "a vista" nasce com a parcela JA
+    PAGA. Se foi engano: `financial reopen-installments --dry-run` (mostra o que
+    sera apagado -- inclusive DESCONTO e JUROS, que nao se recuperam), confirme
+    com o usuario, e so entao `--execute --confirm-undo`. Depois corrija o
+    vencimento com `financial update-installments`
+
 9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
    patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
    defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'` --
