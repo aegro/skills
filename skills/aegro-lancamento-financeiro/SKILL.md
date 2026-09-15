@@ -307,7 +307,13 @@ em /aegro-financeiro (regra 6).
    defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'` --
    duas chamadas por lancamento
 
-10. **"Produtor" NAO e o Livro Caixa** -- se o cliente entrega o LCDPR, ele
+10. **Vencimento so muda com instrucao** -- o default e a data da nota (ou a
+    duplicata dela). Havendo prazo combinado que a nota nao reflete ("paga 15
+    dias depois"), `--due-days N` desloca o carne e `--due-date AAAA-MM-DD` fixa
+    a data de uma parcela unica. Confira no `--dry-run` pelo bloco `vencimentos`.
+    Parcela ja lancada nao se altera pelo CLI: pergunte o prazo ANTES do lote
+
+11. **"Produtor" NAO e o Livro Caixa** -- se o cliente entrega o LCDPR, ele
     precisa que cada conta diga a qual **imovel rural** pertence, e isso e outro
     campo. Preencher o Produtor deixa a parcela **nao-atribuida** no livro.
     Lancando NF-e, use `--auto-rural-property` (casa a inscricao estadual do
