@@ -302,19 +302,34 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > | `SOLUPAN SD4=40 5LT SINODET` | `SOLUPAN GALAO` |
 > | `ONU 1202 - OLEO DIESEL B S500 ADITIVADO` | `DIESEL` |
 >
-> Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado** e
-> peca confirmacao quando eles nao forem obviamente o mesmo produto. Diferenca de
-> marca, de formulacao, de concentracao ou de embalagem muda o produto. Prefixo
-> ou sufixo a mais (`GC GASOLINA COMUM` -> `GASOLINA COMUM`) e seguro.
+> Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado e
+> peca confirmacao — sempre, para toda sugestao.** Nao julgue voce mesmo se sao
+> "obviamente o mesmo produto": `ADUBO FB 20 00 20` e `ADUBO BT 20 00 20` passam
+> nesse teste e sao adubos de marcas diferentes. Quem erra ao olhar as duas
+> strings e o mesmo que erraria de novo.
+>
+> O que voce PODE decidir sozinho e o contrario: quando o nome do catalogo esta
+> inteiramente contido na descricao da nota (`GC GASOLINA COMUM` ->
+> `GASOLINA COMUM`), a nota so disse mais, e isso e seguro. Qualquer palavra no
+> catalogo que a nota nao diz — marca, formulacao, concentracao, embalagem —
+> exige o "sim" do usuario.
+>
+> Ha um caso que nem isso pega: a nota dizer MAIS e ainda assim ser outro
+> produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`; aditivado e
+> outro produto). Em combustivel e defensivo, confirme mesmo no caso "contido".
 >
 > Suspeitando de de/para ja salvo errado, o conserto e `conciliate` com o item
 > certo — ele regrava o vinculo e vale para as proximas notas.
 
 > **Conciliacao parcial -> conta SEM baixa de estoque** (o backend exige total =
 > soma dos insumos; e tudo-ou-nada). Para ter estoque, concilie **todos** os
-> itens. Desde a v0.26 o `launch-bill --stock-location` **recusa** (exit 4) em vez
-> de lancar sem estoque, e tambem quando todos os itens conciliados sao de
-> SERVICO, que nao movimenta estoque.
+> itens.
+>
+> Em CLI recente o `launch-bill --stock-location` **recusa** (exit 4) quando a
+> entrada de estoque nao seria possivel — item sem conciliacao, ou nenhum item
+> estocavel. Em CLI mais antigo ele LANCA assim mesmo, com rc 0 e sem estoque.
+> Nao conte com a recusa: confira o resultado de qualquer jeito. (Se precisar
+> saber, `aegro --version` diz a versao.)
 
 ### 5. Lancar — sempre dry-run primeiro
 

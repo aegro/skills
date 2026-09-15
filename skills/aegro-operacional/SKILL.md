@@ -169,10 +169,13 @@ subprocess.run([...], capture_output=True, text=True,
 Sem o `encoding=`, o Python usa o encoding do locale — **cp1252 no Windows** — e
 estoura `UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d`. O byte muda
 conforme o texto: cp1252 tem cinco bytes indefinidos (`0x81 0x8D 0x8F 0x90 0x9D`),
-que em UTF-8 sao o segundo byte de `Á Í Ï Ð Ý`. Por isso o erro parece aleatorio —
-so aparece quando a resposta traz maiuscula acentuada, o que e comum em nome de
-produto vindo de NF-e (`SAIDA`, `OLEO DIESEL`, `AGUA` em caixa alta). Minusculas
-acentuadas nao estouram: viram texto trocado, em silencio.
+que em UTF-8 sao o segundo byte de `Á Í Ï Ð Ý`. Maiuscula acentuada em nome de
+produto vindo de NF-e (`SAIDA`, `OLEO DIESEL`, `AGUA` em caixa alta) e a fonte
+mais comum — mas nao a unica: esses mesmos bytes aparecem como continuacao de
+outros caracteres, e `--output table` desenha molduras que os contem, entao a
+tabela estoura sem um acento sequer. Minuscula acentuada nao estoura: vira texto
+trocado, em silencio. Ou seja, o erro parece aleatorio e nao e — mas a regra de
+quando ele aparece e mais larga que "tem acento maiusculo".
 
 Isso **nao e erro do lancamento**: a escrita acontece, quem se perde e a leitura
 da resposta. Numa rodada real isso interrompeu a conferencia de 32 lancamentos,
