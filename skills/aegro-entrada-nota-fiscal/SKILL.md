@@ -275,6 +275,12 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
   `conciliate <doc> --item CODIGO=Nome --execute`. Fica salvo e reaproveitado.
   Nao existindo candidato, ofereca criar o elemento (`aegro elements create-item`)
   ou seguir sem baixa de estoque (explicando a consequencia).
+- **Livro Caixa (LCDPR)**: se a fazenda tem o modulo, a conta precisa dizer a
+  qual **imovel rural** pertence — e isso **nao** e o campo "Produtor".
+  `--auto-rural-property` casa a inscricao estadual do DESTINATARIO da nota com
+  a do imovel; `--rural-property <nome|IE|key>` quando voce ja sabe. Recusa por
+  IE ausente, nao cadastrada ou ambigua = **pergunte qual imovel**, nao escolha.
+  Ver `/aegro-financeiro` (secao 4.1.2).
 - **Fornecedor / produtor**: vem conciliado por CNPJ->empresa no `items`; se
   faltar, use `--create-company` no lancamento ou cadastre em `/aegro-financeiro`.
 
