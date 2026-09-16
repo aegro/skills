@@ -818,6 +818,10 @@ Cinco coisas que mudam como voce conduz a conversa:
    `--execute` ele segue em `vencimentoAnterior` — guarde a saida do comando
    antes de fechar o terminal. `--skip-verify` desliga a conferencia posterior,
    nunca esse registro.
+
+   Numa RECUSA este bloco nao sai: o servidor recusa antes de o preview ser
+   impresso, e quem nomeia as parcelas ali e a mensagem de erro (item 1). Nao
+   prometa ao usuario um `lido: false` que ele nao vai ver.
 4. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
    letras. Reabra com `reopen-installments` (abaixo) e repita o lote depois — e
    a sequencia que a propria recusa do servidor manda fazer.
