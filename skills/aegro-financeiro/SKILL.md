@@ -782,6 +782,14 @@ Cinco coisas que mudam como voce conduz a conversa:
 1. **E tudo-ou-nada.** Uma parcela inelegivel recusa o lote INTEIRO e nada e
    gravado. Nao existe "gravou metade" — entao nao ofereca conferir conta a
    conta depois de uma recusa.
+
+   **A recusa aponta a linha culpada, e voce deve repetir esse nome ao
+   usuario.** O servidor diz so o PROBLEMA (`not-found`, `other-farm`), nunca
+   qual parcela — num lote de 102 isso mandaria conferir 102 chaves a mao. O CLI
+   acrescenta "nao encontrou nesta fazenda: <chaves>", que sao as candidatas das
+   tres recusas de identidade (inexistente, de outra fazenda, excluida — a
+   leitura responde no escopo da fazenda do comando, entao as tres tem o mesmo
+   sintoma). Conduza pela lista: tire essas linhas e repita o lote.
 2. **O `--dry-run` e o veredito do SERVIDOR**, nao uma simulacao: ele chama o
    `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
    que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
