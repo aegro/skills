@@ -54,7 +54,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Ordem de compra          | `purchase-orders`      | Pedido de compra vinculado a uma empresa, com itens e valores.                             |
 | Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote.                                                 |
 | Vencimento em lote       | `update-installments`  | Altera o vencimento de parcelas JA lancadas. Atomico, com `/preview` do servidor no dry-run. |
-| Reabrir baixa            | `reopen-installments`  | Desfaz pagamento feito por engano. APAGA desconto e juros junto; exige `--confirm-undo`.   |
+| Reabrir baixa            | `reopen-installments`  | Desfaz pagamento feito por engano. APAGA desconto e juros junto; `--confirm-undo` em toda escrita (so o `--dry-run` dispensa). |
 | Tipo de categoria        | `--type`               | SYNTHETIC (nao recebe lancamentos, agrupa) ou ANALYTIC (recebe lancamentos diretamente).   |
 | Tipo de conta (bill)     | `--bill-type`          | PAYABLE (a pagar) ou RECEIVABLE (a receber).                                               |
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
@@ -854,8 +854,20 @@ devolve a conciliacao bancaria para pendente. **Desconto e juros digitados a mao
 nao se recuperam.** O `--dry-run` mostra esses valores campo a campo: mostre-os
 ao usuario e espere a confirmacao.
 
-O `--confirm-undo` e obrigatorio junto do `--execute`, e existe para isto: o
-`--execute` diz "nao e simulacao", nao diz "eu entendi que isto apaga".
+O `--confirm-undo` e obrigatorio em TODA escrita — nao so junto do `--execute`.
+A distincao importa porque **fora do safe mode o CLI escreve sem `--execute`**:
+`reopen-installments --key <chave>`, sozinho, e uma escrita. Quando o guard
+estava preso ao `--execute`, era justamente a invocacao mais curta que desfazia
+o pagamento sem ninguem confirmar nada. So o `--dry-run` dispensa a
+confirmacao, porque ele nao escreve.
+
+Ele existe para isto: o `--execute` diz "nao e simulacao", e nao diz "eu
+entendi que isto apaga".
+
+**A recusa nomeia a linha culpada aqui tambem.** `not-realized` (parcela ja
+aberta), `other-farm` e `not-found` dizem so o problema; o CLI acrescenta as
+chaves que a leitura previa nao encontrou. Repita esses nomes ao usuario —
+numa reabertura em lote e por eles que se conserta a selecao.
 
 **Reabrir nao conserta o vencimento** — e quase sempre e ele o errado. A sequencia
 completa de um lancamento a vista feito por engano e:
