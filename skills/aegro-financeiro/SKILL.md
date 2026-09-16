@@ -1,6 +1,6 @@
 ---
 name: aegro-financeiro
-requires-cli: 0.23.0
+requires-cli: 0.26.0
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
   parcelas, categorias, contas bancarias, empresas, pedidos de compra e
@@ -715,7 +715,7 @@ aegro received-fiscal-documents launch-bill <doc> --farm "<fazenda>" \
   --category "<categoria>" --bank-account "<conta>" --auto-rural-property --execute
 
 # quando voce ja sabe o imovel (nome, inscricao estadual ou ruralProperty::<id>)
-aegro received-fiscal-documents launch-bill <doc> ... --rural-property "0031021638" --execute
+aegro received-fiscal-documents launch-bill <doc> --farm "<fazenda>" ... \n  --rural-property "0031021638" --execute
 
 # conserto de conta JA lancada — uma por chamada
 aegro financial assign-cashbook bill::<id> --farm "<fazenda>" \
