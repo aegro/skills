@@ -131,7 +131,13 @@ Relacionamentos-chave:
    qualquer um deles, sozinho, apaga). Parcela nao se altera por aqui (ver
    regra 2).
 
-5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
+5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves
+   de parcela e marca todas como PAID de uma vez. Body:
+   `{"list": ["key1", "key2"]}`. Nao ha "unrealize" na API **publica** — mas a
+   baixa feita por engano TEM volta pelo CLI: `financial reopen-installments`,
+   pela API interna (secao 5, "Baixa feita por engano"). Nao e um desfazer de
+   graca: reabrir **apaga desconto e juros** junto com o pagamento, e desconto
+   digitado a mao nao se recupera. Continue confirmando ANTES do realize.
 
 6. **Apropriacao de custo**: ha DOIS eixos no produto, e os dois sao
    **GRAVAVEIS** pela API publica (CLI 0.23.0).
@@ -176,8 +182,9 @@ Relacionamentos-chave:
 11. **Semantica do paymentMethod**:
     - `PROMPT` ("A Vista" da UI; baixa confirmada): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
-      e marcada como paga na criacao. Como realize e irreversivel via API, **so
-      use PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
+      e marcada como paga na criacao. A baixa tem volta
+      (`reopen-installments`), mas a volta **apaga desconto e juros**: **so use
+      PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
       desejada**.
     - `INSTALLMENT` (parcelado): **exige `installments` nao-vazio** — sem elas a
       API retorna erro de validacao. Parcelas nascem NOT_PAID. Para conta a
@@ -304,8 +311,9 @@ aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"descriptio
 aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --execute
 
 # Realizar (pagar) multiplas parcelas em lote.
-# IRREVERSIVEL via API (nao ha unrealize) e sem --dry-run: liste as parcelas
-# antes (installments), apresente ao usuario e so rode apos confirmacao explicita.
+# Sem --dry-run: liste as parcelas antes (installments), apresente ao usuario e
+# so rode apos confirmacao explicita. Baixa errada se desfaz com
+# `reopen-installments`, mas reabrir apaga desconto e juros junto.
 aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb
 ```
 
@@ -382,7 +390,8 @@ categorias nem inferir de lancamentos antigos:
 aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 1500 \
   --cash-flow EXPENSE --payment-method PROMPT --complete
 
-# Compra JA PAGA a vista (PROMPT gera parcela unica paga E irreversivel via API);
+# Compra JA PAGA a vista (PROMPT gera parcela unica JA PAGA; desfazer a baixa
+# depois apaga desconto e juros);
 # nomes resolvidos, fazenda e data inferidas. Preview primeiro, apresente o plano
 # e so grave (sem --dry-run) apos confirmacao explicita do usuario.
 aegro financial create-bill --farm "<fazenda>" --description "Adubo NPK" --total-amount 1500 \
@@ -661,11 +670,13 @@ CONVERTIDO em BRL (registrando moeda/cotacao na descricao) ou lancar pelo app.
 **Pedidos de compra em moeda estrangeira SAO suportados**: valores convertidos
 para BRL + `--currency USD --currency-exchange-rate <cotacao>` (ver 4.5).
 
-### PROMPT cria parcela JA PAGA (e realize e irreversivel)
+### PROMPT cria parcela JA PAGA (e desfazer a baixa custa desconto e juros)
 
 `paymentMethod: PROMPT` gera (ou marca) a parcela unica como **realizada** na
 propria criacao — equivale a dizer que o dinheiro ja saiu/entrou. Nao ha
-unrealize via API. Conta a vencer com parcela unica = `INSTALLMENT` com 1
+unrealize na API publica; pelo CLI existe `reopen-installments` (API interna),
+que devolve a parcela para em aberto mas **apaga desconto e juros** daquela
+realizacao. Conta a vencer com parcela unica = `INSTALLMENT` com 1
 parcela. `INSTALLMENT` sem `installments` retorna erro de validacao;
 `NO_PAYMENT` descarta a conta bancaria e nao gera parcela.
 
@@ -808,7 +819,8 @@ Cinco coisas que mudam como voce conduz a conversa:
    antes de fechar o terminal. `--skip-verify` desliga a conferencia posterior,
    nunca esse registro.
 4. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
-   letras. Reabrir a baixa hoje so pela tela do Aegro.
+   letras. Reabra com `reopen-installments` (abaixo) e repita o lote depois — e
+   a sequencia que a propria recusa do servidor manda fazer.
 5. **O VALOR da parcela nao muda** por este caminho — o endpoint nao tem o
    campo. Se o pedido for valor, a resposta honesta e "pela tela".
 
@@ -986,9 +998,12 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
    para nenhum dos dois e o `update-bill`: ele responde 200 e nao grava (ver
    secao 5).
 
-2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize na API publica.
-   Realize e irreversivel por ela — confirme antes de executar; a correcao e
-   pela tela.
+2. **Desfazer pagamento nao e de graca.** Nao ha unrealize na API publica; o
+   caminho e `financial reopen-installments` (API interna), que exige
+   `--confirm-undo` porque **apaga desconto e juros** junto com o pagamento e
+   devolve a conciliacao para PENDING. Confirme ANTES de executar o realize —
+   existir conserto nao torna a baixa errada barata. E lembre que reabrir nao
+   conserta o VENCIMENTO: para isso, `update-installments` depois.
 
 3. **Nao misture formatos de moeda.** Envie `{"currencyCode": "BRL", "amount": X}`
    (MoneyPublicResource unificado na spec atual). Em ordem de compra,
@@ -1007,7 +1022,7 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 
 8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
 
-9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
+9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA, e desfazer isso depois apaga desconto e juros. Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
 
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 
