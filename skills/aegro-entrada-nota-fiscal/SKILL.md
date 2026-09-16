@@ -180,9 +180,11 @@ mudaram).
 data ja legivel e `vencimentoDefinidoPor`, dizendo se a data veio da nota ou da
 flag.
 
-**Isto e uma decisao do momento do lancamento.** Parcela ja lancada NAO se altera
-pelo CLI — se a data sair errada, a correcao e pela tela do Aegro, conta a conta.
-Por isso vale perguntar o prazo ANTES de lancar um lote.
+**Prefira acertar no lancamento.** A data errada tem conserto —
+`aegro financial update-installments` muda o vencimento de parcela ja lancada,
+em lote — mas o conserto exige levantar quais parcelas erraram, e o lote e
+atomico (uma linha inelegivel recusa o conjunto inteiro). Perguntar o prazo
+ANTES de lancar um lote continua sendo o barato.
 
 **Nunca traduza "a vista" direto para `--prompt`** sem confirmar que o
 pagamento ja ocorreu **e** que a baixa automatica e desejada. O proprio time de

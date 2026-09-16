@@ -102,13 +102,15 @@ Relacionamentos-chave:
 2. **NAO existe CRUD avulso de parcela na API publica**: os unicos endpoints
    de installments sao `filter`, `realizeList`
    e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
-   sao pagas via `realize`. **Vencimento e valor de parcela ja lancada mudam
-   pela tela do Aegro, nunca pelo `update-bill`**: `installments` so existe no
-   schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch. A API
-   **ignora campo que nao declara, e isso e por desenho** — quem chama e que
-   precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o campo antes
-   de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa. Nao existe
-   comando de lote para parcela.
+   sao pagas via `realize`. **Nunca pelo `update-bill`**: `installments` so
+   existe no schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de
+   patch. A API **ignora campo que nao declara, e isso e por desenho** — quem
+   chama e que precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o
+   campo antes de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa.
+   **O VENCIMENTO de parcela ja lancada tem caminho proprio**:
+   `financial update-installments`, um lote por fazenda pela API interna (secao
+   5, "Parcelas: sem CRUD avulso, mas o VENCIMENTO muda em lote"). O **VALOR** e
+   que segue so pela tela do Aegro — o endpoint de lote nao tem esse campo.
 
 3. **Formato de valor monetario**: a spec atual unificou em
    `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
@@ -921,8 +923,10 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 1. **Nao invente comandos de parcela.** `create-installment`,
    `update-installment` e `delete-installment` NAO existem (nem no CLI nem na
    API). Parcelas nascem no `create-bill` (campo `installments`); pagamento via
-   `realize`; **correcao de vencimento ou valor pela tela do Aegro** — o
-   `update-bill` responde 200 e nao grava (ver secao 5).
+   `realize`; **vencimento de parcela ja lancada pelo `update-installments`**
+   (lote por fazenda), e o **valor** so pela tela do Aegro. O que nunca serve
+   para nenhum dos dois e o `update-bill`: ele responde 200 e nao grava (ver
+   secao 5).
 
 2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize na API publica.
    Realize e irreversivel por ela — confirme antes de executar; a correcao e
