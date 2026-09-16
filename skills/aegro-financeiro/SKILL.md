@@ -777,7 +777,7 @@ aegro financial update-installments --farm "<fazenda>" \
 aegro financial update-installments --farm "<fazenda>" --map vencimentos.csv --execute
 ```
 
-Quatro coisas que mudam como voce conduz a conversa:
+Cinco coisas que mudam como voce conduz a conversa:
 
 1. **E tudo-ou-nada.** Uma parcela inelegivel recusa o lote INTEIRO e nada e
    gravado. Nao existe "gravou metade" — entao nao ofereca conferir conta a
@@ -786,9 +786,21 @@ Quatro coisas que mudam como voce conduz a conversa:
    `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
    que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
    (quantas parcelas, quantas contas, quanto soma).
-3. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
+3. **Mostre o `de -> para`, nao so o alvo.** O preview traz cada linha como
+   `{parcela, de, para, mudou, lido}`. Duas coisas so aparecem ali: `mudou:
+   false` denuncia a parcela que JA esta na data pedida (lote mirando a chave
+   errada tem essa cara), e `lido: false` diz que a leitura nao trouxe aquela
+   parcela — nao que ela nao muda.
+
+   **Este e o unico registro do vencimento anterior que vai existir.** A resposta
+   da escrita devolve so `key` e valor realizado, e o corpo enviado so tem o
+   alvo: sem o `de`, um lote aplicado errado nao tem para onde voltar. No
+   `--execute` ele segue em `vencimentoAnterior` — guarde a saida do comando
+   antes de fechar o terminal. `--skip-verify` desliga a conferencia posterior,
+   nunca esse registro.
+4. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
    letras. Reabrir a baixa hoje so pela tela do Aegro.
-4. **O VALOR da parcela nao muda** por este caminho — o endpoint nao tem o
+5. **O VALOR da parcela nao muda** por este caminho — o endpoint nao tem o
    campo. Se o pedido for valor, a resposta honesta e "pela tela".
 
 Como montar o lote: pegue as chaves em `aegro financial installments` (filtre
