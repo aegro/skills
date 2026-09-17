@@ -270,16 +270,66 @@ o bloqueio do CLI como segunda rede, nao como a primeira.
 Conciliar preserva o **detalhamento por item** (elemento do catalogo, custo,
 estoque). Conduza a conciliacao salvo opt-out explicito:
 
-- **Produtos**: para cada item use a **sugestao** do `items` ou busque candidatos
-  (`aegro elements list -s "<nome do item>"`); rode
-  `conciliate <doc> --item CODIGO=Nome --execute`. Fica salvo e reaproveitado.
+- **Produtos**: para cada item, o `items` traz `sugestaoCatalogo` (quando ainda
+  nao ha de/para) ou `conciliadoCom` (quando ja ha). Busque tambem candidatos com
+  `aegro elements list -s "<nome do item>"`. So depois rode
+  `conciliate <doc> --item CODIGO=Nome --execute`.
   Nao existindo candidato, ofereca criar o elemento (`aegro elements create-item`)
   ou seguir sem baixa de estoque (explicando a consequencia).
 - **Fornecedor / produtor**: vem conciliado por CNPJ->empresa no `items`; se
   faltar, use `--create-company` no lancamento ou cadastre em `/aegro-financeiro`.
 
+> **`sugestaoCatalogo` e PALPITE, nao resposta — confirme com o usuario antes de
+> gravar.** Ela vem de similaridade de TEXTO sobre a descricao da nota, com o
+> limiar mais frouxo do sistema (0.85), e o servidor **nao usa** o codigo do
+> produto do fornecedor, o NCM nem o GTIN, que estao todos no XML. O score nao e
+> exposto: voce nao tem como saber se a sugestao veio quase certa ou no limite.
+>
+> Errar aqui e pior do que nao conciliar. Sem cadastro o fluxo avisa; com o
+> elemento errado o custo e o estoque vao para o **produto errado em silencio**.
+> E o de/para fica **salvo por (fazenda, fornecedor, codigo do item)**: a partir
+> dali TODA nota seguinte daquele fornecedor recebe o elemento errado
+> automaticamente, como se fosse fato, sem passar por similaridade de novo. Foi
+> assim que 27 itens divergentes apareceram em 82 notas de um mesmo cliente, numa
+> rodada real.
+>
+> Casos reais medidos, todos aceitos pela similaridade:
+>
+> | descricao na NF-e | sugerido (errado) |
+> |---|---|
+> | `ADUBO FB 20 00 20` | `ADUBO BT 20 00 20` |
+> | `ADUBO MS KCL 00 00 60` | `ADUBO TO KCL 00 00 60` |
+> | `SOLUPAN SD4=40 5LT SINODET` | `SOLUPAN GALAO` |
+> | `ONU 1202 - OLEO DIESEL B S500 ADITIVADO` | `DIESEL` |
+>
+> Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado e
+> peca confirmacao — sempre, para toda sugestao.** Nao julgue voce mesmo se sao
+> "obviamente o mesmo produto": `ADUBO FB 20 00 20` e `ADUBO BT 20 00 20` passam
+> nesse teste e sao adubos de marcas diferentes. Quem erra ao olhar as duas
+> strings e o mesmo que erraria de novo.
+>
+> O que voce PODE decidir sozinho e o contrario: quando o nome do catalogo esta
+> inteiramente contido na descricao da nota (`GC GASOLINA COMUM` ->
+> `GASOLINA COMUM`), a nota so disse mais, e isso e seguro. Qualquer palavra no
+> catalogo que a nota nao diz — marca, formulacao, concentracao, embalagem —
+> exige o "sim" do usuario.
+>
+> Ha um caso que nem isso pega: a nota dizer MAIS e ainda assim ser outro
+> produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`; aditivado e
+> outro produto). Em combustivel e defensivo, confirme mesmo no caso "contido".
+>
+> Suspeitando de de/para ja salvo errado, o conserto e `conciliate` com o item
+> certo — ele regrava o vinculo e vale para as proximas notas.
+
 > **Conciliacao parcial -> conta SEM baixa de estoque** (o backend exige total =
-> soma dos insumos; e tudo-ou-nada). Para ter estoque, concilie **todos** os itens.
+> soma dos insumos; e tudo-ou-nada). Para ter estoque, concilie **todos** os
+> itens.
+>
+> Em CLI recente o `launch-bill --stock-location` **recusa** (exit 4) quando a
+> entrada de estoque nao seria possivel — item sem conciliacao, ou nenhum item
+> estocavel. Em CLI mais antigo ele LANCA assim mesmo, com rc 0 e sem estoque.
+> Nao conte com a recusa: confira o resultado de qualquer jeito. (Se precisar
+> saber, `aegro --version` diz a versao.)
 
 ### 5. Lancar — sempre dry-run primeiro
 
