@@ -56,9 +56,11 @@ nomes.
 Sintaxe completa e exemplos em `/aegro-financeiro` (secao 4.1.1). **Parcelas
 nascem no proprio `create-bill`** (campo `installments`) -- nao existe CRUD
 avulso de parcela na API. Para ajustar a **conta**, use `financial update-bill`
-(PATCH) ou o app; para ajustar **parcela** (vencimento ou valor), so pela tela:
+(PATCH) ou o app. Para ajustar **parcela**, o caminho NUNCA e o `update-bill`:
 `installments` nao existe no schema do patch, e a API ignora campo que nao
-declara — por desenho, nao por defeito. O CLI recusa o campo antes de enviar.
+declara — por desenho, nao por defeito. O CLI recusa o campo antes de enviar. O
+**vencimento** sai por `financial update-installments` (lote por fazenda, com
+`--dry-run` que e o veredito do servidor); o **valor**, so pela tela.
 
 - **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
   anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API
@@ -104,8 +106,8 @@ Pagamento que ja ocorreu mas cuja baixa ainda NAO foi confirmada segue o ramo
 `A VENCER` (`INSTALLMENT` com 1 parcela) -- nunca `JA PAGO`/`PROMPT` so por
 causa do vencimento ja ter passado ou ser hoje.
 
-Atencao: `PROMPT` marca a parcela como **paga na criacao** (irreversivel via
-API). **"A vista" na fala do usuario descreve a condicao de pagamento
+Atencao: `PROMPT` marca a parcela como **paga na criacao** (desfazer depois
+exige `financial reopen-installments`, que apaga desconto e juros junto). **"A vista" na fala do usuario descreve a condicao de pagamento
 (vencimento imediato), nao a baixa**: conta a vista cuja baixa NAO foi
 confirmada - mesmo com vencimento hoje ou na data da nota - e `INSTALLMENT`
 com 1 parcela (padrao do time de Servicos, para o sistema nao marcar "pago"
@@ -193,9 +195,10 @@ verificar que tudo foi criado corretamente.
 
 1. `--payment-method PROMPT`, sem `--installments`: a API gera **parcela unica
    JA PAGA** automaticamente (vencimento = data do lancamento)
-2. **Isso equivale a um realize, que e irreversivel via API** (nao ha
-   "unrealize") -- confirmar com o usuario que o pagamento de fato ocorreu
-   E que ele quer a parcela ja baixada
+2. **Isso equivale a um realize.** Desfazer depois e possivel
+   (`financial reopen-installments`, API interna), mas a reabertura **apaga
+   desconto e juros** daquela realizacao -- confirmar com o usuario que o
+   pagamento de fato ocorreu E que ele quer a parcela ja baixada
 3. Se a conta e "a vista" mas a baixa nao foi confirmada - vencimento futuro
    OU na propria data do lancamento - use `INSTALLMENT` com 1 parcela NOT_PAID
    e realize depois (padrao do time de Servicos: evita a baixa automatica e o
@@ -302,6 +305,12 @@ em /aegro-financeiro (regra 6).
 8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
    categoria ja cadastrada de cada item; categoria unica na bill distorce o
    DRE por categoria
+8b. **Baixa por engano tem volta** -- conta "a vista" nasce com a parcela JA
+    PAGA. Se foi engano: `financial reopen-installments --dry-run` (mostra o que
+    sera apagado -- inclusive DESCONTO e JUROS, que nao se recuperam), confirme
+    com o usuario, e so entao `--execute --confirm-undo`. Depois corrija o
+    vencimento com `financial update-installments`
+
 9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
    patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
    defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'` --
