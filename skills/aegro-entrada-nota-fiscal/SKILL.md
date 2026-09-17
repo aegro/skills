@@ -128,7 +128,8 @@ Opcoes do `launch-bill` que replicam a UI web:
 ### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
 
 No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
-criacao, irreversivel via API - correcao so pelo app). Quando o usuario diz
+criacao; desfazer depois pede `financial reopen-installments`, que apaga
+desconto e juros junto). Quando o usuario diz
 que a nota "e a vista" - ou a nota vem sem duplicatas - ele normalmente
 descreve a **condicao de pagamento** (vencimento na data da nota), nao uma
 ordem para dar baixa.
