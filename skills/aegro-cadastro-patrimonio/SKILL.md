@@ -90,7 +90,8 @@ Confirmar que nao ha duplicata pelo nome/fabricante.
 > Se o usuario insistir que a maquina existe e o `list` discordar, o desempate e
 > `aegro assets get <chave>`: ele responde mesmo excluido, com `isDeleted: true`
 > (o campo `status` continua dizendo `ACTIVE` — e a situacao de antes da
-> exclusao). Ver a regra 8 de `aegro-patrimonial`.
+> exclusao). Ver em `aegro-patrimonial` a regra "`status: ACTIVE` nao quer dizer que o
+> patrimonio existe".
 
 ### 2. Criar o patrimonio
 

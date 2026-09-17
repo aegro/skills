@@ -320,7 +320,7 @@ exit 0 — o CLI avisa no stderr quando detecta isso.
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
-| `aegro assets get <key>` | Busca patrimonio por chave. **Unica rota que enxerga excluido** — confira `isDeleted`, nao `status` (regra 8) | `--output` |
+| `aegro assets get <key>` | Busca patrimonio por chave. **Unica rota que enxerga excluido** — confira `isDeleted`, nao `status` | `--output` |
 | `aegro assets list` | Lista patrimonios com filtros. **Nunca devolve excluido** | `--type`, `--machine-type`, `--status` (`ACTIVE`\|`ARCHIVED`), `--page`, `--output` |
 | `aegro assets create-machine` | Cria maquina | `--name` (obrig.), `--machine-type` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--is-implement`, `--tag-or-model`, `--observations` |
 | `aegro assets create-vehicle` | Cria veiculo | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--odometer`, `--tag-or-model`, `--observations` |
