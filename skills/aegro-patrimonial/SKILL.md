@@ -294,7 +294,7 @@ nao ve esse aviso: confira o campo.
 
 #### Filtrar por situacao
 
-`aegro assets list --status ACTIVE|ARCHIVED` (repetivel; sem a flag vem as duas).
+`aegro assets list --status ACTIVE --status ARCHIVED` (repetivel; sem a flag vem as duas).
 **`DELETED` nao e um valor** — exclusao e outro eixo, e nenhuma combinacao de
 `--status` devolve excluido.
 

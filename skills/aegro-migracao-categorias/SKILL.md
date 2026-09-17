@@ -729,7 +729,7 @@ fornecedor, indice ou campo denormalizado.
 Se a chave for de patrimonio:
 
 ```bash
-aegro assets get asset::<a-chave-do-corte> --farm "<Fazenda>"
+aegro assets get asset::CHAVE_DO_CORTE --farm "<Fazenda>"
 ```
 
 Olhe **`isDeleted`**, nao `status`. Patrimonio excluido responde **200 com o
