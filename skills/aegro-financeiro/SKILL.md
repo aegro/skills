@@ -1,6 +1,6 @@
 ---
 name: aegro-financeiro
-requires-cli: 0.23.0
+requires-cli: 0.26.0
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
   parcelas, categorias, contas bancarias, empresas, pedidos de compra e
@@ -59,7 +59,9 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Documento fiscal         | `fiscalNumber`         | Objeto aninhado com `code`, `fiscalNumberType` (CPF/CNPJ) e `countryCode`.                |
 | Item do lancamento       | `inputs`               | Insumo/produto dentro da bill. Cada item pode ter categoria financeira PROPRIA.            |
 | Metodo de pagamento      | `--payment-method`     | PROMPT (rotulo "A Vista" da UI: parcela unica JA PAGA - **nao** e sinonimo de "a vista" dito pelo usuario, ver regra 11), INSTALLMENT (parcelado), NO_PAYMENT (sem pagamento), UNKNOWN. |
-| Produtor                 | `producerKey`          | Empresa "produtor" que organiza lancamentos no produto. Aceito no create e no patch; pelo CLI, so via `update-bill --body`. |
+| Produtor                 | `producerKey`          | Empresa "produtor" que organiza lancamentos no produto. Aceito no create e no patch; pelo CLI, so via `update-bill --body`. **NAO atribui nada ao Livro Caixa** — ver a linha abaixo.                                   |
+| Livro Caixa (LCDPR)      | `--rural-property`     | Imovel rural a que a conta pertence para o Livro Caixa Digital do Produtor Rural. Campo DIFERENTE do Produtor. So na API interna (OAuth).                                            |
+| Imovel rural             | `ruralProperty::`      | Destino da atribuicao no Livro Caixa, identificado pela **inscricao estadual**. `aegro rural-properties list --all-farms`.        |
 
 ---
 
@@ -203,9 +205,17 @@ Relacionamentos-chave:
     da bill. `producerKey` e aceito na criacao e no PATCH, e a leitura devolve
     `producer` inteiro. **Pelo CLI so da para definir depois**: `create-bill` nao
     tem `--producer` nem `--body`, entao o caminho e criar e em seguida
-    `update-bill --body '{"producerKey": "company::<id>"}'`. Cliente que organiza
-    por produtor rural nao precisa mais do app — mas sao duas chamadas por
+    `update-bill --body '{"producerKey": "company::<id>"}'` — duas chamadas por
     lancamento; avise antes de lancar em massa.
+
+14. **"Produtor" NAO e o Livro Caixa, e a diferenca ja custou caro**: quem
+    entrega o LCDPR precisa dizer a qual **imovel rural** cada conta pertence, e
+    isso e outro campo, em outro bloco da tela. O Produtor apenas FILTRA a lista
+    de imoveis oferecida ali. Preencher o Produtor e deixar o lancamento
+    "organizado por produtor rural" NAO atribui coisa alguma: a parcela paga cai
+    no LCDPR como **nao-atribuida**, e alguem atribui a mao depois. Se o cliente
+    tem Livro Caixa, use `--rural-property` (ver 4.1.2) — nunca ofereca o
+    Produtor como se resolvesse.
 
 ---
 
@@ -672,9 +682,73 @@ nem `--body`, entao pelo CLI o produtor entra num segundo passo:
 aegro financial update-bill bill::<id> --farm "<fazenda>"   --body '{"producerKey": "company::<id>"}' --dry-run
 ```
 
-A chave vem de `companies list`. Para clientes que organizam o financeiro por
-produtor rural isso resolve a correcao em massa — conte duas chamadas por
-lancamento.
+A chave vem de `companies list`.
+
+**Isto organiza o financeiro por produtor. Nao atribui nada ao Livro Caixa** —
+ver a secao seguinte antes de prometer qualquer coisa a cliente que entrega o
+LCDPR.
+
+### 4.1.2 Livro Caixa do Produtor Rural (LCDPR)
+
+Sao **dois campos irmaos e independentes** na mesma tela, e confundi-los ja fez
+uma sessao de campo acreditar que a apropriacao estava automatizada quando so o
+Produtor era preenchido:
+
+| | "Produtor" | "Livro Caixa" |
+|---|---|---|
+| Campo | `producerCompanyId` / `producerKey` | `statementResultInformation` |
+| O que faz | organiza a conta; **filtra** a lista de imoveis | **atribui** a conta a um imovel rural |
+| API publica | existe | **nao existe** — so a interna, com `aegro auth login` |
+
+Sem atribuicao, a parcela paga entra no LCDPR como **nao-atribuida** e alguem
+atribui a mao, uma a uma. Com ela, o lancamento ja nasce no imovel certo.
+
+```bash
+# os destinos possiveis, com a INSCRICAO ESTADUAL, que e por onde o cliente
+# reconhece o imovel. --all-farms porque o livro e compartilhado entre fazendas:
+# o imovel certo pode estar cadastrado em OUTRA
+aegro rural-properties list --all-farms --farm "<fazenda>" --output table
+
+# lancando NF-e: o automatico casa a inscricao estadual do DESTINATARIO da nota
+# com a do imovel (normaliza pontuacao e zeros a esquerda)
+aegro received-fiscal-documents launch-bill <doc> --farm "<fazenda>" \
+  --category "<categoria>" --bank-account "<conta>" --auto-rural-property --execute
+
+# quando voce ja sabe o imovel (nome, inscricao estadual ou ruralProperty::<id>)
+aegro received-fiscal-documents launch-bill <doc> --farm "<fazenda>" ... \n  --rural-property "0031021638" --execute
+
+# conserto de conta JA lancada — uma por chamada
+aegro financial assign-cashbook bill::<id> --farm "<fazenda>" \
+  --rural-property "<nome|IE|key>" --execute
+```
+
+**O que fazer quando o automatico para.** `--auto-rural-property` recusa (sem
+criar a conta) em tres casos, e todos pedem a mesma coisa: **pergunte ao
+operador qual imovel**, nao escolha.
+
+| Recusa | O que aconteceu | O que pedir |
+|---|---|---|
+| `RURAL_PROPERTY_NOT_FOUND` (nota sem IE) | a NF-e nao traz inscricao do destinatario | o imovel, por nome ou IE |
+| `RURAL_PROPERTY_NOT_FOUND` (IE sem imovel) | a IE da nota nao esta cadastrada em nenhum imovel | confirmar se falta cadastro, ou qual imovel usar |
+| `AMBIGUOUS_RURAL_PROPERTY` | dois imoveis com a mesma IE | qual dos dois, pelo nome exato ou pela key |
+
+Nunca "resolva" escolhendo o primeiro: a atribuicao vai para a Receita, e uma
+atribuicao **errada e pior que ausente** — a ausente aparece na lista de
+pendencias do LCDPR, a errada nao.
+
+**Outras recusas:**
+
+- `CASHBOOK_NOT_ENABLED` — a fazenda nao tem o modulo Livro Caixa. Lance sem a
+  flag e diga ao cliente que o modulo e um adicional do plano.
+- `--no-payment` + atribuicao — conta sem parcela nunca gera linha no livro.
+- `NOT_PERSISTED` — o servidor aceitou e **descartou** a atribuicao. A causa
+  conhecida e falta da permissao de atribuir ao Livro Caixa no perfil do
+  usuario; a conta foi criada, so a atribuicao faltou. Nao repita o lancamento:
+  conserte com `financial assign-cashbook`.
+
+**Nao existe pelo CLI:** atribuir no `financial create-bill` (lancamento manual,
+sem NF-e) — aquele comando usa a API publica, que nao tem o campo. E pedido de
+compra nao tem Livro Caixa nenhum.
 
 ### Parcelas: sem CRUD avulso na API
 

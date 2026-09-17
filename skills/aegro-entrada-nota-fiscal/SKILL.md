@@ -1,6 +1,6 @@
 ---
 name: aegro-entrada-nota-fiscal
-requires-cli: 0.18.0
+requires-cli: 0.26.0
 description: >-
   Orquestra a entrada de notas fiscais recebidas da SEFAZ no Aegro pela CLI:
   lista as notas nao lancadas, apresenta a ficha da nota (resumo identificavel +
@@ -276,6 +276,12 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
   `conciliate <doc> --item CODIGO=Nome --execute`.
   Nao existindo candidato, ofereca criar o elemento (`aegro elements create-item`)
   ou seguir sem baixa de estoque (explicando a consequencia).
+- **Livro Caixa (LCDPR)**: se a fazenda tem o modulo, a conta precisa dizer a
+  qual **imovel rural** pertence — e isso **nao** e o campo "Produtor".
+  `--auto-rural-property` casa a inscricao estadual do DESTINATARIO da nota com
+  a do imovel; `--rural-property <nome|IE|key>` quando voce ja sabe. Recusa por
+  IE ausente, nao cadastrada ou ambigua = **pergunte qual imovel**, nao escolha.
+  Ver `/aegro-financeiro` (secao 4.1.2).
 - **Fornecedor / produtor**: vem conciliado por CNPJ->empresa no `items`; se
   faltar, use `--create-company` no lancamento ou cadastre em `/aegro-financeiro`.
 

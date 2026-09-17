@@ -1,6 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
-requires-cli: 0.23.0
+requires-cli: 0.26.0
 description: >-
   Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
   categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
@@ -304,9 +304,17 @@ em /aegro-financeiro (regra 6).
    DRE por categoria
 9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
    patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
-   defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'`.
-   Cliente que organiza por produtor rural nao precisa mais do app -- mas sao
+   defina depois, com `update-bill --body '{"producerKey": "company::<id>"}'` --
    duas chamadas por lancamento
+
+10. **"Produtor" NAO e o Livro Caixa** -- se o cliente entrega o LCDPR, ele
+    precisa que cada conta diga a qual **imovel rural** pertence, e isso e outro
+    campo. Preencher o Produtor deixa a parcela **nao-atribuida** no livro.
+    Lancando NF-e, use `--auto-rural-property` (casa a inscricao estadual do
+    destinatario da nota) ou `--rural-property <nome|IE|key>`; para conta ja
+    lancada, `financial assign-cashbook`. Se o comando recusar por IE ausente,
+    nao cadastrada ou ambigua, **pergunte qual imovel** -- atribuicao errada e
+    pior que ausente. Detalhes em `/aegro-financeiro` (secao 4.1.2)
 
 ## Entregue o Link da Conta
 
