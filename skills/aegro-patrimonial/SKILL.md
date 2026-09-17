@@ -283,7 +283,7 @@ Cada rota se comporta de um jeito, e a diferenca decide o que voce faz:
 |------|---------------------|------------------------|
 | `assets get <chave>` | **200**, com `isDeleted: true` | Unica forma de ler um excluido. Serve para descobrir o **nome** de uma chave morta que aparece em lancamento antigo |
 | `assets list` e resolucao por **nome** | **nunca aparece** | Resolver por nome e seguro: maquina excluida nao resolve, e voce recebe "nao encontrado" |
-| `assets update-*` | **404** | Nao da para editar. O CLI rele e diz qual dos tres casos e (inexistente, outra fazenda, excluido) |
+| `assets update-*` | **404** | Nao da para editar. O mesmo 404 sai para chave inexistente, patrimonio de outra fazenda, patrimonio excluido **e tipo trocado** (`update-machine` num veiculo). O CLI rele e nomeia a causa quando consegue; quando nao consegue, mantem o erro original |
 
 O risco, portanto, nao esta em digitar nome — esta em **colar uma chave** vinda de
 planilha, export antigo ou outro sistema. Quando uma chave colada falhar, rode

@@ -717,13 +717,16 @@ A lista completa de cada categoria (quem falhou, quem nao foi tentada, quem
 mudou colateral) esta em **`<plano>.verify.json`** — o stdout corta em 20 de
 proposito. E desse arquivo que sai o relatorio da secao 9.2.
 
-### 9.0 Falha concentrada em poucas chaves? Cheque patrimonio EXCLUIDO
+### 9.0 Falha concentrada em poucas chaves? E referencia morta, nao estatistica
 
 **Sintoma:** a falha nao esta espalhada — ela e **100%/0%**. Toda conta que cita
-um determinado `assetKey` falha; todas as outras passam.
+uma determinada chave falha; todas as outras passam.
 
-Corte assim por chave e assinatura de **referencia morta**. Cheque isto **antes**
-de investigar fornecedor, indice ou campo denormalizado:
+Corte assim por chave e assinatura de **referencia morta** — alguma entidade que
+aquelas contas apontam nao existe mais. Cheque a chave **antes** de investigar
+fornecedor, indice ou campo denormalizado.
+
+Se a chave for de patrimonio:
 
 ```bash
 aegro assets get asset::<a-chave-do-corte> --farm "<Fazenda>"
@@ -738,27 +741,14 @@ cadastro inteiro** e com este par:
 ```
 
 `status` guarda a situacao de **antes** da exclusao. Ler `ACTIVE` e concluir "a
-maquina esta ativa" manda a investigacao para o lado errado — e o erro mais caro
-deste dominio.
+maquina esta ativa" manda a investigacao para o lado errado.
 
-O que o CLI ja faz por voce:
-
-| Onde | O que aparece |
-|---|---|
-| `plan`, conta **PER_ITEM** com rateio em patrimonio excluido | Bloqueada: `blockedReason: deleted-asset-apportion`, e `blockedDetail` traz as chaves culpadas |
-| `plan`, conta **WHOLE_BILL** com o mesmo problema | **Migra normalmente** — o patch dela nao toca na apropriacao. Nao bloqueie por conta propria |
-| `apply` com falhas por essa causa | `falhasPorPatrimonio` no resumo agrupa as falhas por chave, e o stderr nomeia os patrimonios |
-
-`falhasPorPatrimonio` e o que transforma "40 contas falharam" em "40 falhas, 3
-patrimonios, eis quais" — use esse agrupamento no relatorio da secao 9.2.
-
-**Como resolver:** o rateio dessas contas precisa apontar para um cadastro ativo,
-e isso e **pela tela** — o CLI nao troca patrimonio de rateio. Leve as chaves com
-o **nome** da maquina (o `assets get` devolve mesmo excluida), pergunte para qual
-cadastro ativo cada uma vai, e gere o plano de novo.
-
-> Se o corte 100%/0% for por chave de **talhao**, vale o mesmo raciocinio — mas
-> ali nao existe campo que confirme a exclusao.
+> **Patrimonio excluido no rateio NAO impede a migracao.** Medido: o PATCH que
+> reenvia os grupos de apropriacao com um `assetKey` excluido **grava**, sem
+> erro — em conta ja persistida o servidor carrega o ativo mesmo excluido, de
+> proposito, para preservar historico. Entao **nao bloqueie essas contas** e nao
+> as mande para "arrumar na mao": elas migram. Use o `assets get` para
+> **explicar** um corte 100%/0%, nao para prever um.
 
 ### 9.1 Quando o Aegro nao grava e ninguem sabe por que: PERGUNTE
 
