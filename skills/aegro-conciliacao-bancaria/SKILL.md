@@ -1,5 +1,6 @@
 ---
 name: aegro-conciliacao-bancaria
+requires-cli: 0.27.0
 description: >-
   Concilia o extrato bancario com o financeiro do Aegro pela CLI: importa o
   OFX, casa entradas do extrato com os movimentos internos, confirma em lote e
