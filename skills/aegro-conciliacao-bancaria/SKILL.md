@@ -225,6 +225,32 @@ Quando a contrapartida e uma conta do proprio cliente, o certo e transferencia:
   <-> investimento; concilie contra elas.
 - Regra geral: contrapartida em conta do proprio cliente → **transferencia**.
 
+### A moeda da transferencia: `BRL`, exatamente assim
+
+**Nao passe `--currency` com nada alem de `BRL` maiusculo.** O servidor nao
+valida esse campo e nao recusa o que nao entende — ele grava e responde
+sucesso. Criando transferencia de 77,77 e lendo o registro de volta:
+
+| Moeda enviada | O que ficou gravado |
+|---|---|
+| `BRL` | `{BRL, 77.77}` — certo |
+| `USD`, `EUR` | `{BRL, 77.77}` — moeda trocada em silencio |
+| `brl`, `XYZ` | **`{BRL, 0}` — valor zerado**, com resposta de sucesso |
+
+Ou seja: um erro de caixa (`brl` em vez de `BRL`) grava uma transferencia de
+**R$ 0,00** dizendo que deu certo, e o buraco so aparece quando o saldo nao
+fecha no fim do periodo — que e exatamente o que esta conciliacao existe para
+evitar.
+
+Desde a 0.27.0 o CLI recusa localmente qualquer valor fora de `BRL`, antes de
+enviar. Em versao anterior a recusa nao existe: ali a unica protecao e nao
+escrever `--currency` (o default e `BRL`) e **reler a transferencia depois de
+criar**, conferindo o valor.
+
+O mesmo vale na leitura: no `bank-movements list`, moeda diferente de `BRL`
+exato faz o servidor **descartar a faixa `--min-amount`/`--max-amount`** e
+devolver tudo. Quem filtrou le a base inteira achando que e o recorte pedido.
+
 ---
 
 ## 11. Extrato so em PDF (baixa assistida — menor fidelidade)
@@ -257,6 +283,9 @@ Leituras nao precisam de `--execute`; escritas usam `--dry-run` / `--execute`.
 | `bank-reconciliation history` | `--account <key>` `[--start-date --end-date --status]` | leitura |
 | `bank-reconciliation accounts` | `--farm-id <idLegado>` (devolve `id` cru → prefixe `bankAccount::`) | leitura |
 | `bank-accounts list` | (contexto) — traz a **key** `bankAccount::...` | leitura |
+| `bank-transfers create` | `--source-key --target-key --amount --entry-date` `[--description --tag]` `--execute` | escrita |
+| `bank-transfers list` | `[--start-date --end-date --source-key --target-key -s]` | leitura |
+| `bank-movements list` | `[--bank-account-key --start-date --end-date]` `[--min-amount --max-amount]` | leitura |
 | `financial settle` | `--key installment::<id>` `--date` `[--discount\|--interest\|--realized-amount]` `--execute` | escrita |
 | `financial realize` | `--key <inst>...` `--execute` (baixa simples, sem ajuste) | escrita |
 | `bank-reconciliation clear-pending` | `--account-id <id>` `--execute` (destrutivo) | escrita |
@@ -272,6 +301,7 @@ Leituras nao precisam de `--execute`; escritas usam `--dry-run` / `--execute`.
 - NAO usar `ignore` como atalho: descasa o saldo. Uso legitimo = duplicata de OFX / entrada que nao reflete no Aegro.
 - NAO alterar a despesa (`value`) para "fechar a conta": use **desconto/juros** na baixa (`settle`).
 - NAO lancar fatura de cartao como despesa, nem resgate como receita — use **transferencia**.
+- NAO mandar `--currency` com outra coisa alem de `BRL` maiusculo: o servidor aceita calado e pode gravar **valor zero** (ver §10).
 - NAO terminar um turno sem um **placar** e um **proximo passo** sugerido.
 
 ---
