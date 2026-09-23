@@ -31,10 +31,10 @@ fertilizantes). Base para todos os workflows agronomicos.
 | **Plano** | `plan` | Planejamento: quais talhoes, quais insumos, datas previstas. |
 | **Realizacao** | `realization` | Execucao efetiva. Uma atividade pode ter multiplas realizacoes. |
 | **Operacao (tag)** | `tag` | Nome/etiqueta da atividade, exibido como "Operacao" no app web/mobile. Na API o campo se chama `tag`. |
-| **Romaneio** | `harvest-log` | Registro de pesagem de colheita. Pesos: bruto, tara, liquido, descontado, produto. |
+| **Romaneio** | `harvest-log` | Registro de pesagem de colheita. Pesos: bruto, tara, produto (bruto - tara), descontado (soma dos descontos) e liquido (produto - descontado). |
 | **Rateio** | `crop-prorate` | Distribuicao proporcional de custos entre talhoes. Soma = 100%. |
 | **Elemento** | `element` | Insumo: semente, defensivo, fertilizante, item ou servico. |
-| **Produtividade** | - | Sacas/ha. Soja: peso descontado (kg) / area (ha) / 60. |
+| **Produtividade** | - | Sacas/ha. Soja: peso liquido (kg) / area (ha) / 60. |
 | **Desconto** | `harvest-discount` | Reducoes no peso: umidade, impureza, avariados. Por safra. |
 
 **Chaves:** Formato `tipo::hex` (ex: `crop::68dd6719e90f726622b7f549`). Hexadecimais sao IDs MongoDB.
@@ -73,9 +73,27 @@ Sem crop-glebes vinculados, a safra nao tem operacoes possiveis.
 ### Tipos de Defensivo
 `HERBICIDE` (plantas daninhas), `INSECTICIDE` (insetos), `FUNGICIDE` (doencas), `ACARICIDE` (acaros), `OTHER` (adjuvantes).
 
+### Pesos do romaneio
+
+| Peso | Campo | O que e |
+|------|-------|---------|
+| Bruto | `totalGrossWeight` | Caminhao cheio na balanca |
+| Tara | `tareWeight` | Caminhao vazio |
+| Produto | `productWeight` | Bruto - tara |
+| Descontado | `totalDiscountedWeight` | **Soma** dos descontos (umidade, impureza...), em kg |
+| Liquido | `totalNetWeight` | Produto - descontado: o que o armazem credita e o produtor confere |
+
+"Peso descontado" e o quanto foi descontado, **nao** o peso depois dos descontos.
+O numero que o produtor reconhece de cabeca e o **liquido** do ticket.
+
 ### Modo de Calculo de Colheita
-- **`AUTOMATIC`** (padrao): Calcula pesos a partir de bruto/tara + descontos da safra.
-- **`MANUAL`**: Usuario informa todos os pesos. Usado quando balanca ja desconta.
+- **`MANUAL`** — o caminho padrao. Os pesos sao os do ticket do armazem: informe
+  bruto, tara e **liquido**. O servidor grava o que recebe e **nao confere** se
+  bruto - tara - descontos bate com o liquido; confira antes de gravar.
+- **`AUTOMATIC`** — o Aegro calcula o liquido a partir dos descontos. Pela API
+  publica ele grava o romaneio **sem aplicar desconto nenhum** (liquido = produto)
+  e responde sucesso. So use como descrito em 4.5, quando o ticket nao trouxer o
+  liquido.
 
 ### Descontos de Colheita
 - Umidade base soja: 13-14% (acima desconta proporcionalmente)
@@ -84,13 +102,18 @@ Sem crop-glebes vinculados, a safra nao tem operacoes possiveis.
 
 ### Calculo de Produtividade
 ```
-Produtividade (sc/ha) = Peso Descontado Total (kg) / Area (ha) / 60
+Produtividade (sc/ha) = Peso Liquido Total (kg) / Area (ha) / 60
 ```
-1 saca soja = 60 kg. Usar peso descontado (apos umidade/impureza), nao peso liquido bruto.
+1 saca soja = 60 kg. Usar o peso liquido (apos umidade/impureza) — nao o produto,
+nem o descontado, que e a soma dos descontos.
 
 ### Realizacoes e Rateios
 - Uma atividade pode ter multiplas realizacoes (ex: colheita em 3 dias)
-- Realizacoes baixam estoque automaticamente
+- Realizacao lancada pela CLI **nao baixa o estoque dos insumos**. Com
+  `--stock-location-key` e insumos, o create responde erro 500 **e grava a
+  realizacao mesmo assim**, sem movimentar o estoque: nao repita o comando
+  (cada tentativa cria outra), confira com `activities realizations` e peca a
+  saida de estoque em separado (`/aegro-estoquista`) ou lance a baixa pela tela.
 - Rateios: status `ACTIVE` ou `ARCHIVED`, soma percentuais = 100%
 
 ---
@@ -280,27 +303,59 @@ o mesmo terminal de chave inexistente — nao mais 200 com o corpo. Entao 200 no
 responde 404 sem tocar no dado.
 
 **Parametros `create`:** `--crop-key` (obrig.), `--date` (obrig., YYYY-MM-DD), `--crop-glebe` (repetivel),
-`--calculation-mode` (AUTOMATIC/MANUAL, default AUTOMATIC), `--seed-key`, `--destination-key`,
+`--calculation-mode` (`MANUAL`/`AUTOMATIC`), `--seed-key`, `--destination-key`,
 `--gross-weight` (kg), `--tare-weight` (kg), `--net-weight` (kg), `--discounted-weight` (kg),
-`--product-weight` (kg), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
+`--product-weight` (kg), `--discount` (repetivel), `--discount-index` (repetivel, quando a CLI tiver),
+`--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
+
+**Lance o romaneio com os pesos do ticket, sempre em `MANUAL`.** Passe
+`--calculation-mode MANUAL` **explicito** com `--gross-weight`, `--tare-weight` e
+`--net-weight` do ticket: CLI antiga tem `AUTOMATIC` como padrao, e nesse modo o
+romaneio grava sem desconto nenhum — o liquido sai igual ao produto, milhares de
+quilos a mais, com sucesso na resposta. `--product-weight` e `--discounted-weight`
+podem ser omitidos (a CLI atual deriva por subtracao); se informar, tem de valer
+produto = bruto - tara e descontado = produto - liquido.
+
+**Antes de gravar, mostre o calculo e rode `--dry-run`.** Apresente ao usuario
+bruto - tara = produto, produto - liquido = descontado, e confira que o descontado
+bate com a soma dos descontos do ticket. So depois rode com `--execute`.
+
+**Taxa do desconto nao e teor da classificacao.** O ticket imprime o teor medido
+("umidade 14,2") e o desconto aplicado ("desconto 1,7%" ou em kg). `--discount
+"Umidade=1.7%"` e o **percentual do desconto** (ou `"Umidade=340kg"`, o peso); o
+teor vai em `--discount-index "Umidade=14.2"`, que so registra, nao desconta.
+Nunca passe o teor em `--discount` com `%`. Se `aegro harvest-logs create --help`
+nao mostrar `--discount-index`, a CLI e antiga: informe so o desconto e deixe o
+teor na observacao.
 
 ```bash
-# Romaneio automatico
+# Romaneio com os pesos do ticket (caminho padrao): ensaio, depois grava
 aegro harvest-logs create --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
   --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
-  --gross-weight 32000 --tare-weight 12000
-
-# Romaneio manual completo
-aegro harvest-logs create --farm "<fazenda>" \
-  --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
-  --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
-  --crop-glebe cropGlebe::68dd6730e90f726622b7f556 \
   --calculation-mode MANUAL --seed-key element::seed123 \
-  --gross-weight 32000 --tare-weight 12000 --net-weight 20000 \
-  --discounted-weight 19400 --product-weight 19400 \
-  --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901"
+  --gross-weight 32000 --tare-weight 12000 --net-weight 19560 \
+  --discount "Umidade=340kg" --discount-index "Umidade=14.2" \
+  --discount "Impureza=100kg" --discount-index "Impureza=1.5" \
+  --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901" --dry-run
+# conferido o ensaio, rode o MESMO comando trocando --dry-run por --execute
 ```
+
+**Depois de gravar, confira o liquido.** A CLI atual rele o romaneio e **falha**
+(`NET_WEIGHT_MISMATCH`) se o liquido gravado nao for o previsto — o romaneio ja
+existe nesse caso: nao repita o `create`, corrija com o `update` que a mensagem
+traz. Em CLI sem essa conferencia, rode `aegro harvest-logs get <key>` e compare
+`totalNetWeight` com o liquido do ticket antes de dar a tarefa por feita.
+
+**Ticket sem o liquido (so bruto, tara e descontos):** use `--calculation-mode
+AUTOMATIC` **somente** se `aegro harvest-logs create --help` mostrar
+`--discount-index` — e a CLI que calcula pela previa do servidor, antes de
+gravar. Exige `aegro auth login` (OAuth) e talhao de safra (`cropGlebe::...`); nao
+passe `--net-weight`. O `--dry-run` traz `calculadoPeloServidor` com produto,
+descontos e liquido: mostre esse liquido ao usuario e so grave com a confirmacao
+dele. Se a previa recusar (liquido igual ao produto com desconto informado), nada
+foi gravado — confira os nomes em `aegro crops harvest-discounts <safra>`. Em CLI
+sem `--discount-index`, **nunca** use `AUTOMATIC`: peca o liquido do ticket.
 
 **Romaneio com destino (silo) sai em um comando so.** O `--destination-key` agora
 **grava no proprio create** — o servidor deixou de descartar o silo. O CLI mantem
@@ -410,14 +465,15 @@ Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 1. Caminhao na balanca         → Peso bruto: 32.000 kg
 2. Descarrega grao
 3. Caminhao volta na balanca   → Tara: 12.000 kg
-4. Sistema calcula (modo AUTOMATIC):
-   Peso liquido = 32.000 - 12.000 = 20.000 kg
-   Desconto umidade (14.2% → base 13%) = -1.7% = -340 kg
-   Desconto impureza (1.5% → base 1%) = -0.5% = -100 kg
-   Peso descontado = 20.000 - 440 = 19.560 kg
-   Peso produto = 19.560 kg
-5. Produtividade do talhao (50 ha):
-   19.560 / 50 / 60 = 6.52 sc/ha
+4. Produto = 32.000 - 12.000 = 20.000 kg
+5. Armazem classifica e imprime o ticket:
+   Umidade: teor 14,2%  → desconto 340 kg
+   Impureza: teor 1,5%  → desconto 100 kg
+   Descontado = 340 + 100 = 440 kg
+   Liquido = 20.000 - 440 = 19.560 kg
+6. Lance em MANUAL com bruto, tara e liquido do ticket (4.5); --dry-run antes
+7. Produtividade do talhao (50 ha):
+   19.560 / 50 / 60 = 6.52 sc/ha   (liquido, nunca o descontado)
 ```
 
 ### Ciclo Completo da Safra
@@ -429,7 +485,7 @@ Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 4. aegro activities list --crop-key <k> --type APPLICATION  → aplicacoes
 5. aegro activities realizations --crop-key <k>             → execucoes reais
 6. aegro harvest-logs get <key>                             → romaneios
-7. Produtividade: soma pesos descontados / soma areas / 60
+7. Produtividade: soma dos pesos liquidos / soma areas / 60
 ```
 
 ### Cenarios Comuns de Consulta
@@ -477,7 +533,9 @@ interface web**: corrija o valor que a resposta nomeia.
    - `activities get-plan <PLAN_KEY>` → endpoint `/activities/plans/{key}`
    - Chave errada = 404 ou dados incorretos.
 
-4. **Peso liquido como produtividade:** Usar peso descontado/produto, nunca liquido bruto.
+4. **Produtividade pelo peso errado:** use o liquido (depois dos descontos). O
+   descontado (`totalDiscountedWeight`) e a soma dos descontos, e o produto ainda
+   tem umidade e impureza.
 
 5. **Ignorar paginacao:** 50 itens = provavelmente ha mais paginas.
 
