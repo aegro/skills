@@ -764,9 +764,10 @@ Depois de 5xx ou timeout numa escrita, nesta ordem:
    falhou e o stdout diz o que ja foi gravado (`resultados`), de que linha
    retomar (`retomarNaLinha`) e quais linhas anteriores voltaram sem criar
    (`linhasAnterioresNaoCriadas`). Em CLI mais antigo nada disso vem: conte pela
-   listagem o que ja entrou antes de qualquer coisa. Nos dois casos, **nunca rode
-   o mesmo arquivo de novo** — as linhas anteriores ja existem, inclusive quando
-   o lote parou num 4xx.
+   listagem o que ja entrou antes de qualquer coisa. Nao reenvie o arquivo inteiro:
+   preserve as linhas confirmadas como criadas, corrija erros 4xx e, para 5xx ou
+   timeout, confirme pela busca completa quais linhas nao foram criadas antes de
+   processa-las em um novo lote.
 2. **Sem conferencia, procure voce** pela listagem do dominio, filtrando pelo que
    identifica o registro: conta por data de lancamento + descricao + valor (e
    numero do documento, se houver); atividade por safra + data + tipo; romaneio
