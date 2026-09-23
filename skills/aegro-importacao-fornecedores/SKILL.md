@@ -183,9 +183,11 @@ aegro companies create --farm "<fazenda>" --env prod \
 **Importacao segura (recomendado para lotes):** com `AEGRO_SAFE_MODE=1`, rode a
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
 nas criacoes. **Nao repita um `companies create` que voltou 5xx ou timeout:** a
-empresa pode ter sido gravada mesmo assim. Procure antes
-(`companies list --farm "<fazenda>" --env prod --search-text "<nome>"`) e compare
-o documento; so crie de novo se nao achar.
+empresa pode ter sido gravada mesmo assim, e com o nome enriquecido pela Receita
+(diferente da planilha). Procure pelo DOCUMENTO: liste
+`aegro companies list --farm "<fazenda>" --env prod --fiscal-number-type CNPJ`
+(ou `CPF`), percorra todas as paginas (`--page`) e compare o numero em digitos; so
+crie de novo se nao achar.
 Em 4xx, corrija o comando; repetir nao resolve.
 
 **Alvo:** `--env` e `--farm` explicitos em **todo** comando, apontando para o

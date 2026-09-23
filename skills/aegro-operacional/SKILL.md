@@ -750,24 +750,36 @@ nunca retenta escrita sozinho; nao retente voce.
 Depois de 5xx ou timeout numa escrita, nesta ordem:
 
 1. **Leia o `error.conferencia`, se vier.** `create-bill` e `create-bills`
-   procuram a conta sozinhos e dizem o resultado:
+   procuram a conta sozinhos (`launch-bill` tambem confere e avisa no stderr):
    - `situacao: "criada"` — a conta existe (`contas[]` traz `key` e `link`).
      Nao repita. Confira as parcelas pelo link: o erro pode ter deixado a
      conta sem parcela.
-   - `situacao: "nao_criada"` — conferido e nada foi gravado. Pode repetir.
-   - `situacao: "inconclusiva"` — o CLI nao conseguiu conferir tudo. Siga o
-     passo 2.
-   No lote (`create-bills`), o comando para na linha que falhou e o stdout diz
-   o que ja foi gravado e de que linha retomar. **Nunca rode o mesmo arquivo de
-   novo** — as linhas anteriores ja existem.
+   - `situacao: "nao_criada"` com `podeRepetir: true` — conferido e nada foi
+     gravado. Pode repetir.
+   - `situacao: "inconclusiva"` — o CLI nao consegue afirmar (conta parecida,
+     conta igual criada pouco antes, timeout sem resposta). O `motivo` diz por
+     que, e `contas[]` traz as candidatas. Siga o passo 2 e mostre as candidatas
+     ao usuario.
+   Em CLI que traz a conferencia, o lote (`create-bills`) para na linha que
+   falhou e o stdout diz o que ja foi gravado (`resultados`), de que linha
+   retomar (`retomarNaLinha`) e quais linhas anteriores voltaram sem criar
+   (`linhasAnterioresNaoCriadas`). Em CLI mais antigo nada disso vem: conte pela
+   listagem o que ja entrou antes de qualquer coisa. Nos dois casos, **nunca rode
+   o mesmo arquivo de novo** — as linhas anteriores ja existem, inclusive quando
+   o lote parou num 4xx.
 2. **Sem conferencia, procure voce** pela listagem do dominio, filtrando pelo que
    identifica o registro: conta por data de lancamento + descricao + valor (e
    numero do documento, se houver); atividade por safra + data + tipo; romaneio
-   por safra + data; abastecimento por patrimonio + data. `activities
-   create-plan`/`create-realization` tambem avisam o que acharam na listagem.
-3. **So repita se a busca completa nao achar nada.** Achou: use o registro que
-   existe (corrija com `update` se precisar). Achou mais de um igual: o que
-   sobra e duplicata de tentativa anterior — mostre as chaves ao usuario.
+   por safra + data + peso; abastecimento por patrimonio + data + litros.
+   `activities create-plan`/`create-realization` avisam o que acharam na
+   listagem e dizem quando a conferencia foi parcial — parcial nao e "nao
+   existe".
+3. **So repita se a busca completa nao achar nada.** Depois de timeout, espere
+   um minuto e busque de novo antes de repetir: o servidor pode ainda estar
+   gravando. Achou: use o registro que existe (corrija com `update` se
+   precisar). Achou mais de um igual: pode ser duplicata de tentativa anterior
+   ou lancamento legitimo repetido — mostre as chaves ao usuario e deixe ele
+   decidir; nao apague por conta propria.
 4. **Se o mesmo 5xx voltar com os mesmos dados**, pare: e achado novo. Junte
    comando e resposta e reporte, em vez de tentar de novo.
 
