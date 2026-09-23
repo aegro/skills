@@ -392,11 +392,11 @@ com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
 | `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
 
 Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
-`realization` (`activityLog::`), `bill`,
-`purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
-`bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
-(vincular `--url` funciona ate com API key); as demais usam a API interna e
-exigem OAuth sempre.
+`realization` (`activityLog::`), `fuel-supply` e `maintenance`
+(`assetEvent::`), `bill`, `purchase-order`, `purchase-requisition`,
+`harvest-log`, `asset`, `element`, `bank-transfer`, `livestock-lot`.
+`realization`, `fuel-supply` e `maintenance` tem rota publica (vincular `--url`
+funciona ate com API key); as demais usam a API interna e exigem OAuth sempre.
 
 Tamanho: o limite e **100 MB** por arquivo (recusado localmente acima disso,
 sem gastar rede). Arquivo grande funciona — 50 MB sobem em ~40 s.
@@ -414,9 +414,11 @@ Regras que evitam retrabalho:
 - Comandos de escrita tem acucar para anexar na mesma invocacao: `--attach`
   em `financial create-bill`/`update-bill`, `purchase-orders create/update` e
   `purchase-requisitions create/update`; `--file` em
-  `activities create-realization`/`update-realization`. Em falha parcial
-  (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
-  repita o create** (duplicaria o registro).
+  `activities create-realization`/`update-realization` e em
+  `fuel-supplies`/`maintenances create/update` (no update de abastecimento e
+  manutencao, `--file` ACRESCENTA). Em falha parcial (registro salvo, anexo
+  nao), o stderr traz o `files attach ... --url` pronto (`attachRetry` no
+  `--attach`) — rode esse e **nunca repita o create** (duplicaria o registro).
 - **Dois comandos ja anexam sozinhos, sem flag**: da **v0.24.0** em diante o
   `received-fiscal-documents launch-bill` e o `launch-purchase-order` sobem a
   DANFE da nota no proprio create (`--no-attach-danfe` desliga). Antes de
@@ -425,10 +427,9 @@ Regras que evitam retrabalho:
   Anexo que falha ali nao derruba o lancamento: o registro nasce sem ele, e o
   envelope traz `anexo`/`anexoVerificacao` dizendo o que houve.
 - **Nao da para anexar** (o CLI recusa explicando, sem gastar upload):
-  planejamento de atividade (so a realizacao ganhou o campo);
-  abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
-  anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
-  re-save com erro generico na maioria dos registros); livestock-loss/
+  planejamento de atividade (so a realizacao ganhou o campo); `shipment`
+  (remessa: o servidor recusa o re-save com erro generico na maioria dos
+  registros); livestock-loss/
   transfer/weighing (API sem update); e **elemento IMPORTADO** (do catalogo
   global ou de outro catalogo — o servidor recusa qualquer re-save dele; so o
   elemento criado NA FAZENDA aceita, igual a tela do app). Nesses casos, anexe
