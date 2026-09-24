@@ -417,8 +417,10 @@ Regras que evitam retrabalho:
   `activities create-realization`/`update-realization` e em
   `fuel-supplies`/`maintenances create/update` (no update de abastecimento e
   manutencao, `--file` ACRESCENTA). Em falha parcial (registro salvo, anexo
-  nao), o stderr traz o `files attach ... --url` pronto (`attachRetry` no
-  `--attach`) — rode esse e **nunca repita o create** (duplicaria o registro).
+  nao), o `--attach` e o `--file` de abastecimento/manutencao trazem no stderr
+  um JSON `ATTACH_FAILED` com `attachRetry`; o `--file` da realizacao traz o
+  `files attach ... --url` em texto. Rode esse comando e **nunca repita o
+  create** (duplicaria o registro).
 - **Dois comandos ja anexam sozinhos, sem flag**: da **v0.24.0** em diante o
   `received-fiscal-documents launch-bill` e o `launch-purchase-order` sobem a
   DANFE da nota no proprio create (`--no-attach-danfe` desliga). Antes de
