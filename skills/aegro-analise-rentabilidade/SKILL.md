@@ -107,6 +107,7 @@ Filtrar vendas da safra. Se nao houver vendas lancadas, solicitar preco medio ao
 ### 6. Calcular producao
 
 Usar dados de romaneios (colheita). Producao em sacas = peso liquido total (kg) / 60 — o descontado e a soma dos descontos, nao a producao.
+Romaneio com `totalDiscountedWeight` = 0 e desconto no ticket tem liquido inflado (gravado sem aplicar o desconto): aponte esses romaneios ao usuario antes de fechar a producao, em vez de soma-los calado.
 
 ## Calculo
 

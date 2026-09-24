@@ -87,9 +87,9 @@ Sem crop-glebes vinculados, a safra nao tem operacoes possiveis.
 O numero que o produtor reconhece de cabeca e o **liquido** do ticket.
 
 ### Modo de Calculo de Colheita
-- **`MANUAL`** — o caminho padrao. Os pesos sao os do ticket do armazem: informe
-  bruto, tara e **liquido**. O servidor grava o que recebe e **nao confere** se
-  bruto - tara - descontos bate com o liquido; confira antes de gravar.
+- **`MANUAL`** — o caminho padrao quando o ticket traz o liquido. Os pesos sao os
+  do ticket do armazem: informe os cinco. O servidor grava o que recebe e **nao
+  confere** se bruto - tara - descontos bate com o liquido; confira antes de gravar.
 - **`AUTOMATIC`** — o Aegro calcula o liquido a partir dos descontos. Pela API
   publica ele grava o romaneio **sem aplicar desconto nenhum** (liquido = produto)
   e responde sucesso. So use como descrito em 4.5, quando o ticket nao trouxer o
@@ -107,10 +107,14 @@ Produtividade (sc/ha) = Peso Liquido Total (kg) / Area (ha) / 60
 1 saca soja = 60 kg. Usar o peso liquido (apos umidade/impureza) — nao o produto,
 nem o descontado, que e a soma dos descontos.
 
+Romaneio com `totalDiscountedWeight` = 0 e desconto no ticket (umidade, impureza)
+tem liquido inflado: foi gravado sem aplicar o desconto. Antes de somar a
+produtividade, aponte esses romaneios ao usuario em vez de soma-los calado.
+
 ### Realizacoes e Rateios
 - Uma atividade pode ter multiplas realizacoes (ex: colheita em 3 dias)
-- Realizacao lancada pela CLI **nao baixa o estoque dos insumos**. Com
-  `--stock-location-key` e insumos, o create responde erro 500 **e grava a
+- Realizacao **com insumos** lancada pela CLI nao baixa o estoque deles. Com
+  `--inputs` e `--stock-location-key`, o create responde erro 500 **e grava a
   realizacao mesmo assim**, sem movimentar o estoque: nao repita o comando
   (cada tentativa cria outra), confira com `activities realizations` e peca a
   saida de estoque em separado (`/aegro-estoquista`) ou lance a baixa pela tela.
@@ -308,13 +312,14 @@ responde 404 sem tocar no dado.
 `--product-weight` (kg), `--discount` (repetivel), `--discount-index` (repetivel, quando a CLI tiver),
 `--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
 
-**Lance o romaneio com os pesos do ticket, sempre em `MANUAL`.** Passe
-`--calculation-mode MANUAL` **explicito** com `--gross-weight`, `--tare-weight` e
-`--net-weight` do ticket: CLI antiga tem `AUTOMATIC` como padrao, e nesse modo o
-romaneio grava sem desconto nenhum — o liquido sai igual ao produto, milhares de
-quilos a mais, com sucesso na resposta. `--product-weight` e `--discounted-weight`
-podem ser omitidos (a CLI atual deriva por subtracao); se informar, tem de valer
-produto = bruto - tara e descontado = produto - liquido.
+**Ticket com liquido: lance em `MANUAL`, com os cinco pesos.** Passe
+`--calculation-mode MANUAL` **explicito** e os cinco pesos do ticket:
+`--gross-weight`, `--tare-weight`, `--product-weight` (bruto - tara),
+`--discounted-weight` (produto - liquido) e `--net-weight`. Explicito porque em CLI
+antiga o padrao e `AUTOMATIC`, e nesse modo o romaneio grava sem desconto nenhum —
+o liquido sai igual ao produto, milhares de quilos a mais, com sucesso na
+resposta. Os cinco porque CLI antiga nao deriva produto nem descontado, e o que
+faltar fica vazio no romaneio.
 
 **Antes de gravar, mostre o calculo e rode `--dry-run`.** Apresente ao usuario
 bruto - tara = produto, produto - liquido = descontado, e confira que o descontado
@@ -329,23 +334,45 @@ nao mostrar `--discount-index`, a CLI e antiga: informe so o desconto e deixe o
 teor na observacao.
 
 ```bash
-# Romaneio com os pesos do ticket (caminho padrao): ensaio, depois grava
+# Romaneio com os pesos do ticket (caminho padrao) — ensaio
 aegro harvest-logs create --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
   --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
   --calculation-mode MANUAL --seed-key element::seed123 \
-  --gross-weight 32000 --tare-weight 12000 --net-weight 19560 \
-  --discount "Umidade=340kg" --discount-index "Umidade=14.2" \
-  --discount "Impureza=100kg" --discount-index "Impureza=1.5" \
+  --gross-weight 32000 --tare-weight 12000 --product-weight 20000 \
+  --discounted-weight 440 --net-weight 19560 \
+  --discount "Umidade=340kg" --discount "Impureza=100kg" \
   --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901" --dry-run
-# conferido o ensaio, rode o MESMO comando trocando --dry-run por --execute
+
+# Conferido o ensaio com o usuario, grava
+aegro harvest-logs create --farm "<fazenda>" \
+  --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
+  --crop-glebe cropGlebe::68dd6730e90f726622b7f555 \
+  --calculation-mode MANUAL --seed-key element::seed123 \
+  --gross-weight 32000 --tare-weight 12000 --product-weight 20000 \
+  --discounted-weight 440 --net-weight 19560 \
+  --discount "Umidade=340kg" --discount "Impureza=100kg" \
+  --romaneio-code "ROM-2026-0042" --invoice-code "NF-88901" --execute
 ```
 
-**Depois de gravar, confira o liquido.** A CLI atual rele o romaneio e **falha**
-(`NET_WEIGHT_MISMATCH`) se o liquido gravado nao for o previsto — o romaneio ja
-existe nesse caso: nao repita o `create`, corrija com o `update` que a mensagem
-traz. Em CLI sem essa conferencia, rode `aegro harvest-logs get <key>` e compare
-`totalNetWeight` com o liquido do ticket antes de dar a tarefa por feita.
+Com `--discount-index` disponivel, acrescente o teor de cada linha:
+`--discount-index "Umidade=14.2" --discount-index "Impureza=1.5"`.
+
+**Depois de gravar, confira o liquido.** Leia `conferenciaDoLiquido` na saida:
+- `"conferido": true` — o liquido gravado e o previsto; cite ao usuario o
+  `liquidoGravadoKg`.
+- `"conferido": false` — o romaneio **foi gravado** e o liquido nao pode ser
+  conferido. Nao repita o `create`; faca o que `oQueFazer` diz (`harvest-logs get`
+  e comparar `totalNetWeight`) antes de dar a tarefa por feita.
+- Sem esse campo (CLI antiga), rode `aegro harvest-logs get <key>` e compare
+  `totalNetWeight` com o liquido do ticket.
+
+`NET_WEIGHT_MISMATCH` quer dizer que o romaneio **existe** com outro liquido. Nao
+repita o `create` (duplica a carga no estoque) e nao corrija o liquido sozinho:
+produto e descontado ficariam incoerentes. Leve ao usuario os dois numeros e
+peca que ele corrija no app (safra, aba Colheita) o numero do ticket que
+divergiu — bruto, tara ou a linha de desconto; ao salvar, o Aegro recalcula o
+liquido.
 
 **Ticket sem o liquido (so bruto, tara e descontos):** use `--calculation-mode
 AUTOMATIC` **somente** se `aegro harvest-logs create --help` mostrar
