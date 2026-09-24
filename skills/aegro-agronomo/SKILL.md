@@ -309,9 +309,8 @@ responde 404 sem tocar no dado.
 **Parametros `create`:** `--crop-key` (obrig.), `--date` (obrig., YYYY-MM-DD), `--crop-glebe` (repetivel),
 `--seed-key` (obrig.), `--calculation-mode` (`AUTOMATIC`/`MANUAL`), `--destination-key`,
 `--gross-weight` (kg), `--tare-weight` (kg), `--net-weight` (kg), `--discounted-weight` (kg),
-`--product-weight` (kg), `--discount` (repetivel), `--discount-index` e `--untyped-discount`
-(repetiveis, quando a CLI tiver), `--observations`, `--identifier`, `--invoice-code`,
-`--romaneio-code`.
+`--product-weight` (kg), `--discount` (repetivel), `--discount-index` (repetivel, quando
+a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
 
 **Antes de montar o comando:**
 - **O anexo e um ticket de pesagem?** Sem bruto e tara no papel (nota fiscal de
@@ -350,12 +349,15 @@ esquecida. Nunca calcule o liquido voce mesmo: quem calcula e o Aegro. Exige
 `aegro auth login`; com API key, use o `MANUAL` abaixo.
 
 **Desconto do ticket sem tipo na safra** (taxa de servico, taxa de recepcao,
-amostra): nao entra como linha, e a CLI nao cadastra tipo de desconto na safra.
-Pergunte ao usuario: ou ele cadastra o tipo na safra pela tela e voce lanca em
-`AUTOMATIC`, ou voce lanca em `MANUAL` com os cinco pesos do ticket e o desconto
-sem tipo em `--untyped-discount "Taxa de servico=2590kg"` — ele entra na conta do
-descontado e vai para a observacao. Na CLI antiga, lance em `MANUAL` com o
-descontado total do ticket e escreva o desconto sem tipo em `--observations`.
+amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
+cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
+- cadastrar o tipo na safra pela tela e voce lancar em `AUTOMATIC`; ou
+- lancar em `MANUAL` com os cinco pesos do ticket (o descontado e o total do
+  ticket, com esse desconto dentro), as linhas dos tipos que a safra tem, e o
+  desconto sem tipo escrito em `--observations`, ex.:
+  `--observations "Taxa de servico do armazem: 2590 kg (sem tipo na safra)"`.
+  A CLI avisa em `atencaoDescontoSemLinha` que as linhas somam menos que o
+  descontado — e o esperado nesse caso.
 
 **Ticket so com teores** (umidade 22,8, impureza 1,2 e nenhuma taxa ou peso de
 desconto): nao lance com `0%`. Pergunte ao usuario se o armazem descontou e
