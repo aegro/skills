@@ -128,7 +128,8 @@ Opcoes do `launch-bill` que replicam a UI web:
 ### Pagamento: "a vista" (fala do usuario) != "A Vista" (rotulo da UI)
 
 No Aegro, o rotulo **"A Vista" gera 1 parcela JA PAGA** (baixa automatica na
-criacao, irreversivel via API - correcao so pelo app). Quando o usuario diz
+criacao; desfazer depois pede `financial reopen-installments`, que apaga
+desconto e juros junto). Quando o usuario diz
 que a nota "e a vista" - ou a nota vem sem duplicatas - ele normalmente
 descreve a **condicao de pagamento** (vencimento na data da nota), nao uma
 ordem para dar baixa.
@@ -153,6 +154,38 @@ nota TEM duplicatas), as duplicatas sao o cronograma real: aponte a
 divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
 confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
 e registre os pagamentos com `financial realize` em seguida.
+
+### Vencimento diferente do que a nota diz
+
+Por default o vencimento vem da NOTA: a duplicata quando ela traz uma, senao a
+data de emissao. **Nao mude isso por conta propria.** Mas ha clientes com prazo
+combinado que a nota nao reflete — nota de servico e CT-e entram vencendo na
+emissao e o cliente paga 15 dias depois. Quando existir essa instrucao:
+
+| Instrucao | Flag |
+|---|---|
+| "esse cliente paga N dias depois da emissao" | `--due-days N` |
+| "vence no dia X" (parcela unica) | `--due-date AAAA-MM-DD` |
+
+`--due-days` **desloca** o carne inteiro: nota 30/60/90 com `--due-days 15` vira
+45/75/105. `--due-date` **fixa** a data e so vale com UMA parcela — em nota
+parcelada o comando recusa, porque fixar colapsaria o carne numa data so.
+
+Nao combine com `--prompt`: aquela parcela nasce PAGA na data da nota, e o
+comando recusa. Se a parcela ainda nao foi paga, e `--installments 1` com o
+vencimento; se foi paga em outra data, lance em aberto e use
+`aegro financial realize` (ou `financial settle`, quando a data e o valor
+mudaram).
+
+**Confira no `--dry-run` antes de executar**: o preview traz `vencimentos` com a
+data ja legivel e `vencimentoDefinidoPor`, dizendo se a data veio da nota ou da
+flag.
+
+**Prefira acertar no lancamento.** A data errada tem conserto —
+`aegro financial update-installments` muda o vencimento de parcela ja lancada,
+em lote — mas o conserto exige levantar quais parcelas erraram, e o lote e
+atomico (uma linha inelegivel recusa o conjunto inteiro). Perguntar o prazo
+ANTES de lancar um lote continua sendo o barato.
 
 **Nunca traduza "a vista" direto para `--prompt`** sem confirmar que o
 pagamento ja ocorreu **e** que a baixa automatica e desejada. O proprio time de
