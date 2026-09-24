@@ -307,10 +307,23 @@ o mesmo terminal de chave inexistente — nao mais 200 com o corpo. Entao 200 no
 responde 404 sem tocar no dado.
 
 **Parametros `create`:** `--crop-key` (obrig.), `--date` (obrig., YYYY-MM-DD), `--crop-glebe` (repetivel),
-`--calculation-mode` (`AUTOMATIC`/`MANUAL`), `--seed-key`, `--destination-key`,
+`--seed-key` (obrig.), `--calculation-mode` (`AUTOMATIC`/`MANUAL`), `--destination-key`,
 `--gross-weight` (kg), `--tare-weight` (kg), `--net-weight` (kg), `--discounted-weight` (kg),
-`--product-weight` (kg), `--discount` (repetivel), `--discount-index` (repetivel, quando a CLI tiver),
-`--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
+`--product-weight` (kg), `--discount` (repetivel), `--discount-index` e `--untyped-discount`
+(repetiveis, quando a CLI tiver), `--observations`, `--identifier`, `--invoice-code`,
+`--romaneio-code`.
+
+**Antes de montar o comando:**
+- **O anexo e um ticket de pesagem?** Sem bruto e tara no papel (nota fiscal de
+  venda ou remessa, relatorio de periodo), nao e romaneio: diga isso ao usuario e
+  pergunte o ticket, em vez de inventar pesos. Documento que soma varias cargas
+  (varios tickets, relatorio de periodo) vira um romaneio por carga, ou pergunte
+  ao usuario como ele quer registrar — nunca some as cargas num romaneio so.
+- **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
+  ticket ou a generica da cultura da safra (`aegro elements list --category SEED`).
+- **Nomes dos descontos:** rode `aegro crops harvest-discounts <safra>` e use os
+  nomes que ele lista (ex.: `Impureza (%)`). Na CLI com previa, `Impureza` tambem
+  casa com `Impureza (%)`.
 
 **Primeiro, qual CLI esta instalada.** Rode `aegro harvest-logs create --help`. Se
 aparecer `--discount-index`, a CLI calcula pela previa do servidor e o padrao e
@@ -327,10 +340,27 @@ observacao.
 
 **CLI com previa: `AUTOMATIC`, conferido contra o liquido do ticket.** Informe
 bruto, tara, cada linha de desconto do ticket e, em `--net-weight`, o **liquido
-impresso no ticket**. O Aegro calcula; se o liquido calculado nao bater com o do
-ticket, nada e gravado e a mensagem diz a diferenca — confira as linhas (taxa x
-teor, linha esquecida). Nunca calcule o liquido voce mesmo: quem calcula e o
-Aegro. Exige `aegro auth login`; com API key, use o `MANUAL` abaixo.
+impresso no ticket**. Quando o ticket imprime taxa e peso da mesma linha, passe
+os dois (`--discount "Umidade=1.7%" --discount "Umidade=340kg"`): o Aegro grava
+os dois como vieram. O Aegro calcula; se o liquido calculado nao bater com o do
+ticket, nada e gravado e a mensagem diz a diferenca. Causas mais comuns, nesta
+ordem: desconto do ticket que a safra nao tem como tipo (taxa de servico,
+recepcao, amostra — veja o paragrafo abaixo), teor digitado como taxa, linha
+esquecida. Nunca calcule o liquido voce mesmo: quem calcula e o Aegro. Exige
+`aegro auth login`; com API key, use o `MANUAL` abaixo.
+
+**Desconto do ticket sem tipo na safra** (taxa de servico, taxa de recepcao,
+amostra): nao entra como linha, e a CLI nao cadastra tipo de desconto na safra.
+Pergunte ao usuario: ou ele cadastra o tipo na safra pela tela e voce lanca em
+`AUTOMATIC`, ou voce lanca em `MANUAL` com os cinco pesos do ticket e o desconto
+sem tipo em `--untyped-discount "Taxa de servico=2590kg"` — ele entra na conta do
+descontado e vai para a observacao. Na CLI antiga, lance em `MANUAL` com o
+descontado total do ticket e escreva o desconto sem tipo em `--observations`.
+
+**Ticket so com teores** (umidade 22,8, impureza 1,2 e nenhuma taxa ou peso de
+desconto): nao lance com `0%`. Pergunte ao usuario se o armazem descontou e
+quanto (taxa ou kg), ou se o teor esta dentro da base e o desconto e zero. A CLI
+com previa avisa em `atencaoTeor` quando ha teor com desconto 0.
 
 ```bash
 # Ensaio: a previa do servidor aparece em calculadoPeloServidor e liquidoDoTicket
@@ -359,10 +389,12 @@ liquido de `calculadoPeloServidor` antes do `--execute`.
 `--calculation-mode MANUAL` **explicito** e `--gross-weight`, `--tare-weight`,
 `--product-weight` (bruto - tara), `--discounted-weight` (produto - liquido) e
 `--net-weight`. Os cinco porque CLI antiga nao deriva produto nem descontado, e o
-que faltar fica vazio no romaneio. Mostre ao usuario bruto - tara = produto e
-produto - liquido = descontado, confira que o descontado bate com a soma dos
-descontos do ticket, e so entao grave. Sem o liquido do ticket, **nao** lance na
-CLI antiga: peca o liquido.
+que faltar fica vazio no romaneio. **Cada linha de desconto em kg** (o ticket
+imprime): no `MANUAL` o Aegro nao calcula nada, e a linha so com `%` e gravada com
+peso 0 — a CLI com previa recusa; na antiga, passe sempre o kg. Mostre ao usuario
+bruto - tara = produto e produto - liquido = descontado, confira que o descontado
+bate com a soma dos descontos do ticket, e so entao grave. Sem o liquido do
+ticket, **nao** lance na CLI antiga: peca o liquido.
 
 ```bash
 aegro harvest-logs create --farm "<fazenda>" \
@@ -399,12 +431,11 @@ peca que ele corrija no app (safra, aba Colheita) o numero do ticket que
 divergiu — bruto, tara ou a linha de desconto; ao salvar, o Aegro recalcula o
 liquido.
 
-**Romaneio com destino (silo) sai em um comando so.** O `--destination-key` agora
-**grava no proprio create** — o servidor deixou de descartar o silo. O CLI mantem
-a completacao por PATCH e a conferencia por releitura como rede, e a saida ja e o
-registro relido. Se a completacao falhar, o comando **falha dizendo que o romaneio
-ja existe**: nunca repita o `create`, use o `update` que ele sugere, ou voce
-duplica o romaneio.
+**Romaneio com destino (silo) sai em um comando so.** O `--destination-key` grava
+no proprio create, e a CLI confere o silo por releitura; se a API tiver descartado
+o silo, a CLI completa por PATCH. Se a completacao falhar, o comando **falha
+dizendo que o romaneio ja existe**: nunca repita o `create`, use o `update` que
+ele sugere, ou voce duplica o romaneio.
 
 **Campo desconhecido no `--body` e recusado antes de enviar** (exit 4). Nao e
 frescura do CLI: a API aceitaria a requisicao, descartaria o campo e
