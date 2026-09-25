@@ -878,9 +878,11 @@ aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
    o que a parcela ja tinha. `--discount`/`--interest` por flag so valem com UMA
    parcela: com varias, o numero seria total ou por parcela — use as colunas.
    A linha do arquivo prevalece sobre a flag.
-4. **Conta pelo nome ou pela key**, resolvida contra as contas **da fazenda do
-   comando**. Nome ambiguo ou conta de outra fazenda param o comando listando as
-   opcoes — pergunte qual, nao escolha.
+4. **Conta pelo nome EXATO ou pela key**, resolvida contra as contas **da fazenda
+   do comando**. Pedaco de nome ("Sicredi" para "Sicredi Conta Movimento"), nome
+   repetido ou conta de outra fazenda param o comando listando as opcoes —
+   pergunte qual, nao escolha. Planilha com coluna `valor` e recusada: o lote nao
+   tem valor pago livre.
 5. **Guarde a saida do `--execute`.** `baixas[].conta.de`, `desconto.de` e
    `juros.de` sao o estado de antes, e o unico registro dele: reabrir a baixa
    apaga desconto e juros e **nao devolve a conta** anterior. `desfazer` traz o
