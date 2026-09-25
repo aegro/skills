@@ -313,11 +313,17 @@ responde 404 sem tocar no dado.
 a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-code`.
 
 **Antes de montar o comando:**
-- **O anexo e um ticket de pesagem?** Sem bruto e tara no papel (nota fiscal de
-  venda ou remessa, relatorio de periodo), nao e romaneio: diga isso ao usuario e
-  pergunte o ticket, em vez de inventar pesos. Documento que soma varias cargas
-  (varios tickets, relatorio de periodo) vira um romaneio por carga, ou pergunte
-  ao usuario como ele quer registrar — nunca some as cargas num romaneio so.
+- **O anexo e um ticket de pesagem?** Sem bruto **ou** sem tara no papel (nota
+  fiscal de venda ou remessa, relatorio de periodo, print sem tara), nao e
+  romaneio: diga isso ao usuario e pergunte o ticket, em vez de inventar pesos.
+  Documento que soma varias cargas (varios tickets, relatorio de periodo) vira um
+  romaneio por carga, ou pergunte ao usuario como ele quer registrar — nunca some
+  as cargas num romaneio so.
+- **Carga dividida:** quando bruto - tara nao e o peso desta carga (o ticket
+  reparte uma pesagem entre destinos, contratos ou talhoes), nao ajuste bruto nem
+  tara para caber: pergunte ao usuario qual parte e deste romaneio e como ele
+  registra a divisao. Se a CLI recusar dizendo que a diferenca "nao e desconto",
+  e isso — nao lance em `MANUAL` para fazer caber.
 - **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
   ticket ou a generica da cultura da safra (`aegro elements list --category SEED`).
 - **Nomes dos descontos:** rode `aegro crops harvest-discounts <safra>` e use os
@@ -343,10 +349,19 @@ impresso no ticket**. Quando o ticket imprime taxa e peso da mesma linha, passe
 os dois (`--discount "Umidade=1.7%" --discount "Umidade=340kg"`): o Aegro grava
 os dois como vieram. O Aegro calcula; se o liquido calculado nao bater com o do
 ticket, nada e gravado e a mensagem diz a diferenca. Causas mais comuns, nesta
-ordem: desconto do ticket que a safra nao tem como tipo (taxa de servico,
-recepcao, amostra — veja o paragrafo abaixo), teor digitado como taxa, linha
-esquecida. Nunca calcule o liquido voce mesmo: quem calcula e o Aegro. Exige
-`aegro auth login`; com API key, use o `MANUAL` abaixo.
+ordem:
+- desconto do ticket que a safra nao tem como tipo (taxa de servico, recepcao,
+  amostra — veja o paragrafo abaixo);
+- base de calculo: o armazem calcula a umidade sobre o peso sem impureza, e a
+  safra esta configurada para calcular sobre o produto (veja `base` em
+  `calculadoPeloServidor`). Informe o **kg de cada linha** como o ticket imprime —
+  o Aegro grava o kg como veio — ou peca ao usuario para ajustar a base na
+  configuracao da safra, pela tela;
+- teor digitado como taxa; linha esquecida.
+
+Diferenca maior que um quinto do produto nao e desconto: a CLI recusa sem sugerir
+`MANUAL` — veja "Carga dividida" acima. Nunca calcule o liquido voce mesmo: quem
+calcula e o Aegro. Exige `aegro auth login`; com API key, use o `MANUAL` abaixo.
 
 **Desconto do ticket sem tipo na safra** (taxa de servico, taxa de recepcao,
 amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
@@ -361,8 +376,11 @@ cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
 
 **Ticket so com teores** (umidade 22,8, impureza 1,2 e nenhuma taxa ou peso de
 desconto): nao lance com `0%`. Pergunte ao usuario se o armazem descontou e
-quanto (taxa ou kg), ou se o teor esta dentro da base e o desconto e zero. A CLI
-com previa avisa em `atencaoTeor` quando ha teor com desconto 0.
+quanto (taxa ou kg), ou se o teor esta dentro da base e o desconto e zero. Se o
+ticket **imprime** o desconto como 0 (ex.: "desconto 0,00 kg"), isso ja e a
+resposta: lance `0kg` sem perguntar. Leituras de qualidade que nao sao desconto
+(PH, ATR, Brix, Pol) vao so em `--discount-index`. A CLI com previa avisa em
+`atencaoTeor` quando ha teor com desconto 0.
 
 ```bash
 # Ensaio: a previa do servidor aparece em calculadoPeloServidor e liquidoDoTicket
@@ -398,6 +416,13 @@ bruto - tara = produto e produto - liquido = descontado, confira que o descontad
 bate com a soma dos descontos do ticket, e so entao grave. Sem o liquido do
 ticket, **nao** lance na CLI antiga: peca o liquido.
 
+Ticket que imprime so a taxa de cada desconto, sem o kg: prefira o `AUTOMATIC`
+(a CLI com previa calcula o kg pela taxa e confere com o liquido do ticket). Se
+tiver de ser `MANUAL` (API key ou CLI antiga), lance os cinco pesos do ticket sem
+linhas de desconto e escreva as taxas em `--observations` (ex.: `"Umidade 1,7%;
+Impureza 0,5% (so taxa no ticket)"`) — a CLI avisa que o descontado nao tem
+linha, e e o esperado nesse caso. Nunca invente o kg de uma linha.
+
 ```bash
 aegro harvest-logs create --farm "<fazenda>" \
   --crop-key crop::68dd6719e90f726622b7f549 --date 2026-03-10 \
@@ -417,7 +442,9 @@ aegro harvest-logs create --farm "<fazenda>" \
   --romaneio-code "ROM-2026-0042" --execute
 ```
 
-**Depois de gravar, confira o liquido.** Leia `conferenciaDoLiquido` na saida:
+**Depois de gravar, leia `avisos` e confira o liquido.** Na CLI com previa, a
+saida traz `avisos` (teor com desconto 0, descontado sem linha, descontado alto)
+tambem no `--execute`: leve cada um ao usuario. Leia `conferenciaDoLiquido`:
 - `"conferido": true` — o liquido gravado e o previsto; cite ao usuario o
   `liquidoGravadoKg`.
 - `"conferido": false` — o romaneio **foi gravado** e o liquido nao pode ser
