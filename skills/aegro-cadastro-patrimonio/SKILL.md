@@ -79,6 +79,20 @@ aegro assets list --farm "<fazenda>" --type <TIPO>
 
 Confirmar que nao ha duplicata pelo nome/fabricante.
 
+> **O `list` nao mostra patrimonio excluido — nem com `--search`.** "O nome nao
+> apareceu" quer dizer "nao ha cadastro **ativo** com esse nome", e nao "o nome
+> esta livre": pode haver um excluido com o mesmo nome segurando historico
+> (abastecimento, manutencao, rateio de lancamento). Criar outro e legitimo e nao
+> da erro — so saiba que o historico antigo **nao** vem junto e que as duas
+> maquinas passam a conviver nos relatorios com o mesmo nome. Cerca de 10% do
+> patrimonio do Aegro esta excluido, entao isso acontece.
+>
+> Se o usuario insistir que a maquina existe e o `list` discordar, o desempate e
+> `aegro assets get <chave>`: ele responde mesmo excluido, com `isDeleted: true`
+> (o campo `status` continua dizendo `ACTIVE` — e a situacao de antes da
+> exclusao). Ver em `aegro-patrimonial` a regra "`status: ACTIVE` nao quer dizer que o
+> patrimonio existe".
+
 ### 2. Criar o patrimonio
 
 ```bash

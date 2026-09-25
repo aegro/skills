@@ -717,6 +717,39 @@ A lista completa de cada categoria (quem falhou, quem nao foi tentada, quem
 mudou colateral) esta em **`<plano>.verify.json`** — o stdout corta em 20 de
 proposito. E desse arquivo que sai o relatorio da secao 9.2.
 
+### 9.0 Falha concentrada em poucas chaves? E referencia morta, nao estatistica
+
+**Sintoma:** a falha nao esta espalhada — ela e **100%/0%**. Toda conta que cita
+uma determinada chave falha; todas as outras passam.
+
+Corte assim por chave e assinatura de **referencia morta** — alguma entidade que
+aquelas contas apontam nao existe mais. Cheque a chave **antes** de investigar
+fornecedor, indice ou campo denormalizado.
+
+Se a chave for de patrimonio:
+
+```bash
+aegro assets get asset::CHAVE_DO_CORTE --farm "<Fazenda>"
+```
+
+Olhe **`isDeleted`**, nao `status`. Patrimonio excluido responde **200 com o
+cadastro inteiro** e com este par:
+
+```json
+"status": "ACTIVE",
+"isDeleted": true
+```
+
+`status` guarda a situacao de **antes** da exclusao. Ler `ACTIVE` e concluir "a
+maquina esta ativa" manda a investigacao para o lado errado.
+
+> **Patrimonio excluido no rateio NAO impede a migracao.** Medido: o PATCH que
+> reenvia os grupos de apropriacao com um `assetKey` excluido **grava**, sem
+> erro — em conta ja persistida o servidor carrega o ativo mesmo excluido, de
+> proposito, para preservar historico. Entao **nao bloqueie essas contas** e nao
+> as mande para "arrumar na mao": elas migram. Use o `assets get` para
+> **explicar** um corte 100%/0%, nao para prever um.
+
 ### 9.1 Quando o Aegro nao grava e ninguem sabe por que: PERGUNTE
 
 Existem duas coisas que acontecem na escrita, sao **excecao**, e **nao tem causa

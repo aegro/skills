@@ -48,6 +48,8 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Talhao da safra (CropGlebe) | Vinculo entre um talhao e uma safra, com a area plantada | `cropGlebe::hexstring` |
 | Agrupador (tag do talhao) | Rotulo que agrupa talhoes (ex: "Estancia"). Na tela aparece como "Agrupador" | Texto livre no talhao |
 | Grupo de rateio | Grupo de safras salvo, reutilizavel entre lancamentos. **Limitado por cota de plano** | `cropProrateGroup::hexstring` |
+| Situacao (`status`) | `ACTIVE` ou `ARCHIVED`. Situacao do patrimonio na fazenda | Campo do asset |
+| Excluido (`isDeleted`) | Booleano. Eixo **separado** da situacao — patrimonio excluido guarda em `status` a situacao que tinha **antes** da exclusao | Campo do asset |
 
 > **Abastecimento e manutencao sao o mesmo objeto no backend** (`AssetEvent`), por isso
 > a chave dos dois e `assetEvent::...` — nao existe `fuelSupply::` nem `maintenance::`.
@@ -259,6 +261,55 @@ restricao **exige `aegro auth login`** — API key nao serve. Se a segunda perna
 o lancamento ja existe: **nao repita o comando inteiro** (duplicaria o lancamento) —
 use o comando de retomada que o erro imprime, que e um `update`.
 
+### 8. `status: ACTIVE` nao quer dizer que o patrimonio existe
+
+Patrimonio **excluido** responde ao `get` com **200 e o cadastro inteiro**:
+
+```json
+"status": "ACTIVE",
+"isDeleted": true
+```
+
+`status` guarda a situacao de **antes** da exclusao. **Olhe `isDeleted`.** Ler
+`ACTIVE` e concluir "a maquina esta ativa" e o erro classico deste dominio: leva
+a investigar a coisa errada por muito tempo, porque o payload parece o de uma
+maquina viva.
+
+Cerca de **10% de todo o patrimonio do Aegro esta excluido** — nao e caso raro.
+
+Cada rota se comporta de um jeito, e a diferenca decide o que voce faz:
+
+| Rota | Patrimonio excluido | Consequencia para voce |
+|------|---------------------|------------------------|
+| `assets get <chave>` | **200**, com `isDeleted: true` | Unica forma de ler um excluido. Serve para descobrir o **nome** de uma chave morta que aparece em lancamento antigo |
+| `assets list` e resolucao por **nome** | **nunca aparece** | Resolver por nome e seguro: maquina excluida nao resolve, e voce recebe "nao encontrado" |
+| `assets update-*` | **404** | Nao da para editar. O mesmo 404 sai para chave inexistente, patrimonio de outra fazenda, patrimonio excluido **e tipo trocado** (`update-machine` num veiculo). O CLI rele e nomeia a causa quando consegue; quando nao consegue, mantem o erro original |
+
+O risco, portanto, nao esta em digitar nome — esta em **colar uma chave** vinda de
+planilha, export antigo ou outro sistema. Quando uma chave colada falhar, rode
+`assets get` nela antes de investigar qualquer outra hipotese.
+
+O CLI avisa no **stderr** quando o `get` le um excluido. Quem captura so o stdout
+nao ve esse aviso: confira o campo.
+
+#### Filtrar por situacao
+
+`aegro assets list --status ACTIVE --status ARCHIVED` (repetivel; sem a flag vem as duas).
+**`DELETED` nao e um valor** — exclusao e outro eixo, e nenhuma combinacao de
+`--status` devolve excluido.
+
+Use com parcimonia: quase todo patrimonio esta `ACTIVE`, a tela do Aegro **nem
+oferece arquivar patrimonio** (so criar, editar e excluir), e arquivado e ordem de
+grandeza mais raro que excluido. **`--status` nao acha maquina que sumiu** — quem
+procura isso quer `isDeleted`, na busca por chave.
+
+A flag e recente: confirme com `aegro assets list --help` antes de usar. Em CLI ou
+servidor mais antigo o filtro pode ser ignorado e a lista volta **completa**, com
+exit 0 — o CLI avisa no stderr quando detecta isso.
+
+> Talhao tem o mesmo problema, e ali **nao ha campo** que confirme a exclusao. Ao
+> investigar referencia que sumiu em outro dominio, nao conte com a leitura.
+
 ## Referencia de Comandos
 
 ### assets
@@ -269,8 +320,8 @@ use o comando de retomada que o erro imprime, que e um `update`.
 
 | Comando | Descricao | Flags Principais |
 |---------|-----------|-----------------|
-| `aegro assets get <key>` | Busca patrimonio por chave | `--output` |
-| `aegro assets list` | Lista patrimonios com filtros | `--type`, `--machine-type`, `--page`, `--output` |
+| `aegro assets get <key>` | Busca patrimonio por chave. **Unica rota que enxerga excluido** — confira `isDeleted`, nao `status` | `--output` |
+| `aegro assets list` | Lista patrimonios com filtros. **Nunca devolve excluido** | `--type`, `--machine-type`, `--status` (`ACTIVE`\|`ARCHIVED`), `--page`, `--output` |
 | `aegro assets create-machine` | Cria maquina | `--name` (obrig.), `--machine-type` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--is-implement`, `--tag-or-model`, `--observations` |
 | `aegro assets create-vehicle` | Cria veiculo | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--odometer`, `--tag-or-model`, `--observations` |
 | `aegro assets create-garner` | Cria silo | `--name` (obrig.), `--manufacturer`, `--manufacture-year`, `--value`, `--currency`, `--hourmeter`, `--observations` |
