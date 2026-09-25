@@ -53,6 +53,8 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Empresa                  | `companies`            | Fornecedor, cliente ou transportadora vinculado a fazenda.                                 |
 | Ordem de compra          | `purchase-orders`      | Pedido de compra vinculado a uma empresa, com itens e valores.                             |
 | Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote.                                                 |
+| Vencimento em lote       | `update-installments`  | Altera o vencimento de parcelas JA lancadas. Atomico, com `/preview` do servidor no dry-run. |
+| Reabrir baixa            | `reopen-installments`  | Desfaz pagamento feito por engano. APAGA desconto e juros junto; `--confirm-undo` em toda escrita (so o `--dry-run` dispensa). |
 | Tipo de categoria        | `--type`               | SYNTHETIC (nao recebe lancamentos, agrupa) ou ANALYTIC (recebe lancamentos diretamente).   |
 | Tipo de conta (bill)     | `--bill-type`          | PAYABLE (a pagar) ou RECEIVABLE (a receber).                                               |
 | Status da categoria      | `--status`             | ACTIVE ou INACTIVE.                                                                       |
@@ -101,13 +103,15 @@ Relacionamentos-chave:
 2. **NAO existe CRUD avulso de parcela na API publica**: os unicos endpoints
    de installments sao `filter`, `realizeList`
    e GET individual. Parcelas **nascem no create-bill** (campo `installments`) e
-   sao pagas via `realize`. **Vencimento e valor de parcela ja lancada mudam
-   pela tela do Aegro, nunca pelo `update-bill`**: `installments` so existe no
-   schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de patch. A API
-   **ignora campo que nao declara, e isso e por desenho** — quem chama e que
-   precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o campo antes
-   de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa. Nao existe
-   comando de lote para parcela.
+   sao pagas via `realize`. **Nunca pelo `update-bill`**: `installments` so
+   existe no schema de CRIACAO (`BillSaveRequestPublicResource`), nunca no de
+   patch. A API **ignora campo que nao declara, e isso e por desenho** — quem
+   chama e que precisa ler o contrato antes. A partir da v0.22.0 o CLI recusa o
+   campo antes de enviar (exit 4); ate a v0.21.0 ele aceita e o 200 mudo passa.
+   **O VENCIMENTO de parcela ja lancada tem caminho proprio**:
+   `financial update-installments`, um lote por fazenda pela API interna (secao
+   5, "Parcelas: sem CRUD avulso, mas o VENCIMENTO muda em lote"). O **VALOR** e
+   que segue so pela tela do Aegro — o endpoint de lote nao tem esse campo.
 
 3. **Formato de valor monetario**: a spec atual unificou em
    `MoneyPublicResource = {"currencyCode": "BRL", "amount": X}` para bills,
@@ -127,7 +131,13 @@ Relacionamentos-chave:
    qualquer um deles, sozinho, apaga). Parcela nao se altera por aqui (ver
    regra 2).
 
-5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves de parcela e marca todas como PAID de uma vez. Body: `{"list": ["key1", "key2"]}`. Nao ha "unrealize" (desfazer pagamento) na API publica — baixa feita por engano se desfaz **pela tela do Aegro**.
+5. **realize e operacao em lote**: O comando `realize` recebe multiplas chaves
+   de parcela e marca todas como PAID de uma vez. Body:
+   `{"list": ["key1", "key2"]}`. Nao ha "unrealize" na API **publica** — mas a
+   baixa feita por engano TEM volta pelo CLI: `financial reopen-installments`,
+   pela API interna (secao 5, "Baixa feita por engano"). Nao e um desfazer de
+   graca: reabrir **apaga desconto e juros** junto com o pagamento, e desconto
+   digitado a mao nao se recupera. Continue confirmando ANTES do realize.
 
 6. **Apropriacao de custo**: ha DOIS eixos no produto, e os dois sao
    **GRAVAVEIS** pela API publica (CLI 0.23.0).
@@ -172,8 +182,9 @@ Relacionamentos-chave:
 11. **Semantica do paymentMethod**:
     - `PROMPT` ("A Vista" da UI; baixa confirmada): se `installments` nao for enviado, a API **gera
       automaticamente 1 parcela JA REALIZADA (paga)**; se enviar 1 parcela, ela
-      e marcada como paga na criacao. Como realize e irreversivel via API, **so
-      use PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
+      e marcada como paga na criacao. A baixa tem volta
+      (`reopen-installments`), mas a volta **apaga desconto e juros**: **so use
+      PROMPT quando o pagamento de fato ja ocorreu e a baixa imediata e
       desejada**.
     - `INSTALLMENT` (parcelado): **exige `installments` nao-vazio** — sem elas a
       API retorna erro de validacao. Parcelas nascem NOT_PAID. Para conta a
@@ -308,8 +319,9 @@ aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"descriptio
 aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --execute
 
 # Realizar (pagar) multiplas parcelas em lote.
-# IRREVERSIVEL via API (nao ha unrealize) e sem --dry-run: liste as parcelas
-# antes (installments), apresente ao usuario e so rode apos confirmacao explicita.
+# Sem --dry-run: liste as parcelas antes (installments), apresente ao usuario e
+# so rode apos confirmacao explicita. Baixa errada se desfaz com
+# `reopen-installments`, mas reabrir apaga desconto e juros junto.
 aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb
 ```
 
@@ -386,7 +398,8 @@ categorias nem inferir de lancamentos antigos:
 aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amount 1500 \
   --cash-flow EXPENSE --payment-method PROMPT --complete
 
-# Compra JA PAGA a vista (PROMPT gera parcela unica paga E irreversivel via API);
+# Compra JA PAGA a vista (PROMPT gera parcela unica JA PAGA; desfazer a baixa
+# depois apaga desconto e juros);
 # nomes resolvidos, fazenda e data inferidas. Preview primeiro, apresente o plano
 # e so grave (sem --dry-run) apos confirmacao explicita do usuario.
 aegro financial create-bill --farm "<fazenda>" --description "Adubo NPK" --total-amount 1500 \
@@ -665,11 +678,13 @@ CONVERTIDO em BRL (registrando moeda/cotacao na descricao) ou lancar pelo app.
 **Pedidos de compra em moeda estrangeira SAO suportados**: valores convertidos
 para BRL + `--currency USD --currency-exchange-rate <cotacao>` (ver 4.5).
 
-### PROMPT cria parcela JA PAGA (e realize e irreversivel)
+### PROMPT cria parcela JA PAGA (e desfazer a baixa custa desconto e juros)
 
 `paymentMethod: PROMPT` gera (ou marca) a parcela unica como **realizada** na
 propria criacao — equivale a dizer que o dinheiro ja saiu/entrou. Nao ha
-unrealize via API. Conta a vencer com parcela unica = `INSTALLMENT` com 1
+unrealize na API publica; pelo CLI existe `reopen-installments` (API interna),
+que devolve a parcela para em aberto mas **apaga desconto e juros** daquela
+realizacao. Conta a vencer com parcela unica = `INSTALLMENT` com 1
 parcela. `INSTALLMENT` sem `installments` retorna erro de validacao;
 `NO_PAYMENT` descarta a conta bancaria e nao gera parcela.
 
@@ -758,18 +773,126 @@ pendencias do LCDPR, a errada nao.
 sem NF-e) — aquele comando usa a API publica, que nao tem o campo. E pedido de
 compra nao tem Livro Caixa nenhum.
 
-### Parcelas: sem CRUD avulso na API
+### Parcelas: sem CRUD avulso, mas o VENCIMENTO muda em lote
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
 `filter`, `realizeList` e GET). Parcelas nascem no `create-bill`
-(campo `installments`). Nao ha "unrealize": baixa errada se desfaz **pela
-tela do Aegro**.
+(campo `installments`). Baixa errada se desfaz com `reopen-installments` (ver
+abaixo).
 
 **`update-bill` NAO altera parcela.** `installments` so existe no schema de
 criacao; no PATCH o servidor **descarta o campo em silencio e responde 200**
 com a conta inteira — indistinguivel de sucesso. Nunca tente mudar parcela por
-aqui, em nenhuma versao: vencimento e valor de parcela ja lancada mudam **pela
-tela do Aegro**.
+aqui, em nenhuma versao.
+
+**O vencimento, esse tem caminho:** `financial update-installments`, que usa o
+lote de parcelas por fazenda.
+
+```bash
+# uma parcela
+aegro financial update-installments --farm "<fazenda>" \
+  --key installment::<id> --due-date 2026-11-20 --dry-run
+
+# um lote (a planilha vira CSV com as colunas key,dueDate)
+aegro financial update-installments --farm "<fazenda>" --map vencimentos.csv --execute
+```
+
+Cinco coisas que mudam como voce conduz a conversa:
+
+1. **E tudo-ou-nada.** Uma parcela inelegivel recusa o lote INTEIRO e nada e
+   gravado. Nao existe "gravou metade" — entao nao ofereca conferir conta a
+   conta depois de uma recusa.
+
+   **A recusa aponta a linha culpada, e voce deve repetir esse nome ao
+   usuario.** O servidor diz so o PROBLEMA (`not-found`, `other-farm`), nunca
+   qual parcela — num lote de 102 isso mandaria conferir 102 chaves a mao. O CLI
+   acrescenta "nao encontrou nesta fazenda: <chaves>", que sao as candidatas das
+   tres recusas de identidade (inexistente, de outra fazenda, excluida — a
+   leitura responde no escopo da fazenda do comando, entao as tres tem o mesmo
+   sintoma). Conduza pela lista: tire essas linhas e repita o lote.
+2. **O `--dry-run` e o veredito do SERVIDOR**, nao uma simulacao: ele chama o
+   `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
+   que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
+   (quantas parcelas, quantas contas, quanto soma).
+3. **Mostre o `de -> para`, nao so o alvo.** O preview traz cada linha como
+   `{parcela, de, para, mudou, lido}`. Duas coisas so aparecem ali: `mudou:
+   false` denuncia a parcela que JA esta na data pedida (lote mirando a chave
+   errada tem essa cara), e `lido: false` diz que a leitura nao trouxe aquela
+   parcela — nao que ela nao muda.
+
+   **Este e o unico registro do vencimento anterior que vai existir.** A resposta
+   da escrita devolve so `key` e valor realizado, e o corpo enviado so tem o
+   alvo: sem o `de`, um lote aplicado errado nao tem para onde voltar. No
+   `--execute` ele segue em `vencimentoAnterior` — guarde a saida do comando
+   antes de fechar o terminal. `--skip-verify` desliga a conferencia posterior,
+   nunca esse registro.
+
+   Numa RECUSA este bloco nao sai: o servidor recusa antes de o preview ser
+   impresso, e quem nomeia as parcelas ali e a mensagem de erro (item 1). Nao
+   prometa ao usuario um `lido: false` que ele nao vai ver.
+4. **Parcela PAGA nao muda de vencimento.** A recusa diz isso com todas as
+   letras. Reabra com `reopen-installments` (abaixo) e repita o lote depois — e
+   a sequencia que a propria recusa do servidor manda fazer.
+5. **O VALOR da parcela nao muda** por este caminho — o endpoint nao tem o
+   campo. Se o pedido for valor, a resposta honesta e "pela tela".
+
+Como montar o lote: pegue as chaves em `aegro financial installments` (filtre
+por conta, fornecedor, status ou janela de vencimento). A chave e
+`installment::<id>` — nao a da conta.
+
+Recusas nomeadas e o que fazer: parcela de **outra fazenda** (quem autoriza e o
+`--farm` do comando), **conciliacao confirmada** (desfaca antes com
+`bank-reconciliation undo`), **lote misto** de receita e despesa (separe em
+dois), **teto de 500** por operacao (divida — cada lote e atomico por si).
+
+### Baixa feita por engano: `reopen-installments`
+
+Quando a conta nasce "a vista", a parcela nasce **JA PAGA**. Se isso foi engano,
+ha volta:
+
+```bash
+# SEMPRE primeiro: mostra o que sera apagado
+aegro financial reopen-installments --farm "<fazenda>" --key installment::<id> --dry-run
+
+# so depois de o usuario confirmar
+aegro financial reopen-installments --farm "<fazenda>" --key installment::<id> \
+  --execute --confirm-undo
+```
+
+**Avise ANTES de executar, sempre:** reabrir apaga mais do que o pagamento. O
+servidor zera a data do pagamento, o valor realizado, a taxa de cambio da
+realizacao e **o desconto e os juros** — eles pertenciam aquela realizacao —, e
+devolve a conciliacao bancaria para pendente. **Desconto e juros digitados a mao
+nao se recuperam.** O `--dry-run` mostra esses valores campo a campo: mostre-os
+ao usuario e espere a confirmacao.
+
+O `--confirm-undo` e obrigatorio em TODA escrita — nao so junto do `--execute`.
+A distincao importa porque **fora do safe mode o CLI escreve sem `--execute`**:
+`reopen-installments --key <chave>`, sozinho, e uma escrita. Quando o guard
+estava preso ao `--execute`, era justamente a invocacao mais curta que desfazia
+o pagamento sem ninguem confirmar nada. So o `--dry-run` dispensa a
+confirmacao, porque ele nao escreve.
+
+Ele existe para isto: o `--execute` diz "nao e simulacao", e nao diz "eu
+entendi que isto apaga".
+
+**A recusa nomeia a linha culpada aqui tambem.** `not-realized` (parcela ja
+aberta), `other-farm` e `not-found` dizem so o problema; o CLI acrescenta as
+chaves que a leitura previa nao encontrou. Repita esses nomes ao usuario —
+numa reabertura em lote e por eles que se conserta a selecao.
+
+**Reabrir nao conserta o vencimento** — e quase sempre e ele o errado. A sequencia
+completa de um lancamento a vista feito por engano e:
+
+1. `reopen-installments` (volta para em aberto, no vencimento original)
+2. `update-installments` (corrige o vencimento)
+
+Nao da para pular a etapa 1: parcela paga e recusada pelo lote de vencimento
+(`already-paid`).
+
+Recusas proprias da reabertura: **parcela ja em aberto** (nada a desfazer — o CLI
+nomeia todas de uma vez antes de escrever) e **conciliacao confirmada** (desfaca
+a conciliacao antes).
 
 A partir da v0.22.0 o CLI recusa antes de chamar (exit 4), no `--dry-run` e no
 `--execute`, junto com qualquer chave de topo fora de `BillPatchPublicResource`.
@@ -894,12 +1017,17 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 1. **Nao invente comandos de parcela.** `create-installment`,
    `update-installment` e `delete-installment` NAO existem (nem no CLI nem na
    API). Parcelas nascem no `create-bill` (campo `installments`); pagamento via
-   `realize`; **correcao de vencimento ou valor pela tela do Aegro** — o
-   `update-bill` responde 200 e nao grava (ver secao 5).
+   `realize`; **vencimento de parcela ja lancada pelo `update-installments`**
+   (lote por fazenda), e o **valor** so pela tela do Aegro. O que nunca serve
+   para nenhum dos dois e o `update-bill`: ele responde 200 e nao grava (ver
+   secao 5).
 
-2. **Nao tente "desfazer" pagamento via API.** Nao ha unrealize na API publica.
-   Realize e irreversivel por ela — confirme antes de executar; a correcao e
-   pela tela.
+2. **Desfazer pagamento nao e de graca.** Nao ha unrealize na API publica; o
+   caminho e `financial reopen-installments` (API interna), que exige
+   `--confirm-undo` porque **apaga desconto e juros** junto com o pagamento e
+   devolve a conciliacao para PENDING. Confirme ANTES de executar o realize —
+   existir conserto nao torna a baixa errada barata. E lembre que reabrir nao
+   conserta o VENCIMENTO: para isso, `update-installments` depois.
 
 3. **Nao misture formatos de moeda.** Envie `{"currencyCode": "BRL", "amount": X}`
    (MoneyPublicResource unificado na spec atual). Em ordem de compra,
@@ -918,7 +1046,7 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 
 8. **Nao crie empresa duplicada.** Antes de `companies create`, busque com `companies list --search-text "nome"` ou `--fiscal-number-type CNPJ` para evitar duplicatas. Atencao: a busca textual da API tem falso-negativo conhecido (empresa existente pode nao aparecer) — em caso de duvida, liste sem filtro antes de criar. `fiscalNumber` e obrigatorio (required na spec).
 
-9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA (irreversivel via API). Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
+9. **Nao use PROMPT sem baixa confirmada.** PROMPT gera parcela JA PAGA, e desfazer isso depois apaga desconto e juros. Conta a vencer com parcela unica = INSTALLMENT com 1 parcela - inclusive quando o usuario diz "a vista" e o pagamento ainda nao aconteceu (1 parcela vencendo na data da nota).
 
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 
