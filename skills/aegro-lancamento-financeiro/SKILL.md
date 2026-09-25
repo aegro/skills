@@ -164,6 +164,11 @@ Antes de criar, filtrar lancamentos existentes da mesma empresa no periodo
 de lancamento duplicado -- em caso de suspeita, mostrar os candidatos ao
 usuario antes de prosseguir.
 
+Duplicata que ja foi gravada sai com `aegro financial delete-bill` (CLI >=
+0.28.0), uma por chamada, sempre com `--dry-run` antes — o comando mostra o que
+a exclusao leva junto (conciliacao, estoque, NF-e). Regras em
+`/aegro-financeiro`, secao 4.1.3.
+
 ### 6. Criar o lancamento com parcelas
 
 Um unico `create-bill` com o campo `installments` -- as parcelas nascem junto

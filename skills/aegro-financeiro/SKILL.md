@@ -248,6 +248,7 @@ Relacionamentos-chave:
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
 | `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--crop-prorate-group` (rateio salvo; exclusivo com `--apportion-crop`), `--apportion-groups` (JSON; rateio por item, exclusivo com as 3 flags anteriores), `--apportion-mode` (WHOLE_BILL/PER_ITEM), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
+| `delete-bill <key>`    | DELETE   | `<key>` (arg), `--confirm-delete` para escrever            | `--include-paid`, `--recurrence one\|one-and-future\|all`, `--dry-run`, `--execute`, `--skip-verify` — ver 4.1.3 (CLI >= 0.28.0; `--recurrence` requer CLI >= 0.29.0) |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
 > nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
@@ -773,6 +774,73 @@ pendencias do LCDPR, a errada nao.
 sem NF-e) — aquele comando usa a API publica, que nao tem o campo. E pedido de
 compra nao tem Livro Caixa nenhum.
 
+### 4.1.3 Excluir lancamento (`delete-bill`) — CLI >= 0.28.0
+
+Uma conta por chamada, pela API interna (exige `aegro auth login`; a API publica
+nao exclui conta). **Sempre dry-run primeiro**, e so exclua com o usuario de
+acordo com o que o dry-run mostrou.
+
+```bash
+aegro financial delete-bill bill::<id> --farm "<fazenda>" --dry-run
+aegro financial delete-bill bill::<id> --farm "<fazenda>" --execute --confirm-delete
+```
+
+**A exclusao leva junto mais do que a conta, e o Aegro nao avisa nem recusa** —
+nem na tela. Foi medido:
+
+| O que a conta tinha | O que a exclusao faz |
+|---|---|
+| parcela PAGA | o pagamento sai do caixa e do saldo da conta bancaria |
+| conciliacao bancaria CONFIRMADA | e **desfeita em silencio**; a linha do extrato volta para pendentes |
+| entrada de estoque | a movimentacao e apagada |
+| NF-e recebida | a nota volta para a fila de **nao lancadas** |
+| pedido de compra / contrato de venda | o progresso e recalculado sem a conta |
+| Livro Caixa | a linha da parcela paga fica orfa ate a proxima sincronizacao |
+
+O `--dry-run` le a conta e lista cada um desses efeitos em `seraAfetado`. Leia
+para o usuario — sobretudo a conciliacao, que ninguem espera perder.
+
+**O CLI recusa (exit 4) antes de escrever:**
+
+- sem `--confirm-delete`;
+- conta de OUTRA fazenda (o servidor apagaria do mesmo jeito): rode com o
+  `--farm` da fazenda dela;
+- conta com parcela paga sem `--include-paid`. Antes de passar a flag, pergunte:
+  **o erro e a conta ou so a baixa?** Se for so a baixa, desfaca ela com
+  `financial reopen-installments` e nao exclua nada. O dry-run mostra as parcelas
+  pagas mesmo sem a flag (e sai com 4);
+- parcela paga dentro de periodo com fechamento financeiro: reabrir o periodo e
+  decisao de quem administra a fazenda;
+- conta recorrente sem `--recurrence` (ver abaixo).
+
+Conta ja excluida: nada e enviado e o comando sai com 0 (`jaExcluida`).
+
+**Nao ha desfazer pelo CLI.** A conta lida antes sai inteira em `antes` no
+stdout: **guarde esse JSON** — e dele que se relanca a conta ou se refaz a
+conciliacao a mao.
+
+**Se sair `NOT_PERSISTED`**, a conta ficou pela metade (por exemplo: viva, sem as
+parcelas). **Nao repita o `delete-bill`** — repetir reexecuta os efeitos no
+servidor. Corrija pela tela e leve o `antes` junto.
+
+#### Conta recorrente (`--recurrence`) — CLI >= 0.29.0
+
+| `--recurrence` | Exclui | Deixa, **sem avisar** |
+|---|---|---|
+| `one` | so esta ocorrencia, **mesmo paga**; a serie e renumerada | — |
+| `one-and-future` | esta (**mesmo paga**) e as futuras sem parcela paga | as futuras pagas |
+| `all` | todas as ocorrencias sem parcela paga | as pagas — **inclusive esta** |
+
+```bash
+aegro financial delete-bill bill::<id> --farm "<fazenda>" --recurrence one-and-future --dry-run
+```
+
+O dry-run lista, ocorrencia por ocorrencia, o que sai (`excluir`), o que o
+servidor vai pular por estar pago (`puladasPorEstarPagas`) e o que fica
+(`mantidas`). Mostre as tres listas ao usuario — as puladas sao justamente o que
+a tela nao diz. Se o comando recusar dizendo que nao conseguiu enumerar a serie,
+exclua pela tela: sem a serie inteira o plano seria palpite.
+
 ### Parcelas: sem CRUD avulso, mas o VENCIMENTO muda em lote
 
 Nao existem endpoints de criar/atualizar/excluir parcela individual (so
@@ -1032,6 +1100,11 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 3. **Nao misture formatos de moeda.** Envie `{"currencyCode": "BRL", "amount": X}`
    (MoneyPublicResource unificado na spec atual). Em ordem de compra,
    `currencyCode`/`grossAmount` sao campos na raiz do body.
+
+3a. **Nao exclua para consertar pagamento.** Se o erro e so a baixa (pagou
+   errado, data errada), `delete-bill` e o caminho errado: ele leva junto a
+   conciliacao, o estoque e a NF-e. Desfaca a baixa e mantenha a conta. E nunca
+   passe `--include-paid` sem o usuario ter visto o dry-run.
 
 4. **Nao use `cropProrateGroupKey` na raiz do bill.** E aceito e IGNORADO em
    silencio. Apropriacao direta = `financialApportion` (type CROP_PRORATE +
