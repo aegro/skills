@@ -279,6 +279,9 @@ aegro financial create-bill --farm "<fazenda>" \
   antes de anexar em conta que voce nao criou nesta sessao.
 - **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
   com `--url` — rode ELE; repetir o create duplicaria a conta.
+- **5xx ou timeout no `create-bill`/`create-bills`**: nao repita. Leia o
+  `error.conferencia` e siga a "Logica de Retry" de /aegro-operacional — o erro
+  pode ter vindo depois de a conta ser gravada.
 - Transferencia bancaria tambem aceita anexo:
   `aegro files attach --farm "<fazenda>" --entity bank-transfer --key bankTransfer::<id> ...`
   (re-save dentro de periodo financeiro FECHADO falha com erro de validacao,

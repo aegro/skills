@@ -772,30 +772,71 @@ investigar:
 pip install -U aegro && aegro --version
 ```
 
-### 5xx no criar NAO garante que nada foi criado
-
-Em `activities create-plan`/`create-realization`, um 5xx pode ter gravado o
-registro assim mesmo. O CLI avisa e tenta conferir na listagem — mas ele
-distingue "conferi e nao achei" de "nao consegui conferir". **Nunca repita o
-create as cegas depois de um 5xx**: confira a listagem primeiro, ou voce cria
-o registro em duplicidade.
-
 ### Logica de Retry
 
-- **3 tentativas** com backoff exponencial (1s, 2s, 4s)
-- Apenas para erros **retriaveis**: HTTP 500, 502, 503, 504, timeout
-- Erros **nao retriaveis**: 400, 401, 403, 404, 422
+A regra depende de o comando **ler** ou **escrever**:
+
+| Tipo | Exemplos | 5xx, timeout ou queda de conexao |
+|---|---|---|
+| Leitura | `list`, `get`, `bills`, `installments`, qualquer busca | Pode repetir. O CLI ja retenta sozinho com backoff; se persistir, espere e tente de novo |
+| Escrita | `create-*`, `update-*`, `realize`, `settle`, `launch-bill`, romaneio, abastecimento, atividade, conta | **Nao repita.** Procure o registro primeiro |
+
+**Por que escrita e diferente:** a API grava o registro e so depois falha no
+resto do processamento, e o erro que volta nao desfaz nada. "Servidor
+indisponivel" numa escrita NAO quer dizer que nada foi criado — repetir as
+cegas cria o registro em duplicidade, e cada nova tentativa cria outro. O CLI
+nunca retenta escrita sozinho; nao retente voce.
+
+Depois de 5xx ou timeout numa escrita, nesta ordem:
+
+1. **Leia o `error.conferencia`, se vier.** `create-bill` e `create-bills`
+   procuram a conta sozinhos (`launch-bill` tambem confere e avisa no stderr):
+   - `situacao: "criada"` — a conta existe (`contas[]` traz `key` e `link`).
+     Nao repita. Confira as parcelas pelo link: o erro pode ter deixado a
+     conta sem parcela.
+   - `situacao: "nao_criada"` com `podeRepetir: true` — conferido e nada foi
+     gravado. Pode repetir.
+   - `situacao: "inconclusiva"` — o CLI nao consegue afirmar (conta parecida,
+     conta igual criada pouco antes, timeout sem resposta). O `motivo` diz por
+     que, e `contas[]` traz as candidatas. Siga o passo 2 e mostre as candidatas
+     ao usuario.
+   Em CLI que traz a conferencia, o lote (`create-bills`) para na linha que
+   falhou e o stdout diz o que ja foi gravado (`resultados`), de que linha
+   retomar (`retomarNaLinha`) e quais linhas anteriores voltaram sem criar
+   (`linhasAnterioresNaoCriadas`). Em CLI mais antigo nada disso vem: conte pela
+   listagem o que ja entrou antes de qualquer coisa. Nao reenvie o arquivo inteiro:
+   preserve as linhas confirmadas como criadas, corrija erros 4xx e, para 5xx ou
+   timeout, confirme pela busca completa quais linhas nao foram criadas antes de
+   processa-las em um novo lote.
+2. **Sem conferencia, procure voce** pela listagem do dominio, filtrando pelo que
+   identifica o registro: conta por data de lancamento + descricao + valor (e
+   numero do documento, se houver); atividade por safra + data + tipo; romaneio
+   por safra + data + peso; abastecimento por patrimonio + data + litros.
+   `activities create-plan`/`create-realization` avisam o que acharam na
+   listagem e dizem quando a conferencia foi parcial — parcial nao e "nao
+   existe".
+3. **So repita se a busca completa nao achar nada.** Depois de timeout, espere
+   um minuto e busque de novo antes de repetir: o servidor pode ainda estar
+   gravando. Achou: use o registro que existe (corrija com `update` se
+   precisar). Achou mais de um igual: pode ser duplicata de tentativa anterior
+   ou lancamento legitimo repetido — mostre as chaves ao usuario e deixe ele
+   decidir; nao apague por conta propria.
+4. **Se o mesmo 5xx voltar com os mesmos dados**, pare: e achado novo. Junte
+   comando e resposta e reporte, em vez de tentar de novo.
+
+Erros **4xx** (400, 401, 403, 404, 422) nunca se resolvem repetindo: corrija o
+comando.
 
 ### Erros Comuns e Diagnostico
 
 | HTTP | Significado | Acao |
 |------|-------------|------|
-| 500 | Erro interno do servidor | Retry automatico. Se persistir com os mesmos dados, e achado novo: junte comando e resposta e reporte, em vez de repetir |
+| 500 | Erro interno do servidor | Leitura: pode repetir. **Escrita: nao repita — procure o registro primeiro** (ver "Logica de Retry"). Se persistir com os mesmos dados, e achado novo: reporte |
 | 422 | Erro de validacao | Leia a mensagem: em campo de enumeracao e unidade ela **lista os valores aceitos**. Nao faz retry, e nao e bug do servidor |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
 | 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |
-| Timeout | Sem resposta em 30s | Retry automatico. API pode estar lenta |
+| Timeout | Sem resposta em 30s | Leitura: pode repetir, a API pode estar lenta. **Escrita: o registro pode ter sido gravado — procure antes de repetir** |
 
 ### Dicas Gerais
 
