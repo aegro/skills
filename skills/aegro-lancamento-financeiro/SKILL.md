@@ -298,7 +298,9 @@ em /aegro-financeiro (regra 6).
 6. **Checar duplicidade antes de lancar** -- nota reenviada gera bill dobrada
 7. **Anexe no proprio lancamento** -- `create-bill --attach ./nota.pdf`
    (repetivel, exige OAuth); em conta que ja existe, `files attach`. Nao mande
-   o usuario anexar pelo app
+   o usuario anexar pelo app. **Conta lancada a partir de NF-e e a excecao:**
+   da v0.24.0 em diante ela ja vem com a DANFE anexada, entao anexar de novo
+   deixa o arquivo duplicado -- confira com `files list-attachments` antes
 8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
    categoria ja cadastrada de cada item; categoria unica na bill distorce o
    DRE por categoria
