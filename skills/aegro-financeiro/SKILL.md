@@ -248,7 +248,7 @@ Relacionamentos-chave:
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
 | `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--crop-prorate-group` (rateio salvo; exclusivo com `--apportion-crop`), `--apportion-groups` (JSON; rateio por item, exclusivo com as 3 flags anteriores), `--apportion-mode` (WHOLE_BILL/PER_ITEM), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
-| `delete-bill <key>`    | DELETE   | `<key>` (arg), `--confirm-delete` para escrever            | `--include-paid`, `--recurrence one\|one-and-future\|all`, `--dry-run`, `--execute`, `--skip-verify` — ver 4.1.3 (CLI >= 0.28.0; `--recurrence` na versao seguinte) |
+| `delete-bill <key>`    | DELETE   | `<key>` (arg), `--confirm-delete` para escrever            | `--include-paid`, `--recurrence one\|one-and-future\|all`, `--dry-run`, `--execute`, `--skip-verify` — ver 4.1.3 (CLI >= 0.28.0; `--recurrence` requer CLI >= 0.29.0) |
 
 > NAO existem `create-installment`/`update-installment`/`delete-installment` —
 > nem no CLI nem na API publica. Parcelas nascem no `create-bill` (campo
@@ -823,7 +823,7 @@ conciliacao a mao.
 parcelas). **Nao repita o `delete-bill`** — repetir reexecuta os efeitos no
 servidor. Corrija pela tela e leve o `antes` junto.
 
-#### Conta recorrente (`--recurrence`) — versao seguinte a 0.28.0
+#### Conta recorrente (`--recurrence`) — CLI >= 0.29.0
 
 | `--recurrence` | Exclui | Deixa, **sem avisar** |
 |---|---|---|
