@@ -1,6 +1,6 @@
 ---
 name: aegro-patrimonial
-requires-cli: 0.21.0
+requires-cli: 0.28.0
 description: >-
   Dominio de patrimonio do Aegro pela CLI — maquinas, veiculos, silos,
   benfeitorias, pivos e estacoes, mais abastecimentos de combustivel e
@@ -310,6 +310,45 @@ exit 0 — o CLI avisa no stderr quando detecta isso.
 > Talhao tem o mesmo problema, e ali **nao ha campo** que confirme a exclusao. Ao
 > investigar referencia que sumiu em outro dominio, nao conte com a leitura.
 
+### 9. Anexo em abastecimento e manutencao (nota do posto, ordem de servico)
+
+Anexe **no mesmo comando** do lancamento, com `--file` (repetivel):
+
+```bash
+aegro fuel-supplies create --farm "<fazenda>" --asset-key "asset::<id>" \
+  --date "2026-09-23" --stock-location-key "stockLocation::<id>" \
+  --file ./nota-posto.pdf --dry-run
+# conferido o preview, aplique:
+aegro fuel-supplies create --farm "<fazenda>" --asset-key "asset::<id>" \
+  --date "2026-09-23" --stock-location-key "stockLocation::<id>" \
+  --file ./nota-posto.pdf --execute
+
+# Em lancamento que ja existe, --file ACRESCENTA (os anexos antigos ficam):
+aegro maintenances update --farm "<fazenda>" "assetEvent::<id>" \
+  --file ./ordem-servico.pdf --execute
+```
+
+- O **upload exige `aegro auth login`**: API key nao sobe arquivo (exit 2, antes de
+  qualquer escrita — nada e criado).
+- O CLI rele o lancamento e confere o anexo. Se o anexo nao ficou — ou se
+  qualquer passo falhar depois do upload —, o stderr traz um JSON com
+  `"code": "ATTACH_FAILED"`, `savedKey` e `attachRetry`. Rode o `attachRetry`
+  (um `files attach --farm ... --url ...`): ele reaproveita o arquivo que ja
+  subiu, entao repetir e seguro. **Nao repita o comando com `--file`**: no
+  `create` duplicaria o lancamento; no `update`, o anexo. Sem `savedKey`, o
+  registro pode nao ter sido gravado: confira com `list` antes de qualquer coisa.
+- Passar o mesmo arquivo duas vezes em `--file` sobe uma copia so.
+- Para anexar depois, sem mexer em outro campo, tambem vale
+  `aegro files attach --farm "<fazenda>" --entity fuel-supply --key assetEvent::<id> --file ./nota.pdf --execute`
+  (ou `--entity maintenance`). Com `--url` de arquivo que ja subiu, funciona ate
+  com API key.
+- Remover ou trocar um anexo **nao** tem comando: faca pela tela do app.
+- CLI anterior ao suporte responde `No such option: --file` nesses comandos, ou
+  recusa o `files attach --entity fuel-supply`/`maintenance` citando o
+  serv-core. Nos dois casos: atualize o CLI. Ate la, anexe pela tela do app.
+- Se o CLI recusar (exit 4) porque um anexo que ja esta no lancamento veio sem
+  caminho ou formato, anexe pela tela do app.
+
 ## Referencia de Comandos
 
 ### assets
@@ -426,10 +465,8 @@ aegro assets list --farm "Fazenda Aegro" --type VEHICLE
 
 **Anexo no patrimonio** (foto, nota de compra):
 `aegro files attach --farm "<fazenda>" --entity asset --key asset::<id> --file ./foto.jpg --execute`
-(exige OAuth). **Abastecimento e manutencao NAO aceitam anexo pelo CLI**: o
-serv-core descarta `files` em update vindo de cliente nao-web (o CLI recusa
-`--entity fuel-supply`/`maintenance` com esse motivo; aguarda correcao no
-servidor — anexe pela tela do app enquanto isso).
+(exige OAuth). Abastecimento e manutencao anexam com `--file` no proprio
+`create`/`update` — ver a regra 8.
 
 ### fuel-supplies
 
@@ -437,8 +474,8 @@ servidor — anexe pela tela do app enquanto isso).
 |---------|-----------|-----------------|
 | `aegro fuel-supplies get <key>` | Busca abastecimento por chave | `--apportionment` (composicao do custo), `--output` |
 | `aegro fuel-supplies list` | Lista abastecimentos | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--observations`, `--inputs` (JSON), `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--crop-prorate-group-key`, `--farm-user-key`, `--skip-verify` |
-| `aegro fuel-supplies update <key>` | Atualiza abastecimento (PATCH parcial) | mesmas flags do create + `--clear-crop-glebes` |
+| `aegro fuel-supplies create` | Cria abastecimento | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--observations`, `--inputs` (JSON), `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--crop-prorate-group-key`, `--farm-user-key`, `--file` (anexo, repetivel), `--skip-verify` |
+| `aegro fuel-supplies update <key>` | Atualiza abastecimento (PATCH parcial) | mesmas flags do create (`--file` ACRESCENTA) + `--clear-crop-glebes` |
 
 ```bash
 # Registrar abastecimento de trator (Diesel S10 - 200L)
@@ -508,8 +545,8 @@ aegro fuel-supplies get --farm "Fazenda Aegro" "assetEvent::67f4d5e6a7b8c9d0" --
 |---------|-----------|-----------------|
 | `aegro maintenances get <key>` | Busca manutencao por chave | `--apportionment` (composicao do custo), `--output` |
 | `aegro maintenances list` | Lista manutencoes | `--asset-key`, `--start-date`, `--end-date`, `--page`, `--output` |
-| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key`, `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--skip-verify` |
-| `aegro maintenances update <key>` | Atualiza manutencao (PATCH parcial) | mesmas flags do create + `--clear-crop-glebes` |
+| `aegro maintenances create` | Cria manutencao | `--asset-key` (obrig.), `--date` (obrig.), `--stock-location-key` (obrig.), `--hourmeter`, `--odometer`, `--crop-prorate-group-key`, `--observations`, `--inputs` (JSON), `--farm-user-key`, `--crop-key`, `--crop-glebe`, `--glebe-tag`, `--file` (anexo, repetivel), `--skip-verify` |
+| `aegro maintenances update <key>` | Atualiza manutencao (PATCH parcial) | mesmas flags do create (`--file` ACRESCENTA) + `--clear-crop-glebes` |
 
 ```bash
 # Registrar manutencao preventiva de trator (troca de filtros + oleo)
