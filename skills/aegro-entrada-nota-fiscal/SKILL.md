@@ -208,6 +208,7 @@ list (janela recente, --not-launched)
 3. CLASSIFICAR pelo trio: papel da fazenda (emitiu/recebeu) + CFOP + natureza
         |
 4. CONCILIAR (padrao): produtos (item -> elemento); fornecedor/produtor por CNPJ
+   (excecao: item sem quantidade -> nao concilia, secao 3)
         |
 5. launch-bill (ou launch-purchase-order) --dry-run  ->  conferir  ->  --execute
         |
@@ -309,24 +310,42 @@ declarada na nota ORIGINAL; a complementar so acerta o valor. Por isso a
 quantidade vem zerada: repeti-la contaria a entrega duas vezes. **A nota NAO
 esta errada** — nao peca ao cliente para corrigi-la.
 
-- **Como lancar:** receita (ou despesa) so de valor, **sem estoque**. Nao passe
-  `--stock-harvest` nem `--stock-location`: nao ha mercadoria para movimentar.
-- **Nao concilie o item para esta nota:** a conciliacao nao entra na conta.
-  Aviso de "mapeamento com defeito" nessa nota nao e motivo para refazer
-  `conciliate`.
+Item com quantidade zero nao e exclusivo da complementar: tambem aparece em nota
+de ajuste, de devolucao, de credito ou debito e ate de finalidade normal. Quem
+diz qual e o campo `finNFe` do XML, que o CLI le e mostra (ver abaixo).
+
+- **Como lancar:** receita (ou despesa) so de valor, **sem estoque**. Se o CFOP
+  for de entrada (1xxx/2xxx), passe `--revenue` ou `--expense` explicito — o CLI
+  nao classifica sozinho. A complementar e excecao ao default de arquivar dessas
+  notas: ela tem efeito financeiro real.
+- **Nao passe `--stock-harvest` nem `--stock-location`:** nao ha mercadoria, e o
+  comando recusa com exit 4.
+- **Nao concilie o item nesta nota:** a conta vai sem insumos, e o comando
+  recusa `--conciliate` (exit 4) para nao salvar um de/para que valeria para as
+  proximas notas do fornecedor. O aviso de "mapeamento com defeito" que ele
+  imprime vale para as **proximas notas de entrega**, nao para esta.
 - **Leia o texto da nota antes do rateio:** ele costuma dizer a safra de
   referencia ("COMPL. PRECO REF. PREMIO SAFRA 2025/26"), que pode ser anterior
-  a safra corrente. Rateie na safra que a nota cita, e confirme com o usuario.
+  a safra corrente. Rateie nela com `--apportion-crop "<safra>"` e confirme com o
+  usuario. Em receita o servidor pode descartar o rateio: leia a conferencia que
+  o comando imprime depois de lancar.
 - **Retencao (ex. INSS) citada no texto:** o lancamento sai pelo valor cheio da
-  nota. Pergunte ao usuario como a fazenda registra a retencao antes de lancar.
-- **Confira no dry-run se o CLI trata o caso:** ele deve avisar "Nota sem
-  quantidade ... (complementar de preco/valor)", e o corpo sai sem `inputs`,
-  com a categoria na conta. **Sem esse aviso, NAO rode o execute:** o CLI ainda
-  manda o item com quantidade zero, e o servidor devolve `400 Requisicao
-  invalida` so com `correlationId`, com qualquer combinacao de flags. Nao tente
-  variacoes: atualize o CLI (`aegro --version`) ou lance pela UI.
+  nota. Pergunte ao usuario como a fazenda registra a retencao, e nao altere o
+  `--total` sem essa decisao.
+- **Confira no dry-run se o CLI trata o caso:** o `preview` deve trazer
+  `notaSemQuantidade` (com `finNFe` e `semInsumos: true`), e o stderr avisa "Nota
+  sem quantidade ...". Com `finNFe: 2` e complementar; com `finNFe: null` o XML
+  nao foi lido — confirme a finalidade pela natureza da operacao antes de
+  seguir. Nota de **devolucao** (`finNFe: 4`) o comando recusa: revise na UI.
+- **Sem `notaSemQuantidade` no preview, NAO rode o execute:** o CLI ainda manda o
+  item com quantidade zero, e o servidor devolve `400 Requisicao invalida` so com
+  `correlationId`, com qualquer combinacao de flags. Nao tente variacoes: lance
+  pela UI.
 
 ### 4. Conciliar entidades — por padrao, sempre
+
+> **Excecao:** nota com item sem quantidade (complementar e afins, secao 3) nao
+> se concilia — a conta vai sem insumos e o comando recusa `--conciliate`.
 
 Conciliar preserva o **detalhamento por item** (elemento do catalogo, custo,
 estoque). Conduza a conciliacao salvo opt-out explicito:
@@ -565,7 +584,7 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
 | Desde a **v0.17.0** o `launch-bill` **bloqueia** NF de nao-compra (59xx/69xx) lancada como **despesa**; em receita nao dispara. | Libere com `--allow-non-purchase` so apos conferir. O guard le so o CFOP — a natureza da operacao continua sendo leitura sua (secao 3). |
-| Nota **complementar** de preco/valor (item com quantidade 0) cujo dry-run **nao** avisa "Nota sem quantidade": o execute devolve `400 Requisicao invalida` so com `correlationId`. | Nao e defeito da nota nem da conciliacao — nao repita variacoes de flags. Atualize o CLI ou lance pela UI (secao 3). |
+| Nota com item sem quantidade (complementar e afins) cujo dry-run **nao** traz `notaSemQuantidade` no `preview`: o execute devolve `400 Requisicao invalida` so com `correlationId`. | Nao e defeito da nota nem da conciliacao — nao repita variacoes de flags. Lance pela UI (secao 3). |
 | Total divergente (`value` dos produtos x `totalValue` da nota com frete/impostos) **para** o lancamento na v0.17.0+. | Confira os dois no `items` e escolha explicitamente com `--total <valor>`. |
 | `--stock-location` **nunca** da baixa de producao — e o estoque de **insumo**, e em nota de receita o comando para (exit 4). | Venda de graos usa `--stock-harvest <asset::silo>` (secao 5b), CLI v0.18.0+. |
 | Apos `--execute` com estoque, o envelope pode sair `partial` com `stockUnverified`. | **Nao relance** — a conta foi criada; faltou a *conferencia*. Confira na UI (Estq. Producao -> Movimentacoes). |
