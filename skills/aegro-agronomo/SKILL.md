@@ -411,7 +411,9 @@ ticket **imprime** o desconto como 0 (ex.: "desconto 0,00 kg"), isso ja e a
 resposta: lance `0kg` sem perguntar. Leituras de qualidade que nao sao desconto
 (PH, ATR, Brix, Pol) vao so em `--discount-index` (ex.: `--discount-index
 "PH=77"`), sem `--discount`. No `MANUAL`, o teor de qualquer desconto tambem pode
-ir sozinho em `--discount-index` (o descontado e o do ticket; o teor so registra).
+ir sozinho em `--discount-index` (o descontado e o do ticket; o teor so registra);
+no `AUTOMATIC` a CLI recusa teor sem `--discount` do mesmo nome, exceto leitura
+de qualidade.
 
 ```bash
 # Ensaio: a previa do servidor aparece em calculadoPeloServidor e liquidoDoTicket
@@ -451,8 +453,8 @@ Ticket que imprime so a taxa de cada desconto, sem o kg: prefira o `AUTOMATIC`
 (a CLI com previa calcula o kg pela taxa e confere com o liquido do ticket). Se
 tiver de ser `MANUAL` (API key ou CLI antiga), lance os cinco pesos do ticket sem
 linhas de desconto e escreva as taxas em `--observations` (ex.: `"Umidade 1,7%;
-Impureza 0,5% (so taxa no ticket)"`) e, na CLI com previa, os teores em
-`--discount-index` — a CLI
+Impureza 0,5% (so taxa no ticket)"`) e, na CLI com previa, os teores que o
+ticket imprimir em `--discount-index` (teor nao e a taxa do desconto). A CLI
 avisa que o descontado nao tem linha, e e o esperado nesse caso, mesmo com
 desconto alto (grao umido desconta 25% ou mais); so acima de metade do produto
 ela recusa. Nunca invente o kg de uma linha.
@@ -477,8 +479,9 @@ aegro harvest-logs create --farm "<fazenda>" \
 ```
 
 **Depois de gravar, leia `avisos` e confira o liquido.** Na CLI com previa, a
-saida traz `avisos` (descontado sem linha, descontado alto, taxa e kg da mesma
-linha que nao batem) tambem no `--execute`: leve cada um ao usuario. O de taxa x kg
+saida traz `avisos` tambem no `--execute` (no `MANUAL`: descontado sem linha e
+descontado alto; nos dois modos: taxa e kg da mesma linha que nao batem): leve
+cada um ao usuario. O de taxa x kg
 (`atencaoTaxaKg` no ensaio) quer dizer que o kg nao e a taxa aplicada ao produto
 nem ao peso sem impureza — confira no ticket se o kg e daquela linha e se a taxa e
 o percentual do desconto, antes do `--execute`. Leia `conferenciaDoLiquido`:
