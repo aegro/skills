@@ -330,7 +330,7 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
   - **toneladas**: converta para kg antes (`31,86 t` = `31860`); cuidado com a
     virgula de milhar (`31,860` pode ser 31.860 kg);
   - **teor ou desconto escrito a mao** sobre um ticket sem desconto: nao e desconto
-    do ticket — pergunte ao usuario antes de lancar;
+    do ticket - pergunte ao usuario antes de lancar;
   - **rotulos que enganam:** leia o que o numero e, nao so o rotulo — ha ticket em
     que "Peso Liquido" vem antes dos descontos (e o produto), "Peso Bruto" e o
     produto ou "Peso Total" e o bruto. Confira pela conta: bruto - tara = produto,
@@ -400,7 +400,7 @@ cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
   desconto sem tipo escrito em `--observations`, ex.:
   `--observations "Taxa de servico do armazem: 2590 kg (sem tipo na safra)"`.
   A CLI avisa em `atencaoDescontoSemLinha` que as linhas somam menos que o
-  descontado — e o esperado nesse caso. Se, **havendo linhas**, a parte sem linha
+  descontado - e o esperado nesse caso. Se, **havendo linhas**, a parte sem linha
   passar de um quinto do produto, a CLI recusa: isso nao e desconto (carga
   dividida, ticket que nao fecha) — pergunte ao usuario.
 
