@@ -317,7 +317,7 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
   fiscal de venda ou remessa, relatorio de periodo, print sem tara), nao e
   romaneio: diga isso ao usuario e pergunte o ticket, em vez de inventar pesos.
   Documento ou conjunto de anexos com varias cargas (varios tickets, uma foto por
-  carga, relatorio de periodo) vira um romaneio por carga, ou pergunte ao usuario como ele quer registrar — nunca some
+  carga, relatorio de periodo) vira um romaneio por carga, ou pergunte ao usuario como ele quer registrar - nunca some
   as cargas num romaneio so.
 - **Carga dividida:** quando bruto - tara nao e o peso desta carga (o ticket
   reparte uma pesagem entre destinos, contratos ou talhoes), nao ajuste bruto nem
@@ -331,12 +331,12 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
     virgula de milhar (`31,860` pode ser 31.860 kg);
   - **teor ou desconto escrito a mao** sobre um ticket sem desconto: nao e desconto
     do ticket - pergunte ao usuario antes de lancar;
-  - **rotulos que enganam:** leia o que o numero e, nao so o rotulo — ha ticket em
+  - **rotulos que enganam:** leia o que o numero e, nao so o rotulo - ha ticket em
     que "Peso Liquido" vem antes dos descontos (e o produto), "Peso Bruto" e o
     produto ou "Peso Total" e o bruto. Confira pela conta: bruto - tara = produto,
     produto - descontos = liquido;
   - **nome do desconto diferente do tipo da safra** (ex.: "Ardidos" no ticket e
-    "Avariados" na safra): se a linha desconta 0 kg, nao pergunte — cite o item e o
+    "Avariados" na safra): se a linha desconta 0 kg, nao pergunte - cite o item e o
     teor em `--observations`; se desconta kg, pergunte ao usuario qual tipo usar;
   - **raros:** planilha com bruto e tara carga a carga e um romaneio por linha,
     confirmando antes; dois tickets da mesma carga (origem e destino) e um romaneio
@@ -371,7 +371,7 @@ ticket, nada e gravado e a mensagem diz a causa que os numeros permitem afirmar
 — siga o que ela disser:
 - **"fecha se ... for calculado sobre o peso SEM impureza"**: o armazem usou outra
   base. Informe o **kg de cada linha** como o ticket imprime — o Aegro grava o kg
-  como veio — ou peca ao usuario para ajustar a base na configuracao da safra. Se
+  como veio - ou peca ao usuario para ajustar a base na configuracao da safra. Se
   o ticket so imprime as taxas (sem kg), a mensagem diz isso: ou o usuario ajusta a
   base da safra pela tela e voce lanca de novo, ou `MANUAL` com os cinco pesos do
   ticket e as taxas em `--observations`;
@@ -400,7 +400,7 @@ cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
   A CLI avisa em `atencaoDescontoSemLinha` que as linhas somam menos que o
   descontado - e o esperado nesse caso. Se, **havendo linhas**, a parte sem linha
   passar de um quinto do produto, a CLI recusa: isso nao e desconto (carga
-  dividida, ticket que nao fecha) — pergunte ao usuario.
+  dividida, ticket que nao fecha) - pergunte ao usuario.
 
 **Ticket so com teores** (umidade 22,8, impureza 1,2 e nenhuma taxa ou peso de
 desconto): nao lance com `0%`. Pergunte ao usuario se o armazem descontou e
@@ -481,7 +481,7 @@ saida traz `avisos` tambem no `--execute` (no `MANUAL`: descontado sem linha e
 descontado alto; nos dois modos: taxa e kg da mesma linha que nao batem): leve
 cada um ao usuario. O de taxa x kg
 (`atencaoTaxaKg` no ensaio) quer dizer que o kg nao e a taxa aplicada ao produto
-nem ao peso sem impureza — confira no ticket se o kg e daquela linha e se a taxa e
+nem ao peso sem impureza - confira no ticket se o kg e daquela linha e se a taxa e
 o percentual do desconto, antes do `--execute`. Leia `conferenciaDoLiquido`:
 - `"conferido": true` — o liquido gravado e o previsto; cite ao usuario o
   `liquidoGravadoKg`.
