@@ -301,6 +301,31 @@ o bloqueio do CLI como segunda rede, nao como a primeira.
 - So siga para `launch-bill` se o usuario confirmar explicitamente o efeito
   financeiro real, e registre essa confirmacao na conversa.
 
+**Nota COMPLEMENTAR (de preco ou valor): quantidade zero e o formato certo.**
+Reconheca pela natureza da operacao ("Nota Complementar de Preco") e pelo item
+com `quantidade: 0` no `items`, com o valor preenchido. E o caso tipico da usina
+pagando premio ou diferenca de preco da cana ja entregue. A mercadoria foi
+declarada na nota ORIGINAL; a complementar so acerta o valor. Por isso a
+quantidade vem zerada: repeti-la contaria a entrega duas vezes. **A nota NAO
+esta errada** — nao peca ao cliente para corrigi-la.
+
+- **Como lancar:** receita (ou despesa) so de valor, **sem estoque**. Nao passe
+  `--stock-harvest` nem `--stock-location`: nao ha mercadoria para movimentar.
+- **Nao concilie o item para esta nota:** a conciliacao nao entra na conta.
+  Aviso de "mapeamento com defeito" nessa nota nao e motivo para refazer
+  `conciliate`.
+- **Leia o texto da nota antes do rateio:** ele costuma dizer a safra de
+  referencia ("COMPL. PRECO REF. PREMIO SAFRA 2025/26"), que pode ser anterior
+  a safra corrente. Rateie na safra que a nota cita, e confirme com o usuario.
+- **Retencao (ex. INSS) citada no texto:** o lancamento sai pelo valor cheio da
+  nota. Pergunte ao usuario como a fazenda registra a retencao antes de lancar.
+- **Confira no dry-run se o CLI trata o caso:** ele deve avisar "Nota sem
+  quantidade ... (complementar de preco/valor)", e o corpo sai sem `inputs`,
+  com a categoria na conta. **Sem esse aviso, NAO rode o execute:** o CLI ainda
+  manda o item com quantidade zero, e o servidor devolve `400 Requisicao
+  invalida` so com `correlationId`, com qualquer combinacao de flags. Nao tente
+  variacoes: atualize o CLI (`aegro --version`) ou lance pela UI.
+
 ### 4. Conciliar entidades — por padrao, sempre
 
 Conciliar preserva o **detalhamento por item** (elemento do catalogo, custo,
@@ -540,6 +565,7 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
 | Desde a **v0.17.0** o `launch-bill` **bloqueia** NF de nao-compra (59xx/69xx) lancada como **despesa**; em receita nao dispara. | Libere com `--allow-non-purchase` so apos conferir. O guard le so o CFOP — a natureza da operacao continua sendo leitura sua (secao 3). |
+| Nota **complementar** de preco/valor (item com quantidade 0) cujo dry-run **nao** avisa "Nota sem quantidade": o execute devolve `400 Requisicao invalida` so com `correlationId`. | Nao e defeito da nota nem da conciliacao — nao repita variacoes de flags. Atualize o CLI ou lance pela UI (secao 3). |
 | Total divergente (`value` dos produtos x `totalValue` da nota com frete/impostos) **para** o lancamento na v0.17.0+. | Confira os dois no `items` e escolha explicitamente com `--total <valor>`. |
 | `--stock-location` **nunca** da baixa de producao — e o estoque de **insumo**, e em nota de receita o comando para (exit 4). | Venda de graos usa `--stock-harvest <asset::silo>` (secao 5b), CLI v0.18.0+. |
 | Apos `--execute` com estoque, o envelope pode sair `partial` com `stockUnverified`. | **Nao relance** — a conta foi criada; faltou a *conferencia*. Confira na UI (Estq. Producao -> Movimentacoes). |
