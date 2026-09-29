@@ -316,8 +316,8 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
 - **O anexo e um ticket de pesagem?** Sem bruto **ou** sem tara no papel (nota
   fiscal de venda ou remessa, relatorio de periodo, print sem tara), nao e
   romaneio: diga isso ao usuario e pergunte o ticket, em vez de inventar pesos.
-  Documento que soma varias cargas (varios tickets, relatorio de periodo) vira um
-  romaneio por carga, ou pergunte ao usuario como ele quer registrar — nunca some
+  Documento ou conjunto de anexos com varias cargas (varios tickets, uma foto por
+  carga, relatorio de periodo) vira um romaneio por carga, ou pergunte ao usuario como ele quer registrar — nunca some
   as cargas num romaneio so.
 - **Carga dividida:** quando bruto - tara nao e o peso desta carga (o ticket
   reparte uma pesagem entre destinos, contratos ou talhoes), nao ajuste bruto nem
@@ -339,10 +339,8 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
     "Avariados" na safra): se a linha desconta 0 kg, nao pergunte — cite o item e o
     teor em `--observations`; se desconta kg, pergunte ao usuario qual tipo usar;
   - **raros:** planilha com bruto e tara carga a carga e um romaneio por linha,
-    confirmando antes; uma pesagem em dois destinos (bitrem em dois silos) e um
-    romaneio so, com os destinos em `--observations`; dois tickets da mesma carga
-    (origem e destino) e um romaneio so, com o ticket que o usuario indicar; varios
-    vagoes numa pesagem e um romaneio por pesagem; desconto sem nome (coluna
+    confirmando antes; dois tickets da mesma carga (origem e destino) e um romaneio
+    so, com o ticket que o usuario indicar; desconto sem nome (coluna
     "desconto" em kg): pergunte o tipo antes; ticket de outra cultura que a da safra
     (soja numa safra de milho): pergunte em qual safra lancar.
 - **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
@@ -513,7 +511,9 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Anexo no romaneio** (foto da nota, ticket de balanca):
 `aegro files attach --farm "<fazenda>" --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
-(exige OAuth; releitura de conferencia inclusa). Se o `attach` falhar dizendo que
+(exige OAuth; releitura de conferencia inclusa). Com varios arquivos, anexe o
+ticket da carga (e o que o usuario pedir); nao anexe documento pessoal (CNH, RG,
+comprovante de PIX). Se o `attach` falhar dizendo que
 **nada foi anexado**, repetir o mesmo comando e seguro — a CLI ja tenta uma vez
 sozinha em falha de conexao. Se ela disser que os arquivos **ja estao no S3**, use o
 comando que ela imprime (reaproveita o upload, sem duplicar). Consulta:
