@@ -182,7 +182,13 @@ aegro companies create --farm "<fazenda>" --env prod \
 
 **Importacao segura (recomendado para lotes):** com `AEGRO_SAFE_MODE=1`, rode a
 primeira linha com `--dry-run` para validar o payload, depois use `--execute`
-nas criacoes. Faca retry em erros 5xx/timeout; nao faca retry em 4xx.
+nas criacoes. **Nao repita um `companies create` que voltou 5xx ou timeout:** a
+empresa pode ter sido gravada mesmo assim, e com o nome enriquecido pela Receita
+(diferente da planilha). Procure pelo DOCUMENTO: liste
+`aegro companies list --farm "<fazenda>" --env prod --fiscal-number-type CNPJ`
+(ou `CPF`), percorra todas as paginas (`--page`) e compare o numero em digitos; so
+crie de novo se nao achar.
+Em 4xx, corrija o comando; repetir nao resolve.
 
 **Alvo:** `--env` e `--farm` explicitos em **todo** comando, apontando para o
 ambiente e a fazenda do trabalho (ver "Ordem Obrigatoria: Lote Pequeno ->
@@ -218,6 +224,7 @@ Apresente:
 | Documento vazio | **Nao cadastra** (API retorna 422); pular e registrar |
 | Duplicata por documento ou nome | **Parar e perguntar**; default: nao duplicar |
 | Erro 4xx (validacao) do CLI | Conferir flags; nao faz retry |
+| Erro 5xx ou timeout no `create` | Procurar a empresa pelo documento antes de repetir; se existir, usar a chave dela |
 | Falha na consulta a Receita | Cadastrar com dados da planilha; marcar "nao enriquecido" |
 
 ## Limitacoes

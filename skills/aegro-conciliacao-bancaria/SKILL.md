@@ -1,6 +1,6 @@
 ---
 name: aegro-conciliacao-bancaria
-requires-cli: 0.28.0
+requires-cli: 0.29.1
 description: >-
   Concilia o extrato bancario com o financeiro do Aegro pela CLI: importa o
   OFX, casa entradas do extrato com os movimentos internos, confirma em lote e
@@ -171,7 +171,10 @@ diferenca entra como desconto ou juros na baixa):
 
 **Varias parcelas pagas juntas** (um PIX, um boleto agrupado, uma linha do
 extrato para N contas) sao **um comando so**, nao N baixas. Monte o arquivo com
-uma linha por parcela — o CSV pode sair do Excel com `;` e virgula decimal:
+uma linha por parcela. Separador `;` (a virgula decimal de `115,36` partiria o
+valor em dois com `,`), arquivo em UTF-8, data em `AAAA-MM-DD` e cabecalhos exatos
+em minusculas — o resto das regras de arquivo esta em `/aegro-financeiro`
+("Baixa com data, desconto, juros ou conta"):
 
 ```text
 key;discount;interest
@@ -187,17 +190,32 @@ aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
 # so apos o usuario aprovar, o MESMO comando com --execute
 aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
   --date 2026-06-18 --bank-account bankAccount::<id> --execute
-# uma parcela so: flags no lugar do arquivo
+# uma parcela so: flags no lugar do arquivo — tambem previa antes
+aegro financial settle-installments --farm "<fazenda>" --key installment::<id> \
+  --date 2026-06-18 --discount 115,36 --bank-account bankAccount::<id> --dry-run
 aegro financial settle-installments --farm "<fazenda>" --key installment::<id> \
   --date 2026-06-18 --discount 115,36 --bank-account bankAccount::<id> --execute
 ```
 
+`--bank-account` aqui nao e opcional: e a key da conta do extrato. Celula vazia
+na coluna `bankAccount` (ou `realizedDate`) usa o valor da flag.
+
 Antes do `--execute`, confira no `--dry-run`:
 
-- **a soma de `valorPagoCalculadoPeloServidor`** (ou `resumoDoServidor.netAmount`)
-  bate com a linha do extrato — e o que o `confirm` vai exigir depois (§6.1). Nao
-  bateu: o desconto/juros de alguma linha esta errado; corrija antes de gravar;
+- **o total do servidor** — `resumoDoServidor.netAmount`, o numero esta em
+  `losslessAmountRepresentation` — bate com a linha do extrato: e o que o
+  `confirm` vai exigir depois (§6.1). Use esse total, nao a soma das linhas: a
+  lista `baixas` traz so as 20 primeiras (`baixasOmitidas` diz quantas faltam).
+  Nao bateu: o desconto/juros de alguma linha esta errado; corrija antes de
+  gravar;
 - `conta.muda` e `conta.nome` de cada linha — e a conta do extrato?
+- `naoConseguiLerEstadoAtual` vazio. Preenchido: **pare** e repita o
+  `--dry-run` depois; gravar assim perde o registro da conta de antes.
+
+Os movimentos a conciliar nascem da baixa. Pegue as keys deles com
+`bank-reconciliation candidates` na janela da data do extrato (o movimento
+traz a parcela de origem): sao elas que vao em `--movement`, nao as keys das
+parcelas.
 
 Depois concilie a entrada do extrato com os movimentos gerados (1 entrada : N
 movimentos quando foi um pagamento so):
@@ -220,14 +238,34 @@ Regras do lote:
 - **Parcela ja paga com data ou valor errado:** reabra antes (`financial
   reopen-installments --dry-run`, depois `--execute --confirm-undo`). Reabrir
   **apaga desconto e juros** e **nao devolve a conta** anterior — a conta de antes
-  esta em `baixas[].conta.de` na saida do comando que baixou.
+  esta em `baixas[].conta.de` na saida do comando que baixou. Parcela com
+  conciliacao **confirmada** nao reabre: desfaca a conciliacao antes
+  (`bank-reconciliation undo`).
 - **`NOT_PERSISTED` depois do `--execute`:** o lote FOI aceito e as parcelas
   estao pagas; o que divergiu foi um campo (data, conta, valor). **Nao repita** —
   a repeticao e recusada como ja paga. Leia a divergencia e confira em
-  `financial installments`.
+  `financial installments`. Se divergiu a data ou a conta, o conserto e reabrir e
+  baixar de novo (com o desconto informado outra vez).
+- **Erro de rede ou 5xx no `--execute`: nao repita.** O CLI rele antes de
+  reportar e diz "NAO repita" quando o lote foi aplicado; se nem a releitura
+  funcionou, confira em `financial installments` antes de qualquer tentativa.
 - **Valor pago que nao e `valor + juros - desconto`** (pagamento parcial, valor
   negociado sem desconto): o lote nao aceita. Use `financial settle`, uma parcela
-  por vez, com `--realized-amount`.
+  por vez, com `--realized-amount`. Uma linha do extrato que quitou varias contas,
+  uma delas parcial: `settle-installments` para as cheias e `settle
+  --realized-amount` para a parcial, e depois o `confirm` 1:N com todos os
+  movimentos. Nunca force desconto na parcial para ela caber no lote.
+  O `settle` nao troca a conta: parcial saindo de conta diferente da agendada,
+  por enquanto, so pela tela do Aegro.
+- **Teto de 500 parcelas por lote**; acima disso, divida.
+- **`realize` so serve aqui** quando a conta e a data agendadas ja sao as do
+  extrato; fora isso o movimento nasce no lugar errado.
+
+**Versao:** `settle-installments` existe a partir da CLI 0.29.0; as recusas de
+nome parcial de conta e de coluna `valor`, a partir da 0.29.1. Em CLI anterior a
+0.29.0, a baixa ajustada e `financial settle`, uma parcela por vez, sem troca de
+conta — e o movimento de uma parcela agendada em outra conta nao vira candidato
+deste extrato.
 
 ---
 
@@ -274,6 +312,32 @@ Quando a contrapartida e uma conta do proprio cliente, o certo e transferencia:
   <-> investimento; concilie contra elas.
 - Regra geral: contrapartida em conta do proprio cliente → **transferencia**.
 
+### A moeda da transferencia: `BRL`, exatamente assim
+
+**Nao passe `--currency` com nada alem de `BRL` maiusculo.** O servidor nao
+valida esse campo e nao recusa o que nao entende — ele grava e responde
+sucesso. Criando transferencia de 77,77 e lendo o registro de volta:
+
+| Moeda enviada | O que ficou gravado |
+|---|---|
+| `BRL` | `{BRL, 77.77}` — certo |
+| `USD`, `EUR` | `{BRL, 77.77}` — moeda trocada em silencio |
+| `brl`, `XYZ` | **`{BRL, 0}` — valor zerado**, com resposta de sucesso |
+
+Ou seja: um erro de caixa (`brl` em vez de `BRL`) grava uma transferencia de
+**R$ 0,00** dizendo que deu certo, e o buraco so aparece quando o saldo nao
+fecha no fim do periodo — que e exatamente o que esta conciliacao existe para
+evitar.
+
+Desde a 0.27.0 o CLI recusa localmente qualquer valor fora de `BRL`, antes de
+enviar. Em versao anterior a recusa nao existe: ali a unica protecao e nao
+escrever `--currency` (o default e `BRL`) e **reler a transferencia depois de
+criar**, conferindo o valor.
+
+O mesmo vale na leitura: no `bank-movements list`, moeda diferente de `BRL`
+exato faz o servidor **descartar a faixa `--min-amount`/`--max-amount`** e
+devolver tudo. Quem filtrou le a base inteira achando que e o recorte pedido.
+
 ---
 
 ## 11. Extrato so em PDF (baixa assistida — menor fidelidade)
@@ -282,8 +346,11 @@ Sem OFX nao ha movimentacoes externas, entao **nao ha conciliacao registrada**.
 1. Extraia as transacoes do PDF (data, valor, descricao).
 2. Case contra parcelas com as mesmas bandas (§9), via `aegro financial
    installments` (skill `aegro-financeiro`).
-3. Baixe os matches na data do extrato com `financial settle-installments`
-   (um arquivo para o lote todo; desconto/juros por linha quando houver).
+3. Revise cada match com o usuario (item-a-item, abaixo). So os aprovados
+   entram na baixa: `financial settle-installments` com um arquivo em que cada
+   linha traz a sua `realizedDate` (as transacoes do PDF tem datas diferentes —
+   nao use `--date` unico) e a conta de onde o dinheiro saiu (`bankAccount` ou
+   `--bank-account`). Sem OFX nao ha `--account` para copiar: pergunte a conta.
 
 Limitacoes (explicite): e **baixa assistida**, nao conciliacao com vinculo
 formal; toda entrada de PDF e 🟡/🔴 por padrao (revise item-a-item).
@@ -306,7 +373,10 @@ Leituras nao precisam de `--execute`; escritas usam `--dry-run` / `--execute`.
 | `bank-reconciliation history` | `--account <key>` `[--start-date --end-date --status]` | leitura |
 | `bank-reconciliation accounts` | `--farm-id <idLegado>` (devolve `id` cru → prefixe `bankAccount::`) | leitura |
 | `bank-accounts list` | (contexto) — traz a **key** `bankAccount::...` | leitura |
-| `financial settle-installments` | `--key <inst>...` ou `--map <csv\|json>` `--date` `[--bank-account]` `[--discount\|--interest]` (so 1 parcela) `--dry-run`/`--execute` | escrita |
+| `bank-transfers create` | `--source-key --target-key --amount --entry-date` `[--description --tag]` `--execute` | escrita |
+| `bank-transfers list` | `[--start-date --end-date --source-key --target-key -s]` | leitura |
+| `bank-movements list` | `[--bank-account-key --start-date --end-date]` `[--min-amount --max-amount]` | leitura |
+| `financial settle-installments` | `--key <inst>...` ou `--map <csv\|json>` `--date` `--bank-account` (na conciliacao, obrigatorio: a conta do extrato) `[--discount\|--interest]` (so 1 parcela) `--dry-run`/`--execute` | escrita |
 | `financial settle` | `--key installment::<id>` `--date` `--realized-amount` `--execute` (valor pago livre, 1 parcela) | escrita |
 | `financial realize` | `--key <inst>...` `--execute` (baixa simples, sem ajuste) | escrita |
 | `bank-reconciliation clear-pending` | `--account-id <id>` `--execute` (destrutivo) | escrita |
@@ -323,6 +393,7 @@ Leituras nao precisam de `--execute`; escritas usam `--dry-run` / `--execute`.
 - NAO usar `ignore` como atalho: descasa o saldo. Uso legitimo = duplicata de OFX / entrada que nao reflete no Aegro.
 - NAO alterar a despesa (`value`) para "fechar a conta": use **desconto/juros** na baixa (`settle-installments`).
 - NAO lancar fatura de cartao como despesa, nem resgate como receita — use **transferencia**.
+- NAO mandar `--currency` com outra coisa alem de `BRL` maiusculo: o servidor aceita calado e pode gravar **valor zero** (ver §10).
 - NAO terminar um turno sem um **placar** e um **proximo passo** sugerido.
 
 ---

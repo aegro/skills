@@ -1,6 +1,6 @@
 ---
 name: aegro-operacional
-requires-cli: 0.21.0
+requires-cli: 0.28.0
 description: >-
   Dominio operacional do Aegro pela CLI — fazendas, autenticacao, agrupadores
   (tags), empresas, pedidos de compra, anexos de arquivo e os links diretos
@@ -308,6 +308,39 @@ Erros sao emitidos em stderr no formato JSON, nunca misturados com stdout:
 {"error": {"code": "VALIDATION_ERROR", "message": "Campo 'name' e obrigatorio", "details": {"field": "name"}}}
 ```
 
+### Rede que intercepta HTTPS (proxy corporativo)
+
+Em maquina de empresa cujo proxy re-assina o trafego HTTPS, o certificado que o
+servidor apresenta e o do proxy — e o CLI nao confia nele por default. O caso
+que mais custa tempo e o do UPLOAD (`files upload`/`attach`, `--attach`,
+`--file`), porque o S3 e o unico host fora do dominio Aegro naquele caminho, e
+dai a falha fica parecendo defeito do anexo.
+
+**Da versao 0.24 em diante** o erro nomeia o problema (exit 1):
+
+```json
+{"error": {"code": "TLS_TRUST_ERROR", "message": "Certificado HTTPS rejeitado ao falar com s3.amazonaws.com. ... A rede provavelmente intercepta HTTPS (proxy/firewall corporativo) com um CA que este cliente nao conhece. Tentei: CA do operador, certifi, trust store do sistema. Aponte AEGRO_CA_BUNDLE para o certificado raiz da sua rede (peca a TI) ..."}}
+```
+
+NAO repita o comando e NAO reporte como instabilidade do Aegro — as duas coisas
+so gastam tempo, porque a falha e da maquina, nao do servico. O conserto e
+apontar a CA da rede:
+
+```bash
+export AEGRO_CA_BUNDLE=/caminho/para/ca-da-empresa.pem   # SSL_CERT_FILE tambem vale; AEGRO_CA_BUNDLE vence
+```
+
+O arquivo vem do suporte de TI. Se a variavel apontar para um caminho que nao
+existe ou nao carrega, o CLI avisa com `CONFIG_ERROR` (exit 1) em vez de
+ignorar em silencio. **Nunca sugira desabilitar a verificacao de certificado**:
+nao existe flag para isso no CLI, e isso e de proposito.
+
+**Ate a 0.23** o mesmo caso saia como `API_ERROR` com `status: 502` e a
+mensagem generica `Erro de conexao com o servico Aegro: ConnectError`, que le
+como servico fora do ar. Se voce ver ISSO num upload que falha sempre no mesmo
+ponto, e provavelmente o mesmo problema: peca a atualizacao do CLI
+(`uv tool upgrade aegro`) antes de investigar o Aegro.
+
 ### Parametros Repetiveis
 
 Flags que aceitam multiplos valores usam repeticao:
@@ -359,11 +392,11 @@ com API key o comando falha cedo (exit 2), antes de escrever qualquer coisa.
 | `aegro files list-attachments` | Lista os anexos de uma entidade | `--entity`, `--key` |
 
 Entidades aceitas em `--entity` (prefixo da `--key` entre parenteses):
-`realization` (`activityLog::`), `bill`,
-`purchase-order`, `purchase-requisition`, `harvest-log`, `asset`, `element`,
-`bank-transfer`, `livestock-lot`. So a `realization` tem rota publica
-(vincular `--url` funciona ate com API key); as demais usam a API interna e
-exigem OAuth sempre.
+`realization` (`activityLog::`), `fuel-supply` e `maintenance`
+(`assetEvent::`), `bill`, `purchase-order`, `purchase-requisition`,
+`harvest-log`, `asset`, `element`, `bank-transfer`, `livestock-lot`.
+`realization`, `fuel-supply` e `maintenance` tem rota publica (vincular `--url`
+funciona ate com API key); as demais usam a API interna e exigem OAuth sempre.
 
 Tamanho: o limite e **100 MB** por arquivo (recusado localmente acima disso,
 sem gastar rede). Arquivo grande funciona — 50 MB sobem em ~40 s.
@@ -381,14 +414,24 @@ Regras que evitam retrabalho:
 - Comandos de escrita tem acucar para anexar na mesma invocacao: `--attach`
   em `financial create-bill`/`update-bill`, `purchase-orders create/update` e
   `purchase-requisitions create/update`; `--file` em
-  `activities create-realization`/`update-realization`. Em falha parcial
-  (registro salvo, anexo nao), o stderr traz `attachRetry` pronto — **nunca
-  repita o create** (duplicaria o registro).
+  `activities create-realization`/`update-realization` e em
+  `fuel-supplies`/`maintenances create/update` (no update de abastecimento e
+  manutencao, `--file` ACRESCENTA). Em falha parcial (registro salvo, anexo
+  nao), o `--attach` e o `--file` de abastecimento/manutencao trazem no stderr
+  um JSON `ATTACH_FAILED` com `attachRetry`; o `--file` da realizacao traz o
+  `files attach ... --url` em texto. Rode esse comando e **nunca repita o
+  create** (duplicaria o registro).
+- **Dois comandos ja anexam sozinhos, sem flag**: da **v0.24.0** em diante o
+  `received-fiscal-documents launch-bill` e o `launch-purchase-order` sobem a
+  DANFE da nota no proprio create (`--no-attach-danfe` desliga). Antes de
+  anexar em conta ou pedido que veio de NF-e, confira com
+  `files list-attachments` — anexar de novo deixa a mesma DANFE duas vezes.
+  Anexo que falha ali nao derruba o lancamento: o registro nasce sem ele, e o
+  envelope traz `anexo`/`anexoVerificacao` dizendo o que houve.
 - **Nao da para anexar** (o CLI recusa explicando, sem gastar upload):
-  planejamento de atividade (so a realizacao ganhou o campo);
-  abastecimento/manutencao (`fuel-supply`/`maintenance` — o servidor descarta
-  anexo vindo de cliente nao-web); `shipment` (remessa: o servidor recusa o
-  re-save com erro generico na maioria dos registros); livestock-loss/
+  planejamento de atividade (so a realizacao ganhou o campo); `shipment`
+  (remessa: o servidor recusa o re-save com erro generico na maioria dos
+  registros); livestock-loss/
   transfer/weighing (API sem update); e **elemento IMPORTADO** (do catalogo
   global ou de outro catalogo — o servidor recusa qualquer re-save dele; so o
   elemento criado NA FAZENDA aceita, igual a tela do app). Nesses casos, anexe
@@ -732,30 +775,71 @@ investigar:
 pip install -U aegro && aegro --version
 ```
 
-### 5xx no criar NAO garante que nada foi criado
-
-Em `activities create-plan`/`create-realization`, um 5xx pode ter gravado o
-registro assim mesmo. O CLI avisa e tenta conferir na listagem — mas ele
-distingue "conferi e nao achei" de "nao consegui conferir". **Nunca repita o
-create as cegas depois de um 5xx**: confira a listagem primeiro, ou voce cria
-o registro em duplicidade.
-
 ### Logica de Retry
 
-- **3 tentativas** com backoff exponencial (1s, 2s, 4s)
-- Apenas para erros **retriaveis**: HTTP 500, 502, 503, 504, timeout
-- Erros **nao retriaveis**: 400, 401, 403, 404, 422
+A regra depende de o comando **ler** ou **escrever**:
+
+| Tipo | Exemplos | 5xx, timeout ou queda de conexao |
+|---|---|---|
+| Leitura | `list`, `get`, `bills`, `installments`, qualquer busca | Pode repetir. O CLI ja retenta sozinho com backoff; se persistir, espere e tente de novo |
+| Escrita | `create-*`, `update-*`, `realize`, `settle`, `launch-bill`, romaneio, abastecimento, atividade, conta | **Nao repita.** Procure o registro primeiro |
+
+**Por que escrita e diferente:** a API grava o registro e so depois falha no
+resto do processamento, e o erro que volta nao desfaz nada. "Servidor
+indisponivel" numa escrita NAO quer dizer que nada foi criado — repetir as
+cegas cria o registro em duplicidade, e cada nova tentativa cria outro. O CLI
+nunca retenta escrita sozinho; nao retente voce.
+
+Depois de 5xx ou timeout numa escrita, nesta ordem:
+
+1. **Leia o `error.conferencia`, se vier.** `create-bill` e `create-bills`
+   procuram a conta sozinhos (`launch-bill` tambem confere e avisa no stderr):
+   - `situacao: "criada"` — a conta existe (`contas[]` traz `key` e `link`).
+     Nao repita. Confira as parcelas pelo link: o erro pode ter deixado a
+     conta sem parcela.
+   - `situacao: "nao_criada"` com `podeRepetir: true` — conferido e nada foi
+     gravado. Pode repetir.
+   - `situacao: "inconclusiva"` — o CLI nao consegue afirmar (conta parecida,
+     conta igual criada pouco antes, timeout sem resposta). O `motivo` diz por
+     que, e `contas[]` traz as candidatas. Siga o passo 2 e mostre as candidatas
+     ao usuario.
+   Em CLI que traz a conferencia, o lote (`create-bills`) para na linha que
+   falhou e o stdout diz o que ja foi gravado (`resultados`), de que linha
+   retomar (`retomarNaLinha`) e quais linhas anteriores voltaram sem criar
+   (`linhasAnterioresNaoCriadas`). Em CLI mais antigo nada disso vem: conte pela
+   listagem o que ja entrou antes de qualquer coisa. Nao reenvie o arquivo inteiro:
+   preserve as linhas confirmadas como criadas, corrija erros 4xx e, para 5xx ou
+   timeout, confirme pela busca completa quais linhas nao foram criadas antes de
+   processa-las em um novo lote.
+2. **Sem conferencia, procure voce** pela listagem do dominio, filtrando pelo que
+   identifica o registro: conta por data de lancamento + descricao + valor (e
+   numero do documento, se houver); atividade por safra + data + tipo; romaneio
+   por safra + data + peso; abastecimento por patrimonio + data + litros.
+   `activities create-plan`/`create-realization` avisam o que acharam na
+   listagem e dizem quando a conferencia foi parcial — parcial nao e "nao
+   existe".
+3. **So repita se a busca completa nao achar nada.** Depois de timeout, espere
+   um minuto e busque de novo antes de repetir: o servidor pode ainda estar
+   gravando. Achou: use o registro que existe (corrija com `update` se
+   precisar). Achou mais de um igual: pode ser duplicata de tentativa anterior
+   ou lancamento legitimo repetido — mostre as chaves ao usuario e deixe ele
+   decidir; nao apague por conta propria.
+4. **Se o mesmo 5xx voltar com os mesmos dados**, pare: e achado novo. Junte
+   comando e resposta e reporte, em vez de tentar de novo.
+
+Erros **4xx** (400, 401, 403, 404, 422) nunca se resolvem repetindo: corrija o
+comando.
 
 ### Erros Comuns e Diagnostico
 
 | HTTP | Significado | Acao |
 |------|-------------|------|
-| 500 | Erro interno do servidor | Retry automatico. Se persistir com os mesmos dados, e achado novo: junte comando e resposta e reporte, em vez de repetir |
+| 500 | Erro interno do servidor | Leitura: pode repetir. **Escrita: nao repita — procure o registro primeiro** (ver "Logica de Retry"). Se persistir com os mesmos dados, e achado novo: reporte |
 | 422 | Erro de validacao | Leia a mensagem: em campo de enumeracao e unidade ela **lista os valores aceitos**. Nao faz retry, e nao e bug do servidor |
 | 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
 | 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
 | 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |
-| Timeout | Sem resposta em 30s | Retry automatico. API pode estar lenta |
+| Timeout | Sem resposta em 30s | Leitura: pode repetir, a API pode estar lenta. **Escrita: o registro pode ter sido gravado — procure antes de repetir** |
 
 ### Dicas Gerais
 

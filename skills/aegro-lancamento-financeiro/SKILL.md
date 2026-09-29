@@ -1,6 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
-requires-cli: 0.28.0
+requires-cli: 0.29.1
 description: >-
   Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
   categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
@@ -305,7 +305,9 @@ em /aegro-financeiro (regra 6).
 6. **Checar duplicidade antes de lancar** -- nota reenviada gera bill dobrada
 7. **Anexe no proprio lancamento** -- `create-bill --attach ./nota.pdf`
    (repetivel, exige OAuth); em conta que ja existe, `files attach`. Nao mande
-   o usuario anexar pelo app
+   o usuario anexar pelo app. **Conta lancada a partir de NF-e e a excecao:**
+   da v0.24.0 em diante ela ja vem com a DANFE anexada, entao anexar de novo
+   deixa o arquivo duplicado -- confira com `files list-attachments` antes
 8. **Categorizar por item quando a conta tem itens** -- usar `inputs` com a
    categoria ja cadastrada de cada item; categoria unica na bill distorce o
    DRE por categoria
@@ -319,7 +321,9 @@ em /aegro-financeiro (regra 6).
     data do pagamento, a conta de onde saiu o dinheiro e desconto/juros por
     linha (`--map`). Nunca N baixas uma a uma. Mostre o `--dry-run` (o total
     que o servidor calculou) antes do `--execute`; sintaxe em
-    `/aegro-financeiro` (secao 5)
+    `/aegro-financeiro` (secao 5). O comando existe a partir da CLI 0.29.0; em
+    CLI anterior, a baixa com data, desconto ou juros e `financial settle`, uma
+    parcela por vez, sem troca de conta
 
 9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
    patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
@@ -330,7 +334,9 @@ em /aegro-financeiro (regra 6).
     duplicata dela). Havendo prazo combinado que a nota nao reflete ("paga 15
     dias depois"), `--due-days N` desloca o carne e `--due-date AAAA-MM-DD` fixa
     a data de uma parcela unica. Confira no `--dry-run` pelo bloco `vencimentos`.
-    Parcela ja lancada nao se altera pelo CLI: pergunte o prazo ANTES do lote
+    Pergunte o prazo ANTES do lote: e mais barato acertar no lancamento. Parcela
+    ja lancada tem conserto (`financial update-installments`, regra 8b), mas e
+    uma segunda operacao
 
 11. **"Produtor" NAO e o Livro Caixa** -- se o cliente entrega o LCDPR, ele
     precisa que cada conta diga a qual **imovel rural** pertence, e isso e outro

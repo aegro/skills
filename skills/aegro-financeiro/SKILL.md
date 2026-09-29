@@ -1,6 +1,6 @@
 ---
 name: aegro-financeiro
-requires-cli: 0.28.0
+requires-cli: 0.29.1
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
   parcelas, categorias, contas bancarias, empresas, pedidos de compra e
@@ -291,8 +291,16 @@ aegro financial create-bill --farm "<fazenda>" \
   --file ./nota.pdf --execute` (append com releitura de conferencia) a um
   `update-bill --attach` (que tambem funciona, mas mistura duas mutacoes).
 - Consultar: `aegro files list-attachments --entity bill --key bill::<id>`.
+- **Conta vinda de NF-e ja chega com a DANFE.** A partir da **v0.24.0** o
+  `received-fiscal-documents launch-bill` anexa no proprio create; anexar de
+  novo deixa a mesma DANFE duas vezes. Ate a **v0.23.0** ela nasce sem anexo —
+  e ai sim o anexo e um passo a parte. Confira com `files list-attachments`
+  antes de anexar em conta que voce nao criou nesta sessao.
 - **Falha parcial** (conta criada, anexo nao): o stderr traz `attachRetry`
   com `--url` — rode ELE; repetir o create duplicaria a conta.
+- **5xx ou timeout no `create-bill`/`create-bills`**: nao repita. Leia o
+  `error.conferencia` e siga a "Logica de Retry" de /aegro-operacional — o erro
+  pode ter vindo depois de a conta ser gravada.
 - Transferencia bancaria tambem aceita anexo:
   `aegro files attach --farm "<fazenda>" --entity bank-transfer --key bankTransfer::<id> ...`
   (re-save dentro de periodo financeiro FECHADO falha com erro de validacao,
@@ -318,12 +326,14 @@ aegro financial create-bill --farm "<fazenda>" --description "Adubo" --total-amo
 aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --dry-run
 aegro financial update-bill --farm "<fazenda>" bill::abc123 --body '{"description":"Texto novo"}' --execute
 
-# Realizar (pagar) multiplas parcelas em lote.
-# Sem --dry-run: liste as parcelas antes (installments), apresente ao usuario e
-# so rode apos confirmacao explicita. Baixa errada se desfaz com
-# `reopen-installments`, mas reabrir apaga desconto e juros junto.
+# Realizar (pagar) multiplas parcelas em lote, na data e na conta AGENDADAS.
+# O --dry-run daqui so mostra o corpo que sairia (nao consulta o servidor): liste
+# as parcelas antes (installments), apresente ao usuario e rode o --execute so
+# apos confirmacao explicita. Baixa errada se desfaz com `reopen-installments`,
+# mas reabrir apaga desconto e juros junto.
 # Pago em outra data, com desconto/juros ou de outra conta: settle-installments.
-aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --dry-run
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --execute
 ```
 
 ### 4.1.1 Insercao inteligente de contas (create-bill / create-bills)
@@ -794,7 +804,9 @@ lote de parcelas por fazenda.
 aegro financial update-installments --farm "<fazenda>" \
   --key installment::<id> --due-date 2026-11-20 --dry-run
 
-# um lote (a planilha vira CSV com as colunas key,dueDate)
+# um lote (a planilha vira CSV com as colunas key,dueDate): previa do servidor
+# primeiro, e o MESMO comando com --execute so depois de o usuario conferir
+aegro financial update-installments --farm "<fazenda>" --map vencimentos.csv --dry-run
 aegro financial update-installments --farm "<fazenda>" --map vencimentos.csv --execute
 ```
 
@@ -811,6 +823,12 @@ Cinco coisas que mudam como voce conduz a conversa:
    tres recusas de identidade (inexistente, de outra fazenda, excluida — a
    leitura responde no escopo da fazenda do comando, entao as tres tem o mesmo
    sintoma). Conduza pela lista: tire essas linhas e repita o lote.
+
+   Nas outras recusas (`already-paid`, conciliacao confirmada, teto de 500) o
+   servidor para na PRIMEIRA parcela inelegivel e o CLI nao lista as demais. Ai
+   o caminho e o `--dry-run` do lote de novo depois de tirar a nomeada — ou,
+   antes de montar o lote, filtrar em `financial installments --status NOT_PAID`
+   para so entrar parcela em aberto.
 2. **O `--dry-run` e o veredito do SERVIDOR**, nao uma simulacao: ele chama o
    `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
    que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
@@ -853,27 +871,53 @@ parcelas de uma vez, cada uma com a sua data, desconto, juros e conta. Exige
 `aegro auth login` (API interna).
 
 ```bash
-# 12 contas pagas no mesmo PIX, da mesma conta: data e conta pelas flags
+# varias contas pagas num pagamento so, da mesma conta: data e conta pelas flags
 aegro financial settle-installments --farm "<fazenda>" \
   --key installment::<id1> --key installment::<id2> \
-  --date 2026-08-27 --bank-account "<conta>" --dry-run
+  --date 2026-08-27 --bank-account "<nome exato da conta>" --dry-run
+aegro financial settle-installments --farm "<fazenda>" \
+  --key installment::<id1> --key installment::<id2> \
+  --date 2026-08-27 --bank-account "<nome exato da conta>" --execute
 
 # desconto/juros diferentes por parcela: arquivo, uma linha por parcela
-# (CSV com , ou ; — o Excel em portugues grava ; e virgula decimal)
 #   key;realizedDate;discount;interest;bankAccount
 #   installment::<id1>;2026-08-27;115,36;;
 #   installment::<id2>;2026-08-27;;12,50;
 aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
-  --bank-account "<conta>" --execute
+  --bank-account "<nome exato da conta>" --dry-run
+aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
+  --bank-account "<nome exato da conta>" --execute
 ```
+
+**Como montar o arquivo** — o CLI recusa, com exit 4, tudo que foge disto:
+
+- separador `;` sempre que houver valor com virgula decimal (`115,36`). Com `,`
+  como separador o valor parte em dois;
+- data em `AAAA-MM-DD` (o Excel costuma exportar `DD/MM/AAAA`: converta);
+- arquivo em UTF-8 ("CSV UTF-8" no "Salvar como" do Excel);
+- cabecalhos exatos e em minusculas: `key`, `realizedDate`, `discount`,
+  `interest`, `bankAccount`; so para leitura, `fornecedor`, `descricao`,
+  `description`, `company`, `obs`, `note`. Coluna `valor`/`amount` e recusada;
+- valor com no maximo 2 casas decimais.
+
+Celula vazia vale a flag: `bankAccount` em branco usa `--bank-account`, e
+`realizedDate` em branco usa `--date`. Sem flag, a conta fica a que a parcela ja
+tinha.
 
 1. **Tudo-ou-nada**, como o lote de vencimento. Antes de escrever, o CLI nomeia
    de uma vez todas as parcelas **ja pagas** ou com **conciliacao confirmada** —
    repita essa lista ao usuario e tire-as do lote.
 2. **O valor pago e do servidor**: `valor + juros - desconto`. O `--dry-run`
    chama o `/preview` e mostra `valorPagoCalculadoPeloServidor` por linha e o
-   `resumoDoServidor` (total, desconto, juros). Mostre esses numeros, nao uma
-   conta sua.
+   `resumoDoServidor` (`netAmount`, `discountAmount`, `interestAmount`; o numero
+   esta em `losslessAmountRepresentation`). Mostre esses numeros, nao uma conta
+   sua. O total do lote e o `netAmount`: a lista `baixas` do preview traz so as
+   20 primeiras linhas (`baixasOmitidas` diz quantas ficaram de fora), entao
+   somar as linhas nao fecha em lote grande.
+
+   **`naoConseguiLerEstadoAtual` preenchido: pare** e repita o `--dry-run` quando
+   a leitura voltar. Gravar assim perde para sempre a conta, o desconto e os
+   juros de antes — o unico registro para desfazer.
 3. **Campo em branco mantem, zero zera.** Desconto/juros nao informados deixam
    o que a parcela ja tinha. `--discount`/`--interest` por flag so valem com UMA
    parcela: com varias, o numero seria total ou por parcela — use as colunas.
@@ -886,18 +930,39 @@ aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
 5. **Guarde a saida do `--execute`.** `baixas[].conta.de`, `desconto.de` e
    `juros.de` sao o estado de antes, e o unico registro dele: reabrir a baixa
    apaga desconto e juros e **nao devolve a conta** anterior. `desfazer` traz o
-   `reopen-installments` pronto.
+   `reopen-installments` pronto, com todas as parcelas e o `--farm`.
 6. **Conferencia por releitura.** Depois de gravar, cada parcela e relida: status,
    data, conta, desconto, juros e valor pago. `NOT_PERSISTED` aqui quer dizer que
    o lote FOI aceito e as parcelas estao pagas, mas um campo divergiu — **nao
    repita** (seria recusado como ja paga); leia a divergencia e confira em
-   `financial installments`.
+   `financial installments`. Se o que divergiu foi a data ou a conta, o conserto
+   e reabrir (`reopen-installments`, que apaga desconto e juros) e baixar de novo
+   com os dados certos — diga isso ao usuario antes, porque o desconto precisa
+   ser informado outra vez.
+7. **Erro de rede ou 5xx no `--execute` (timeout, conexao caida): nao repita.**
+   O CLI rele as parcelas antes de reportar: se o lote foi aplicado, ele diz
+   "NAO repita" e confere campo a campo. Se nem a releitura funcionou, confira
+   em `financial installments` antes de qualquer nova tentativa — repetir um
+   lote aplicado e recusado como ja paga, e o caminho que sobra (reabrir) apaga
+   o desconto de uma baixa que valeu.
+8. **Um pagamento que quitou varias contas, uma delas paga PARCIALMENTE**: a
+   parcial nao cabe no lote. `settle-installments` para as cheias e `financial
+   settle --realized-amount` para a parcial — nunca force desconto na parcial
+   para ela caber no lote, isso grava um desconto que nao existiu.
+9. **Teto de 500 parcelas por lote.** Acima disso, divida; cada lote e atomico
+   por si.
 
 **Nao faz:** baixa parcial ou valor pago que nao seja `valor + juros - desconto`
-(use `financial settle`, uma parcela por vez, com `--realized-amount`); baixa de
-parcela ja paga (reabra antes). Em CLI anterior a 0.28.0 o comando nao existe:
-ali a baixa ajustada e `financial settle`, uma parcela por vez, sem troca de
-conta.
+(use `financial settle`, uma parcela por vez, com `--realized-amount` — o
+`settle` nao troca a conta, e `--discount`/`--interest` nele usam ponto decimal);
+baixa de parcela ja paga (reabra antes); trocar a conta de parcela ja paga (so
+pela tela do Aegro, por enquanto).
+
+**Versao:** o comando existe a partir da CLI 0.29.0, e as recusas de nome parcial
+de conta, de coluna `valor` e de valor com mais de 2 casas, a partir da 0.29.1.
+Em CLI anterior a 0.29.0 a baixa ajustada e `financial settle`, uma parcela por
+vez, sem troca de conta. Na 0.29.0, siga as regras de arquivo acima mesmo sem o
+CLI cobrar: use o nome completo da conta e nunca ponha coluna `valor`.
 
 ### Baixa feita por engano: `reopen-installments`
 
@@ -916,7 +981,9 @@ aegro financial reopen-installments --farm "<fazenda>" --key installment::<id> \
 **Avise ANTES de executar, sempre:** reabrir apaga mais do que o pagamento. O
 servidor zera a data do pagamento, o valor realizado, a taxa de cambio da
 realizacao e **o desconto e os juros** — eles pertenciam aquela realizacao —, e
-devolve a conciliacao bancaria para pendente. **Desconto e juros digitados a mao
+a conciliacao que estava pendente continua pendente (parcela com conciliacao
+CONFIRMADA e recusada: desfaca a conciliacao antes com `bank-reconciliation
+undo`). **Desconto e juros digitados a mao
 nao se recuperam.** O `--dry-run` mostra esses valores campo a campo: mostre-os
 ao usuario e espere a confirmacao.
 
@@ -940,6 +1007,9 @@ completa de um lancamento a vista feito por engano e:
 
 1. `reopen-installments` (volta para em aberto, no vencimento original)
 2. `update-installments` (corrige o vencimento)
+3. se o pagamento de fato aconteceu, so que em outra data, com desconto ou de
+   outra conta: `settle-installments` com os dados reais. Sem este passo a
+   parcela fica EM ABERTO — nao encerre achando que resolveu.
 
 Nao da para pular a etapa 1: parcela paga e recusada pelo lote de vencimento
 (`already-paid`).
