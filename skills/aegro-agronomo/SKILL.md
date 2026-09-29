@@ -329,10 +329,6 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
     e a **tara**, e a de saida e o bruto — nao inverta;
   - **toneladas**: converta para kg antes (`31,86 t` = `31860`); cuidado com a
     virgula de milhar (`31,860` pode ser 31.860 kg);
-  - **planilha com bruto e tara carga a carga** (nao e ticket, mas traz cada
-    pesagem): um romaneio por linha, confirmando com o usuario antes;
-  - **uma pesagem descarregada em dois destinos** (bitrem em dois silos): um
-    romaneio so, com os destinos em `--observations`, ou pergunte como ele registra;
   - **teor ou desconto escrito a mao** sobre um ticket sem desconto: nao e desconto
     do ticket — pergunte ao usuario antes de lancar;
   - **rotulos que enganam:** leia o que o numero e, nao so o rotulo — ha ticket em
@@ -342,9 +338,13 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
   - **nome do desconto diferente do tipo da safra** (ex.: "Ardidos" no ticket e
     "Avariados" na safra): se a linha desconta 0 kg, nao pergunte — cite o item e o
     teor em `--observations`; se desconta kg, pergunte ao usuario qual tipo usar;
-  - **raros:** dois tickets da mesma carga (origem e destino) e um romaneio so, com
-    o ticket que o usuario indicar; varios vagoes numa pesagem e um romaneio por
-    pesagem; desconto sem nome (coluna "desconto" em kg): pergunte o tipo antes.
+  - **raros:** planilha com bruto e tara carga a carga e um romaneio por linha,
+    confirmando antes; uma pesagem em dois destinos (bitrem em dois silos) e um
+    romaneio so, com os destinos em `--observations`; dois tickets da mesma carga
+    (origem e destino) e um romaneio so, com o ticket que o usuario indicar; varios
+    vagoes numa pesagem e um romaneio por pesagem; desconto sem nome (coluna
+    "desconto" em kg): pergunte o tipo antes; ticket de outra cultura que a da safra
+    (soja numa safra de milho): pergunte em qual safra lancar.
 - **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
   ticket ou a generica da cultura da safra (`aegro elements list --category SEED`).
 - **Nomes dos descontos:** rode `aegro crops harvest-discounts <safra>` e use os
@@ -377,7 +377,9 @@ ticket, nada e gravado e a mensagem diz a causa que os numeros permitem afirmar
   o ticket so imprime as taxas (sem kg), a mensagem diz isso: ou o usuario ajusta a
   base da safra pela tela e voce lanca de novo, ou `MANUAL` com os cinco pesos do
   ticket e as taxas em `--observations`;
-- **"o proprio ticket nao fecha"** (linhas todas em kg): nao lance. Mostre ao
+- **"o proprio ticket nao fecha"** (linhas todas em kg): se o ticket imprime um
+  desconto que a safra nao tem como tipo e ele explica a diferenca exata, siga
+  "Desconto do ticket sem tipo na safra" abaixo. Senao, nao lance: mostre ao
   usuario produto, linhas e liquido do papel e pergunte — nao ajuste numero para
   caber, nem em `MANUAL`;
 - **"o Aegro desconta MAIS que o ticket"**: nao e desconto faltando; confira taxa
@@ -390,7 +392,7 @@ Diferenca maior que um quinto do produto nao e desconto: a CLI recusa sem sugeri
 calcula e o Aegro. Exige `aegro auth login`; com API key, use o `MANUAL` abaixo.
 
 **Desconto do ticket sem tipo na safra** (taxa de servico, taxa de recepcao,
-amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
+secagem, amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
 cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
 - cadastrar o tipo na safra pela tela e voce lancar em `AUTOMATIC`; ou
 - lancar em `MANUAL` com os cinco pesos do ticket (o descontado e o total do
@@ -410,8 +412,6 @@ resposta: lance `0kg` sem perguntar. Leituras de qualidade que nao sao desconto
 (PH, ATR, Brix, Pol) vao so em `--discount-index` (ex.: `--discount-index
 "PH=77"`), sem `--discount`. No `MANUAL`, o teor de qualquer desconto tambem pode
 ir sozinho em `--discount-index` (o descontado e o do ticket; o teor so registra).
-O `--dry-run` lista em `teorComDescontoZero` as linhas com teor e desconto 0 — so
-para conferencia: se o papel imprime o 0, siga.
 
 ```bash
 # Ensaio: a previa do servidor aparece em calculadoPeloServidor e liquidoDoTicket
