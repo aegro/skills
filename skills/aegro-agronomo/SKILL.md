@@ -340,13 +340,11 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
     produto ou "Peso Total" e o bruto. Confira pela conta: bruto - tara = produto,
     produto - descontos = liquido;
   - **nome do desconto diferente do tipo da safra** (ex.: "Ardidos" no ticket e
-    "Avariados" na safra): nao decida sozinho; pergunte ao usuario qual tipo usar;
-  - **dois tickets da mesma carga** (origem e destino): um romaneio so, com os pesos
-    do ticket que o usuario indicar — pergunte qual vale;
-  - **varios vagoes ou compartimentos numa pesagem so**: um romaneio por pesagem,
-    nao por vagao, salvo se o usuario pedir o contrario;
-  - **desconto fixo sem nome** (ex.: uma coluna "desconto" em kg numa planilha):
-    pergunte ao usuario de que tipo e, antes de lancar.
+    "Avariados" na safra): se a linha desconta 0 kg, nao pergunte — cite o item e o
+    teor em `--observations`; se desconta kg, pergunte ao usuario qual tipo usar;
+  - **raros:** dois tickets da mesma carga (origem e destino) e um romaneio so, com
+    o ticket que o usuario indicar; varios vagoes numa pesagem e um romaneio por
+    pesagem; desconto sem nome (coluna "desconto" em kg): pergunte o tipo antes.
 - **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
   ticket ou a generica da cultura da safra (`aegro elements list --category SEED`).
 - **Nomes dos descontos:** rode `aegro crops harvest-discounts <safra>` e use os
@@ -453,7 +451,8 @@ Ticket que imprime so a taxa de cada desconto, sem o kg: prefira o `AUTOMATIC`
 (a CLI com previa calcula o kg pela taxa e confere com o liquido do ticket). Se
 tiver de ser `MANUAL` (API key ou CLI antiga), lance os cinco pesos do ticket sem
 linhas de desconto e escreva as taxas em `--observations` (ex.: `"Umidade 1,7%;
-Impureza 0,5% (so taxa no ticket)"`) e os teores em `--discount-index` — a CLI
+Impureza 0,5% (so taxa no ticket)"`) e, na CLI com previa, os teores em
+`--discount-index` — a CLI
 avisa que o descontado nao tem linha, e e o esperado nesse caso, mesmo com
 desconto alto (grao umido desconta 25% ou mais); so acima de metade do produto
 ela recusa. Nunca invente o kg de uma linha.
