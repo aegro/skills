@@ -1,6 +1,6 @@
 ---
 name: aegro-entrada-nota-fiscal
-requires-cli: 0.29.1
+requires-cli: 0.30.1
 description: >-
   Orquestra a entrada de notas fiscais recebidas da SEFAZ no Aegro pela CLI:
   lista as notas nao lancadas, apresenta a ficha da nota (resumo identificavel +

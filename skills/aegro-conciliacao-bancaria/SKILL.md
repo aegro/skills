@@ -1,6 +1,6 @@
 ---
 name: aegro-conciliacao-bancaria
-requires-cli: 0.29.1
+requires-cli: 0.30.1
 description: >-
   Concilia o extrato bancario com o financeiro do Aegro pela CLI: importa o
   OFX, casa entradas do extrato com os movimentos internos, confirma em lote e
@@ -262,7 +262,7 @@ Regras do lote:
   extrato; fora isso o movimento nasce no lugar errado.
 
 **Versao:** `settle-installments` existe a partir da CLI 0.29.0; as recusas de
-nome parcial de conta e de coluna `valor`, a partir da 0.29.1. Em CLI anterior a
+nome parcial de conta e de coluna `valor`, a partir da 0.30.1. Em CLI anterior a
 0.29.0, a baixa ajustada e `financial settle`, uma parcela por vez, sem troca de
 conta — e o movimento de uma parcela agendada em outra conta nao vira candidato
 deste extrato.

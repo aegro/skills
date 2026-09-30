@@ -1,6 +1,6 @@
 ---
 name: aegro-financeiro
-requires-cli: 0.29.1
+requires-cli: 0.30.1
 description: >-
   Referencia do dominio financeiro do Aegro pela CLI — lancamentos (bills),
   parcelas, categorias, contas bancarias, empresas, pedidos de compra e
@@ -959,9 +959,9 @@ baixa de parcela ja paga (reabra antes); trocar a conta de parcela ja paga (so
 pela tela do Aegro, por enquanto).
 
 **Versao:** o comando existe a partir da CLI 0.29.0, e as recusas de nome parcial
-de conta, de coluna `valor` e de valor com mais de 2 casas, a partir da 0.29.1.
+de conta, de coluna `valor` e de valor com mais de 2 casas, a partir da 0.30.1.
 Em CLI anterior a 0.29.0 a baixa ajustada e `financial settle`, uma parcela por
-vez, sem troca de conta. Na 0.29.0, siga as regras de arquivo acima mesmo sem o
+vez, sem troca de conta. Na 0.29.0 e na 0.30.0, siga as regras de arquivo acima mesmo sem o
 CLI cobrar: use o nome completo da conta e nunca ponha coluna `valor`.
 
 ### Baixa feita por engano: `reopen-installments`

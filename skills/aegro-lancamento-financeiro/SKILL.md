@@ -1,6 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
-requires-cli: 0.29.1
+requires-cli: 0.30.1
 description: >-
   Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
   categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
