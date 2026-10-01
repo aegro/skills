@@ -1,6 +1,6 @@
 ---
 name: aegro-lancamento-financeiro
-requires-cli: 0.26.0
+requires-cli: 0.30.1
 description: >-
   Conduz o registro de conta a pagar ou a receber no Aegro pela CLI: decide
   categoria, fornecedor ou cliente, condicao de pagamento e parcelamento antes
@@ -60,7 +60,9 @@ avulso de parcela na API. Para ajustar a **conta**, use `financial update-bill`
 `installments` nao existe no schema do patch, e a API ignora campo que nao
 declara — por desenho, nao por defeito. O CLI recusa o campo antes de enviar. O
 **vencimento** sai por `financial update-installments` (lote por fazenda, com
-`--dry-run` que e o veredito do servidor); o **valor**, so pela tela.
+`--dry-run` que e o veredito do servidor); o **valor**, so pela tela. A
+**baixa** com data, desconto, juros ou conta diferentes do agendado — de uma
+ou de varias parcelas — sai por `financial settle-installments`.
 
 - **Anexo da nota/comprovante**: `create-bill --attach ./nota.pdf` (repetivel)
   anexa na mesma invocacao. Exige login OAuth (o upload e API interna); com API
@@ -201,8 +203,10 @@ verificar que tudo foi criado corretamente.
    pagamento de fato ocorreu E que ele quer a parcela ja baixada
 3. Se a conta e "a vista" mas a baixa nao foi confirmada - vencimento futuro
    OU na propria data do lancamento - use `INSTALLMENT` com 1 parcela NOT_PAID
-   e realize depois (padrao do time de Servicos: evita a baixa automatica e o
-   produtor confirma o pagamento ao revisar)
+   e baixe depois (padrao do time de Servicos: evita a baixa automatica e o
+   produtor confirma o pagamento ao revisar). Baixa no valor, data e conta
+   agendados: `realize`. Pago em outra data, com desconto/juros ou de outra
+   conta: `settle-installments`
 
 ### Sem Pagamento (so custo/DRE)
 
@@ -312,6 +316,14 @@ em /aegro-financeiro (regra 6).
     sera apagado -- inclusive DESCONTO e JUROS, que nao se recuperam), confirme
     com o usuario, e so entao `--execute --confirm-undo`. Depois corrija o
     vencimento com `financial update-installments`
+8c. **Varias contas pagas juntas sao UMA baixa** -- um PIX ou boleto que
+    quitou N contas vira um `financial settle-installments` com todas, com a
+    data do pagamento, a conta de onde saiu o dinheiro e desconto/juros por
+    linha (`--map`). Nunca N baixas uma a uma. Mostre o `--dry-run` (o total
+    que o servidor calculou) antes do `--execute`; sintaxe em
+    `/aegro-financeiro` (secao 5). O comando existe a partir da CLI 0.29.0; em
+    CLI anterior, a baixa com data, desconto ou juros e `financial settle`, uma
+    parcela por vez, sem troca de conta
 
 9. **Campo "Produtor" sai via API** -- `producerKey` e aceito no create e no
    patch, e a leitura devolve `producer`. O `create-bill` do CLI nao tem a flag:
@@ -322,7 +334,9 @@ em /aegro-financeiro (regra 6).
     duplicata dela). Havendo prazo combinado que a nota nao reflete ("paga 15
     dias depois"), `--due-days N` desloca o carne e `--due-date AAAA-MM-DD` fixa
     a data de uma parcela unica. Confira no `--dry-run` pelo bloco `vencimentos`.
-    Parcela ja lancada nao se altera pelo CLI: pergunte o prazo ANTES do lote
+    Pergunte o prazo ANTES do lote: e mais barato acertar no lancamento. Parcela
+    ja lancada tem conserto (`financial update-installments`, regra 8b), mas e
+    uma segunda operacao
 
 11. **"Produtor" NAO e o Livro Caixa** -- se o cliente entrega o LCDPR, ele
     precisa que cada conta diga a qual **imovel rural** pertence, e isso e outro

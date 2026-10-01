@@ -1,6 +1,6 @@
 ---
 name: aegro-entrada-nota-fiscal
-requires-cli: 0.26.0
+requires-cli: 0.30.1
 description: >-
   Orquestra a entrada de notas fiscais recebidas da SEFAZ no Aegro pela CLI:
   lista as notas nao lancadas, apresenta a ficha da nota (resumo identificavel +
@@ -142,7 +142,7 @@ Traducao correta:
 |---|---|---|
 | "a vista" (condicao; baixa NAO confirmada) | `--installments 1` | 1 parcela **em aberto** com vencimento na data da nota; o produtor confirma o pagamento depois |
 | "a vista", pagamento JA feito **e** baixa automatica desejada | `--prompt` | 1 parcela ja paga na data da nota |
-| Pagamento ja feito, mas o produtor prefere conferir antes de baixar | `--installments 1` | 1 parcela em aberto na data; apos a conferencia, `aegro financial realize` |
+| Pagamento ja feito, mas o produtor prefere conferir antes de baixar | `--installments 1` | 1 parcela em aberto na data; apos a conferencia, a baixa (`realize` se foi na data e na conta agendadas; `settle-installments` se nao) |
 | "a prazo" / nota com duplicatas | sem flag | parcelas das duplicatas (o cronograma real da nota) |
 | Sem duplicatas e parcelamento combinado | `--installments N` | N parcelas mensais em aberto |
 | Remessa / registro sem efeito de caixa | `--no-payment` | sem parcelas (ver secao 3) |
@@ -156,7 +156,10 @@ Se a fala e o documento conflitam (usuario diz "a vista"/"ja paguei" mas a
 nota TEM duplicatas), as duplicatas sao o cronograma real: aponte a
 divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
 confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
-e registre os pagamentos com `financial realize` em seguida.
+e registre os pagamentos em seguida com `financial settle-installments` — um
+lote so, cada parcela com a data e a conta em que foi paga de fato (o `realize`
+baixaria todas na data de vencimento de cada duplicata). Sintaxe e regras do
+arquivo em `/aegro-financeiro`.
 
 ### Vencimento diferente do que a nota diz
 
@@ -167,22 +170,31 @@ emissao e o cliente paga 15 dias depois. Quando existir essa instrucao:
 
 | Instrucao | Flag |
 |---|---|
-| "esse cliente paga N dias depois da emissao" | `--due-days N` |
+| "esse cliente paga N dias depois" — nota SEM duplicata (vence na emissao) | `--due-days N` |
+| "paga cada parcela N dias depois do vencimento dela" — nota COM duplicatas | `--due-days N` |
 | "vence no dia X" (parcela unica) | `--due-date AAAA-MM-DD` |
 
-`--due-days` **desloca** o carne inteiro: nota 30/60/90 com `--due-days 15` vira
-45/75/105. `--due-date` **fixa** a data e so vale com UMA parcela — em nota
-parcelada o comando recusa, porque fixar colapsaria o carne numa data so.
+`--due-days` **desloca** cada parcela a partir do vencimento que ela ja tem:
+nota 30/60/90 com `--due-days 15` vira 45/75/105. Nao e "N dias depois da
+emissao" quando a nota tem duplicatas — nesse caso ("paga tudo 15 dias depois
+da emissao", nota com duplicatas a 30 dias) nenhuma flag traduz a instrucao:
+pergunte se o cliente quer uma parcela so (`--installments 1 --due-date
+AAAA-MM-DD`) ou manter o carne da nota. `--due-date` **fixa** a data e so vale
+com UMA parcela — em nota parcelada o comando recusa, porque fixar colapsaria o
+carne numa data so.
 
 Nao combine com `--prompt`: aquela parcela nasce PAGA na data da nota, e o
-comando recusa. Se a parcela ainda nao foi paga, e `--installments 1` com o
-vencimento; se foi paga em outra data, lance em aberto e use
-`aegro financial realize` (ou `financial settle`, quando a data e o valor
-mudaram).
+comando recusa. Se a parcela ainda nao foi paga, e `--installments 1 --due-date
+AAAA-MM-DD`; se ja foi paga em outra data, lance em aberto e registre a baixa
+com `financial settle-installments`, na data e na conta reais (o `realize`
+baixaria na data de vencimento). Em CLI anterior a 0.29.0, onde o comando nao
+existe, a baixa com data e `financial settle`, uma parcela por vez.
 
 **Confira no `--dry-run` antes de executar**: o preview traz `vencimentos` com a
 data ja legivel e `vencimentoDefinidoPor`, dizendo se a data veio da nota ou da
-flag.
+flag. **Leia tambem o stderr**: parcela sem vencimento de origem nao tem de onde
+deslocar, e o CLI avisa (`ATENÇÃO: ... vão SEM data`) sem recusar. Com esse
+aviso, nao execute: use `--due-date` (parcela unica) ou `--installments N`.
 
 **Prefira acertar no lancamento.** A data errada tem conserto —
 `aegro financial update-installments` muda o vencimento de parcela ja lancada,
@@ -309,7 +321,10 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 - **Produtos**: para cada item, o `items` traz `sugestaoCatalogo` (quando ainda
   nao ha de/para) ou `conciliadoCom` (quando ja ha). Busque tambem candidatos com
   `aegro elements list -s "<nome do item>"`. So depois rode
-  `conciliate <doc> --item CODIGO=Nome --execute`.
+  `conciliate <doc> --item CODIGO=Nome --execute`. Item com `conciliadoCom` ja
+  tem de/para salvo e nao precisa de `conciliate`: mostre a descricao da nota e
+  o elemento vinculado lado a lado, e so regrave se o usuario disser que esta
+  errado.
   Nao existindo candidato, ofereca criar o elemento (`aegro elements create-item`)
   ou seguir sem baixa de estoque (explicando a consequencia).
 - **Livro Caixa (LCDPR)**: se a fazenda tem o modulo, a conta precisa dizer a
@@ -331,11 +346,9 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > elemento errado o custo e o estoque vao para o **produto errado em silencio**.
 > E o de/para fica **salvo por (fazenda, fornecedor, codigo do item)**: a partir
 > dali TODA nota seguinte daquele fornecedor recebe o elemento errado
-> automaticamente, como se fosse fato, sem passar por similaridade de novo. Foi
-> assim que 27 itens divergentes apareceram em 82 notas de um mesmo cliente, numa
-> rodada real.
+> automaticamente, como se fosse fato, sem passar por similaridade de novo.
 >
-> Casos reais medidos, todos aceitos pela similaridade:
+> Exemplos, todos aceitos pela similaridade:
 >
 > | descricao na NF-e | sugerido (errado) |
 > |---|---|
@@ -345,20 +358,19 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > | `ONU 1202 - OLEO DIESEL B S500 ADITIVADO` | `DIESEL` |
 >
 > Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado e
-> peca confirmacao — sempre, para toda sugestao.** Nao julgue voce mesmo se sao
-> "obviamente o mesmo produto": `ADUBO FB 20 00 20` e `ADUBO BT 20 00 20` passam
-> nesse teste e sao adubos de marcas diferentes. Quem erra ao olhar as duas
-> strings e o mesmo que erraria de novo.
+> peca confirmacao para toda sugestao — com UMA excecao, abaixo.** Nao julgue
+> voce mesmo se sao "obviamente o mesmo produto": `ADUBO FB 20 00 20` e
+> `ADUBO BT 20 00 20` passam nesse teste e sao adubos de marcas diferentes. Quem
+> erra ao olhar as duas strings e o mesmo que erraria de novo.
 >
-> O que voce PODE decidir sozinho e o contrario: quando o nome do catalogo esta
-> inteiramente contido na descricao da nota (`GC GASOLINA COMUM` ->
-> `GASOLINA COMUM`), a nota so disse mais, e isso e seguro. Qualquer palavra no
-> catalogo que a nota nao diz — marca, formulacao, concentracao, embalagem —
-> exige o "sim" do usuario.
->
-> Ha um caso que nem isso pega: a nota dizer MAIS e ainda assim ser outro
-> produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`; aditivado e
-> outro produto). Em combustivel e defensivo, confirme mesmo no caso "contido".
+> A excecao: o nome do catalogo esta **inteiramente contido** na descricao da
+> nota (`GC GASOLINA COMUM` -> `GASOLINA COMUM`) **e** o produto nao e
+> combustivel nem defensivo. Ai a nota so disse mais, e voce pode aceitar sem
+> perguntar. Qualquer palavra no catalogo que a nota nao diz — marca, formulacao,
+> concentracao, embalagem — exige o "sim" do usuario. Em combustivel e
+> defensivo, confirme mesmo no caso "contido": a nota pode dizer MAIS e ser
+> outro produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`;
+> aditivado e outro produto).
 >
 > Suspeitando de de/para ja salvo errado, o conserto e `conciliate` com o item
 > certo — ele regrava o vinculo e vale para as proximas notas.
@@ -367,11 +379,10 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > soma dos insumos; e tudo-ou-nada). Para ter estoque, concilie **todos** os
 > itens.
 >
-> Em CLI recente o `launch-bill --stock-location` **recusa** (exit 4) quando a
-> entrada de estoque nao seria possivel — item sem conciliacao, ou nenhum item
-> estocavel. Em CLI mais antigo ele LANCA assim mesmo, com rc 0 e sem estoque.
-> Nao conte com a recusa: confira o resultado de qualquer jeito. (Se precisar
-> saber, `aegro --version` diz a versao.)
+> O `launch-bill --stock-location` **recusa** (exit 4) quando a entrada de
+> estoque nao seria possivel — item sem conciliacao, ou nenhum item estocavel.
+> Mesmo assim confira no resultado que o estoque entrou: a recusa cobre os casos
+> que o CLI enxerga antes de gravar.
 
 ### 5. Lancar — sempre dry-run primeiro
 
