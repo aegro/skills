@@ -158,8 +158,12 @@ divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
 confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
 e registre os pagamentos em seguida com `financial settle-installments` — um
 lote so, cada parcela com a data e a conta em que foi paga de fato (o `realize`
-baixaria todas na data de vencimento de cada duplicata). Sintaxe e regras do
-arquivo em `/aegro-financeiro`.
+baixaria todas na data de vencimento de cada duplicata). **Pergunte ao usuario
+a data e a conta de cada pagamento**: nunca assuma a data de emissao nem a conta
+do lancamento. As chaves das parcelas novas nao vem prontas na saida do
+`launch-bill`: pegue o `billId` dela e liste com `aegro financial installments
+--farm "<fazenda>" --bill-key bill::<id>`. Sintaxe e regras do arquivo em
+`/aegro-financeiro`.
 
 ### Vencimento diferente do que a nota diz
 
@@ -179,7 +183,9 @@ nota 30/60/90 com `--due-days 15` vira 45/75/105. Nao e "N dias depois da
 emissao" quando a nota tem duplicatas — nesse caso ("paga tudo 15 dias depois
 da emissao", nota com duplicatas a 30 dias) nenhuma flag traduz a instrucao:
 pergunte se o cliente quer uma parcela so (`--installments 1 --due-date
-AAAA-MM-DD`) ou manter o carne da nota. `--due-date` **fixa** a data e so vale
+AAAA-MM-DD`) ou manter o carne da nota. As duplicatas sao o cronograma real:
+so troque por `--installments 1` com o sim explicito do usuario, nunca por
+conta propria. `--due-date` **fixa** a data e so vale
 com UMA parcela — em nota parcelada o comando recusa, porque fixar colapsaria o
 carne numa data so.
 
@@ -357,20 +363,16 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > | `SOLUPAN SD4=40 5LT SINODET` | `SOLUPAN GALAO` |
 > | `ONU 1202 - OLEO DIESEL B S500 ADITIVADO` | `DIESEL` |
 >
-> Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado e
-> peca confirmacao para toda sugestao — com UMA excecao, abaixo.** Nao julgue
-> voce mesmo se sao "obviamente o mesmo produto": `ADUBO FB 20 00 20` e
+> Regra pratica: **mostre a descricao da nota e o nome do catalogo lado a lado e
+> peca o "sim" do usuario para toda sugestao, sem excecao.** Nao julgue voce
+> mesmo se sao "obviamente o mesmo produto": `ADUBO FB 20 00 20` e
 > `ADUBO BT 20 00 20` passam nesse teste e sao adubos de marcas diferentes. Quem
 > erra ao olhar as duas strings e o mesmo que erraria de novo.
 >
-> A excecao: o nome do catalogo esta **inteiramente contido** na descricao da
-> nota (`GC GASOLINA COMUM` -> `GASOLINA COMUM`) **e** o produto nao e
-> combustivel nem defensivo. Ai a nota so disse mais, e voce pode aceitar sem
-> perguntar. Qualquer palavra no catalogo que a nota nao diz — marca, formulacao,
-> concentracao, embalagem — exige o "sim" do usuario. Em combustivel e
-> defensivo, confirme mesmo no caso "contido": a nota pode dizer MAIS e ser
-> outro produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`;
-> aditivado e outro produto).
+> Nem o nome do catalogo **inteiramente contido** na descricao da nota e seguro:
+> a nota pode dizer MAIS e ser outro produto. `ONU 1202 - OLEO DIESEL B S500
+> ADITIVADO` -> `DIESEL` (aditivado e outro produto); `UREIA PROTEGIDA NBPT` ->
+> `UREIA` (outro fertilizante). Confirme tambem nesses casos.
 >
 > Suspeitando de de/para ja salvo errado, o conserto e `conciliate` com o item
 > certo — ele regrava o vinculo e vale para as proximas notas.
@@ -455,6 +457,11 @@ aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
   --category "Venda Agricola" --bank-account "<conta bancaria>" \
   --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
   --farm "<Fazenda>" --env prod --dry-run
+# so depois de o usuario conferir o preview, o MESMO comando com --execute:
+aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
+  --category "Venda Agricola" --bank-account "<conta bancaria>" \
+  --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
+  --farm "<Fazenda>" --env prod --execute
 ```
 
 Tres coisas que fazem o comando parar antes de escrever — e o conserto:

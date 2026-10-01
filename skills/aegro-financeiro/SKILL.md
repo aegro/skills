@@ -52,7 +52,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Conta bancaria           | `bank-accounts`        | Conta onde parcelas sao vinculadas. Possui saldo e saldo inicial.                          |
 | Empresa                  | `companies`            | Fornecedor, cliente ou transportadora vinculado a fazenda.                                 |
 | Ordem de compra          | `purchase-orders`      | Pedido de compra vinculado a uma empresa, com itens e valores.                             |
-| Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote.                                                 |
+| Realizar                 | `realize`              | Ato de marcar parcelas como pagas em lote, na data e na conta AGENDADAS. Pago em outra data ou conta, ou com desconto/juros: `settle-installments`. |
 | Baixa ajustada em lote   | `settle-installments`  | Baixa uma ou varias parcelas com data do pagamento, desconto, juros e conta. Atomico, com `/preview` do servidor. |
 | Vencimento em lote       | `update-installments`  | Altera o vencimento de parcelas JA lancadas. Atomico, com `/preview` do servidor no dry-run. |
 | Reabrir baixa            | `reopen-installments`  | Desfaz pagamento feito por engano. APAGA desconto e juros junto; `--confirm-undo` em toda escrita (so o `--dry-run` dispensa). |
@@ -143,8 +143,12 @@ Relacionamentos-chave:
    tem. Pagamento em outra data, com desconto ou juros, ou saindo de outra
    conta e `settle-installments` (secao 5). Se o `realize` sair com
    `NOT_APPLIED`, o servidor deixou parcela de fora (de outra fazenda,
-   inexistente, excluida, ou com conciliacao confirmada) e **as demais foram
-   pagas**: corrija so as nomeadas, nao repita o lote inteiro.
+   inexistente, excluida, ou com conciliacao confirmada). So diga que as
+   demais foram pagas se a mensagem disser "As outras N parcela(s) FORAM
+   pagas"; se ela mandar conferir, ou disser que nenhuma ficou paga, confira em
+   `financial installments` antes de qualquer coisa. Corrija so as nomeadas,
+   nunca repita o lote inteiro. Parcela que segue em aberto "sem motivo
+   aparente" tambem e nomeada: confira o status dela antes de repetir.
 
 6. **Apropriacao de custo**: ha DOIS eixos no produto, e os dois sao
    **GRAVAVEIS** pela API publica (CLI 0.23.0).
@@ -252,7 +256,7 @@ Relacionamentos-chave:
 | `installment <key>`    | GET      | `installment_key` (argumento)                              | `--output`                                                                           |
 | `installments`         | POST     | (nenhum)                                                   | `--operation-type`, `--status` (repetivel), `--due-date-start`, `--due-date-end`, `--bill-key` (repetivel), `--page` |
 | `realize`              | POST     | `--key` (repetivel, obrigatorio)                           | `--skip-verify`, `--dry-run`, `--execute`                                            |
-| `settle-installments`  | POST     | `--key` (repetivel) e/ou `--map <csv\|json>`; data por `--date` ou coluna `realizedDate` | `--bank-account` (nome ou key), `--discount`/`--interest` (so 1 parcela), `--skip-verify`, `--dry-run`, `--execute` (exige OAuth) |
+| `settle-installments` (exige OAuth, inclusive no `--dry-run`; com API key sai com exit 2) | POST     | `--key` (repetivel) e/ou `--map <csv\|json>`; data por `--date` ou coluna `realizedDate` | `--bank-account` (nome ou key), `--discount`/`--interest` (so 1 parcela), `--skip-verify`, `--dry-run`, `--execute` |
 | `update-bill`          | PATCH    | `<key>` (arg), `--body` (JSON Merge Patch)                 | `--attach` (anexo, repetivel; exige OAuth), `--dry-run`, `--execute`                 |
 | `create-bill`          | POST     | inteligente (ver 4.1.1)                                    | `--description`, `--total-amount`, `--cash-flow`, `--payment-method`, `--category`/`--financial-category-key`, `--company`/`--company-key`, `--bank-account`/`--bank-account-key` (**obrigatoria** quando ha `--installments`), `--installments` (JSON), `--inputs` (JSON), `--apportion-crop` (repetivel), `--apportion-asset` (patrimonio; 1 por lancamento), `--crop-prorate-group` (rateio salvo; exclusivo com `--apportion-crop`), `--apportion-groups` (JSON; rateio por item, exclusivo com as 3 flags anteriores), `--apportion-mode` (WHOLE_BILL/PER_ITEM), `--farm-key`, `--entry-date`, `--currency`, `--attach` (anexo, repetivel; exige OAuth), `--env`, `--complete`, `--dry-run` |
 | `create-bills`         | POST     | `--batch <arquivo.json>`                                   | `--env`, `--complete`, `--dry-run`, `--execute`                                     |
@@ -427,10 +431,11 @@ uma tabela por linha com `status` (ok/needs_input) e nomes resolvidos:
 # nada. Apresente-a ao usuario e espere a aprovacao linha a linha.
 aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod --complete
 
-# 2o passo - ESCRITA (e so aqui que grava), no ambiente do trabalho.
+# 2o passo - ESCRITA (so o --execute grava), no ambiente do trabalho.
 # A rede de seguranca e o lote pequeno primeiro + releitura do que gravou; um
 # ensaio em staging nao prova nada (ver secao 5, multi-env).
-aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod --dry-run
+aegro financial create-bills --farm "<fazenda>" --batch contas.json --env prod --execute
 ```
 
 Exemplo de `contas.json`:
@@ -803,6 +808,8 @@ lote de parcelas por fazenda.
 # uma parcela
 aegro financial update-installments --farm "<fazenda>" \
   --key installment::<id> --due-date 2026-11-20 --dry-run
+aegro financial update-installments --farm "<fazenda>" \
+  --key installment::<id> --due-date 2026-11-20 --execute
 
 # um lote (a planilha vira CSV com as colunas key,dueDate): previa do servidor
 # primeiro, e o MESMO comando com --execute so depois de o usuario conferir
@@ -824,11 +831,12 @@ Cinco coisas que mudam como voce conduz a conversa:
    leitura responde no escopo da fazenda do comando, entao as tres tem o mesmo
    sintoma). Conduza pela lista: tire essas linhas e repita o lote.
 
-   Nas outras recusas (`already-paid`, conciliacao confirmada, teto de 500) o
-   servidor para na PRIMEIRA parcela inelegivel e o CLI nao lista as demais. Ai
-   o caminho e o `--dry-run` do lote de novo depois de tirar a nomeada — ou,
-   antes de montar o lote, filtrar em `financial installments --status NOT_PAID`
-   para so entrar parcela em aberto.
+   Nas outras recusas do servidor (`already-paid`, conciliacao confirmada,
+   fechamento financeiro) ele para na PRIMEIRA parcela inelegivel e o CLI nao
+   lista as demais. Ai o caminho e o `--dry-run` do lote de novo depois de tirar
+   a nomeada — ou, antes de montar o lote, filtrar em `financial installments
+   --status NOT_PAID` para so entrar parcela em aberto. O teto de 500 e outra
+   coisa: o proprio CLI recusa pela contagem, antes de chamar o servidor.
 2. **O `--dry-run` e o veredito do SERVIDOR**, nao uma simulacao: ele chama o
    `/preview`, que calcula a operacao inteira sem gravar e recusa exatamente o
    que a escrita recusaria. Rode-o sempre antes do lote, e mostre o resumo
@@ -862,13 +870,16 @@ por conta, fornecedor, status ou janela de vencimento). A chave e
 Recusas nomeadas e o que fazer: parcela de **outra fazenda** (quem autoriza e o
 `--farm` do comando), **conciliacao confirmada** (desfaca antes com
 `bank-reconciliation undo`), **lote misto** de receita e despesa (separe em
-dois), **teto de 500** por operacao (divida — cada lote e atomico por si).
+dois), **fechamento financeiro** ativo na data (exit 4; confira em `aegro
+financial closes` e reabra o periodo pela tela, ou use outra data), **teto de
+500** por operacao (recusa local do CLI; divida — cada lote e atomico por si).
 
 ### Baixa com data, desconto, juros ou conta: `settle-installments`
 
 O caminho para registrar pagamentos como eles aconteceram no banco — varias
 parcelas de uma vez, cada uma com a sua data, desconto, juros e conta. Exige
-`aegro auth login` (API interna).
+`aegro auth login` (API interna) no comando inteiro, `--dry-run` incluido: com
+API key ele sai com exit 2 antes de ler qualquer coisa.
 
 ```bash
 # varias contas pagas num pagamento so, da mesma conta: data e conta pelas flags
@@ -889,24 +900,34 @@ aegro financial settle-installments --farm "<fazenda>" --map baixas.csv \
   --bank-account "<nome exato da conta>" --execute
 ```
 
-**Como montar o arquivo** — o CLI recusa, com exit 4, tudo que foge disto:
+**Como montar o arquivo** — o CLI recusa, com exit 4, o que foge disto (o
+separador e a excecao, ver o primeiro item):
 
-- separador `;` sempre que houver valor com virgula decimal (`115,36`). Com `,`
-  como separador o valor parte em dois;
+- separador `;`, sempre. Com `,` o CLI so recusa linha com campo A MAIS: sob o
+  cabecalho `key,discount,interest`, a linha `installment::a,115,36` e lida
+  como desconto 115 e juros 36, sem recusa nenhuma;
 - data em `AAAA-MM-DD` (o Excel costuma exportar `DD/MM/AAAA`: converta);
 - arquivo em UTF-8 ("CSV UTF-8" no "Salvar como" do Excel);
-- cabecalhos exatos e em minusculas: `key`, `realizedDate`, `discount`,
-  `interest`, `bankAccount`; so para leitura, `fornecedor`, `descricao`,
-  `description`, `company`, `obs`, `note`. Coluna `valor`/`amount` e recusada;
-- valor com no maximo 2 casas decimais.
+- cabecalhos exatos, com esta grafia: `key`, `realizedDate`, `discount`,
+  `interest`, `bankAccount` (o CLI compara letra a letra); so para leitura,
+  `fornecedor`, `descricao`, `description`, `company`, `obs`, `note`. Coluna
+  `valor`/`amount` e recusada;
+- valor com no maximo 2 casas decimais. `1.500` (milhar sem centavos) e
+  recusado como ambiguo: escreva `1500` ou `1.500,00`.
 
 Celula vazia vale a flag: `bankAccount` em branco usa `--bank-account`, e
-`realizedDate` em branco usa `--date`. Sem flag, a conta fica a que a parcela ja
-tinha.
+`realizedDate` em branco usa `--date`. Sem `--bank-account`, a conta fica a que a
+parcela ja tinha. Sem `--date`, linha com `realizedDate` vazia recusa o lote
+(exit 4, nomeando as parcelas sem data) — nada e gravado.
 
-1. **Tudo-ou-nada**, como o lote de vencimento. Antes de escrever, o CLI nomeia
-   de uma vez todas as parcelas **ja pagas** ou com **conciliacao confirmada** —
-   repita essa lista ao usuario e tire-as do lote.
+1. **Tudo-ou-nada**, como o lote de vencimento. Antes de escrever, a leitura
+   previa do CLI nomeia de uma vez todas as parcelas **ja pagas** ou com
+   **conciliacao confirmada** — repita essa lista ao usuario e tire-as do lote.
+   As recusas que vem do servidor (fechamento financeiro, desconto maior que a
+   parcela, lote misto) param na primeira parcela: tire a nomeada e repita o
+   `--dry-run`. Data dentro de **fechamento financeiro** ativo e recusada com
+   exit 4: confira em `aegro financial closes` e reabra o periodo pela tela, ou
+   use outra data.
 2. **O valor pago e do servidor**: `valor + juros - desconto`. O `--dry-run`
    chama o `/preview` e mostra `valorPagoCalculadoPeloServidor` por linha e o
    `resumoDoServidor` (`netAmount`, `discountAmount`, `interestAmount`; o numero
@@ -923,22 +944,26 @@ tinha.
    parcela: com varias, o numero seria total ou por parcela — use as colunas.
    A linha do arquivo prevalece sobre a flag.
 4. **Conta pelo nome EXATO ou pela key**, resolvida contra as contas **da fazenda
-   do comando**. Pedaco de nome ("Sicredi" para "Sicredi Conta Movimento"), nome
-   repetido ou conta de outra fazenda param o comando listando as opcoes —
-   pergunte qual, nao escolha. Planilha com coluna `valor` e recusada: o lote nao
-   tem valor pago livre.
+   do comando**. Pedaco de nome ("Sicredi" para "Sicredi Conta Movimento") ou
+   nome repetido param o comando listando as opcoes — pergunte qual, nao
+   escolha. Key `bankAccount::` de outra fazenda tambem para o comando, mas sem
+   lista: confira o `--farm` e `aegro bank-accounts list`. Planilha com coluna
+   `valor` e recusada: o lote nao tem valor pago livre.
 5. **Guarde a saida do `--execute`.** `baixas[].conta.de`, `desconto.de` e
    `juros.de` sao o estado de antes, e o unico registro dele: reabrir a baixa
    apaga desconto e juros e **nao devolve a conta** anterior. `desfazer` traz o
-   `reopen-installments` pronto, com todas as parcelas e o `--farm`.
+   `reopen-installments ... --dry-run` pronto, com todas as parcelas e o
+   `--farm`: rode-o como esta para ver o que sera apagado e, para aplicar, troque
+   `--dry-run` por `--execute --confirm-undo`.
 6. **Conferencia por releitura.** Depois de gravar, cada parcela e relida: status,
    data, conta, desconto, juros e valor pago. `NOT_PERSISTED` aqui quer dizer que
    o lote FOI aceito e as parcelas estao pagas, mas um campo divergiu — **nao
    repita** (seria recusado como ja paga); leia a divergencia e confira em
-   `financial installments`. Se o que divergiu foi a data ou a conta, o conserto
-   e reabrir (`reopen-installments`, que apaga desconto e juros) e baixar de novo
-   com os dados certos — diga isso ao usuario antes, porque o desconto precisa
-   ser informado outra vez.
+   `financial installments`. Divergiu data, conta, desconto, juros ou valor pago:
+   o conserto e reabrir **so as parcelas nomeadas na divergencia** e baixa-las de
+   novo com os dados certos. Nunca reabra o lote inteiro: reabrir apaga desconto
+   e juros de todas e nao devolve a conta. Diga isso ao usuario antes, porque o
+   desconto e os juros daquelas parcelas precisam ser informados outra vez.
 7. **Erro de rede ou 5xx no `--execute` (timeout, conexao caida): nao repita.**
    O CLI rele as parcelas antes de reportar: se o lote foi aplicado, ele diz
    "NAO repita" e confere campo a campo. Se nem a releitura funcionou, confira
@@ -948,9 +973,13 @@ tinha.
 8. **Um pagamento que quitou varias contas, uma delas paga PARCIALMENTE**: a
    parcial nao cabe no lote. `settle-installments` para as cheias e `financial
    settle --realized-amount` para a parcial — nunca force desconto na parcial
-   para ela caber no lote, isso grava um desconto que nao existiu.
-9. **Teto de 500 parcelas por lote.** Acima disso, divida; cada lote e atomico
-   por si.
+   para ela caber no lote, isso grava um desconto que nao existiu. Avise antes o
+   que o `settle` faz: ele **quita a parcela INTEIRA** pelo valor menor (o saldo
+   nao fica em aberto), grava desconto e juros com o valor das flags (0 se
+   omitidas, apagando os de antes) e **nao troca a conta** — a parcela fica na
+   conta agendada.
+9. **Teto de 500 parcelas por lote.** O CLI recusa pela contagem, antes de
+   chamar o servidor. Acima disso, divida; cada lote e atomico por si.
 
 **Nao faz:** baixa parcial ou valor pago que nao seja `valor + juros - desconto`
 (use `financial settle`, uma parcela por vez, com `--realized-amount` — o
@@ -1131,8 +1160,9 @@ aegro financial installments --farm "<fazenda>" --operation-type EXPENSE --statu
 #    conta agendadas. Desfazer custa desconto e juros (reopen-installments).
 #    Pago em outra data, com desconto/juros ou de outra conta: settle-installments.
 
-# 3. Realizar as parcelas confirmadas
-aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --key installment::ccc
+# 3. Realizar as parcelas confirmadas (o --dry-run so mostra o corpo que sairia)
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --key installment::ccc --dry-run
+aegro financial realize --farm "<fazenda>" --key installment::aaa --key installment::bbb --key installment::ccc --execute
 ```
 
 ---
