@@ -319,7 +319,9 @@ em /aegro-financeiro (regra 6).
 8c. **Varias contas pagas juntas sao UMA baixa** -- um PIX ou boleto que
     quitou N contas vira um `financial settle-installments` com todas, com a
     data do pagamento, a conta de onde saiu o dinheiro e desconto/juros por
-    linha (`--map`). Nunca N baixas uma a uma. Mostre o `--dry-run` (o total
+    linha (`--map`). Nunca N baixas uma a uma -- a excecao e a parcela paga
+    parcialmente, que vai por `financial settle --realized-amount`; nunca force
+    um desconto falso para ela caber no lote. Mostre o `--dry-run` (o total
     que o servidor calculou) antes do `--execute`; sintaxe em
     `/aegro-financeiro` (secao 5). O comando existe a partir da CLI 0.29.0; em
     CLI anterior, a baixa com data, desconto ou juros e `financial settle`, uma
