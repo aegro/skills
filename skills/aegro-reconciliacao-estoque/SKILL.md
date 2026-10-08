@@ -42,6 +42,7 @@ Estoque Teorico = Estoque Inicial
                   - Consumo em atividades (realizacoes)
                   - Transferencias enviadas
                   - Saidas manuais (perdas, ajustes)
+                  - Abastecimento e manutencao de maquina
 
 DIVERGENCIA = Estoque Atual (sistema) - Estoque Teorico
 ```
@@ -70,22 +71,49 @@ Registrar quantidade atual por local e unidade de medida.
 
 ### 4. Levantar historico de movimentacoes
 
-Buscar logs de estoque no periodo da safra e classificar:
+Buscar os logs do elemento no periodo da safra, todas as paginas:
 
-| Tipo de movimentacao | Direcao |
-|----------------------|---------|
-| MANUAL_ENTRY | Entrada (compras) |
-| MANUAL_REMOVAL | Saida (perdas, ajustes) |
-| TRANSFER | Entrada ou saida (entre locais) |
-| ACTIVITY_CONSUMPTION | Saida (uso em campo) |
+```bash
+aegro stock logs --farm "<fazenda>" --element-key element::<id> \
+  --start-date 2025-09-01 --end-date 2026-03-31
+```
 
-Calcular totais de entrada e saida.
+**O log nao tem campo de tipo.** Nao procure `ACTIVITY_CONSUMPTION`,
+`MANUAL_ENTRY`, `MANUAL_REMOVAL` nem `TRANSFER`: esses nomes nao existem na
+saida, e nao acha-los nao quer dizer que nao houve consumo. Cada log tira
+`quantity` do local em `sourceLocationKey` e poe no local em
+`destinationLocationKey`. A origem se le pelas chaves presentes — chave que nao
+se aplica some do JSON:
+
+| Chaves no log | O que e | Direcao |
+|---|---|---|
+| `activityLogKey` | Consumo de realizacao de atividade | Saida |
+| `billKey`, so destino | Conta: compra ou devolucao de venda | Entrada |
+| `billKey`, so origem | Conta: venda ou devolucao de compra | Saida |
+| origem e destino | Transferencia; com origem `company::`, e a entrega de pedido de compra | Sai da origem, entra no destino |
+| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra ainda no fornecedor | Nao entra no armazem ate a entrega |
+| `companyKey` sem `billKey`, so origem | Entrega de venda (romaneio) | Saida |
+| nenhuma das tres, so destino | Entrada manual ou ganho de inventario | Entrada |
+| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, ou perda de inventario | Saida |
+
+"Nenhuma das tres" e sem `activityLogKey`, `billKey` e `companyKey`.
+
+Calcular totais de entrada e saida por local, na mesma unidade (`quantity.unit`).
+
+A ultima linha junta origens que a API publica nao separa. Para isolar
+abastecimento e manutencao, case com `aegro fuel-supplies list` e
+`aegro maintenances list` no mesmo periodo: mesmo `stockLocationKey`,
+`occurrenceDate` e insumo em `inputs`. Evento rateado entre safras vira varios
+logs, que somam a quantidade do insumo. O que nao casar e saida manual ou perda
+de inventario.
 
 ### 5. Cruzar com consumo em atividades
 
 Buscar realizacoes no periodo e filtrar as que usaram o elemento.
 Calcular total consumido em atividades.
-Comparar com ACTIVITY_CONSUMPTION dos logs.
+Comparar com os logs que tem `activityLogKey`: o valor e a `key` da realizacao
+(`activityLog::`), entao case um a um com `aegro activities realizations`.
+Realizacao do insumo sem log correspondente nao baixou o estoque.
 
 ### 6. Calcular divergencia
 

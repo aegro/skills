@@ -44,10 +44,10 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Movimentacao de estoque   | `stock log`            | Registro de entrada, saida, transferencia ou consumo de um item.                           |
 | Elemento                  | `elements`             | Insumo agricola. Categorias: DEFENSIVE, FERTILIZER, SEED, ITEM, SERVICE.                  |
 | Catalogo                  | `catalogs`             | Base de dados pre-definida de elementos. Somente leitura. Usado como referencia.           |
-| Entrada manual            | `stock entry`          | Tipo MANUAL_ENTRY. Registra compra ou recebimento. Possui valor monetario.                 |
-| Remocao manual            | `stock removal`        | Tipo MANUAL_REMOVAL. Registra perda, ajuste ou descarte. Sem valor monetario.              |
-| Transferencia             | `stock transfer`       | Tipo TRANSFER. Move quantidade entre dois locais. Sem valor monetario.                     |
-| Consumo por atividade     | ACTIVITY_CONSUMPTION   | Automatico. Gerado quando uma atividade agricola realizada consome insumos.                |
+| Entrada manual            | `stock entry`          | Registra compra ou recebimento. Possui valor monetario.                                    |
+| Remocao manual            | `stock removal`        | Registra perda, ajuste ou descarte. Sem valor monetario.                                   |
+| Transferencia             | `stock transfer`       | Move quantidade entre dois locais. Sem valor monetario.                                    |
+| Consumo por atividade     | log com `activityLogKey` | Automatico. Gerado quando uma atividade realizada com local de estoque consome insumos. Nao lance saida manual para ele. |
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
@@ -69,18 +69,20 @@ FARM
  |     categoria: DEFENSIVE | FERTILIZER | SEED | ITEM | SERVICE
  |     +-- STOCK_ITEM (1:N posicoes em diferentes locais)
  |     +-- set-categories -> FINANCIAL_CATEGORY (ponte com dominio financeiro)
- +-- STOCK_LOG (historico de movimentacoes)
+ +-- STOCK_LOG (historico de movimentacoes; NAO tem campo de tipo)
  |     elementKey -> ELEMENT
- |     sourceLocationKey -> STOCK_LOCATION (origem, para removal e transfer)
- |     destinationLocationKey -> STOCK_LOCATION (destino, para entry e transfer)
+ |     sourceLocationKey -> local de onde a quantidade sai (stockLocation:: ou company::)
+ |     destinationLocationKey -> local onde a quantidade entra (stockLocation:: ou company::)
+ |     activityLogKey -> realizacao que consumiu o insumo (activityLog::)
+ |     billKey, companyKey -> conta e empresa que originaram o movimento
  +-- CATALOG (base pre-definida, somente leitura)
        +-- CATALOG_ELEMENT (referencia para criar elementos)
 ```
 
 Relacionamentos-chave:
 - STOCK_ITEM = intersecao ELEMENT x STOCK_LOCATION (posicao de estoque).
-- STOCK_LOG registra toda movimentacao (entrada, saida, transferencia, consumo).
-- ACTIVITY_REALIZATION gera STOCK_LOG de consumo automaticamente (dominio atividades).
+- STOCK_LOG registra toda movimentacao (entrada, saida, transferencia, consumo). O que ela e se le pelos campos preenchidos (secao 5, "`stock logs` nao tem campo de tipo").
+- ACTIVITY_REALIZATION com local de estoque gera STOCK_LOG de consumo automaticamente, com `activityLogKey` = chave da realizacao (dominio atividades).
 - CATALOG e somente leitura; serve para buscar elementos padrao do mercado.
 - `elements set-categories` conecta estoque ao dominio financeiro.
 
@@ -295,6 +297,41 @@ aegro catalogs elements --farm "<fazenda>" catalog::abc123 --category SEED --pag
 
 ## 5. Gotchas
 
+### CRITICO: `stock logs` nao tem campo de tipo
+
+A saida de `aegro stock logs` e de `aegro stock log <key>` **nao traz tipo de
+movimentacao**: `MANUAL_ENTRY`, `MANUAL_REMOVAL`, `TRANSFER` e
+`ACTIVITY_CONSUMPTION` nao existem no JSON. Nao achar esses nomes nao quer dizer
+que nao houve consumo nem entrada.
+
+Para o saldo a regra e uma so: o log **tira** `quantity` do local em
+`sourceLocationKey` e **poe** no local em `destinationLocationKey`; lado ausente
+e fora do estoque. Some por local, na mesma unidade — cada log traz a sua em
+`quantity.unit`.
+
+A origem do movimento se le pelas chaves presentes. Chave que nao se aplica nao
+vem `null`: o campo some do JSON.
+
+| Chaves no log | O que e | Saldo |
+|---|---|---|
+| `activityLogKey` | Consumo de realizacao de atividade | sai da origem |
+| `billKey`, so destino | Conta: compra ou devolucao de venda | entra no destino |
+| `billKey`, so origem | Conta: venda ou devolucao de compra | sai da origem |
+| origem e destino | Transferencia; com origem `company::`, e a entrega de pedido de compra | sai da origem, entra no destino |
+| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra ainda no fornecedor | entra na posicao do fornecedor, nao no armazem |
+| `companyKey` sem `billKey`, so origem | Entrega de venda (romaneio) | sai da origem |
+| nenhuma das tres, so destino | Entrada manual ou ganho de inventario | entra no destino |
+| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, ou perda de inventario | sai da origem |
+
+"Nenhuma das tres" e sem `activityLogKey`, `billKey` e `companyKey`. A ultima
+linha junta origens que a API publica nao separa: para isolar abastecimento e
+manutencao, case com `aegro fuel-supplies list` e `aegro maintenances list` do
+periodo — mesmo `stockLocationKey`, `occurrenceDate` e insumo em `inputs`. Evento
+rateado entre safras vira varios logs, que somam a quantidade do insumo.
+
+`stock logs` so traz movimento com um dos lados em local de estoque ou em
+fornecedor: colheita entrando no silo e venda saindo do silo nao aparecem.
+
 ### CRITICO: Formato de valor monetario em entry
 
 O campo `amount` da entrada de estoque usa `currencyCode` (nao `currency`):
@@ -371,17 +408,18 @@ aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
 ### Formula de reconciliacao de estoque
 
 ```
-Posicao atual = Saldo inicial
-              + SUM(entradas manuais)
-              - SUM(remocoes manuais)
-              - SUM(consumos por atividade)
-              +/- SUM(transferencias)
+Posicao no local = Saldo inicial no local
+                 + SUM(quantity dos logs com destinationLocationKey = local)
+                 - SUM(quantity dos logs com sourceLocationKey = local)
 
 Para verificar:
-1. aegro stock items --element-key element::xxx  (posicao atual)
-2. aegro stock logs --element-key element::xxx --start-date YYYY-MM-DD  (historico)
-3. Comparar soma dos logs com posicao atual
+1. aegro stock items --element-key element::xxx  (posicao atual por local)
+2. aegro stock logs --element-key element::xxx --start-date YYYY-MM-DD  (historico, todas as paginas)
+3. Somar os logs por local, na mesma unidade, e comparar com a posicao
 ```
+
+O que cada log e (consumo, compra, transferencia...) sai da tabela em
+"`stock logs` nao tem campo de tipo", na secao 5.
 
 ### Fluxo completo: cadastrar insumo e dar entrada
 
