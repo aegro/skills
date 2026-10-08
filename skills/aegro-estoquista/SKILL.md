@@ -71,8 +71,8 @@ FARM
  |     +-- set-categories -> FINANCIAL_CATEGORY (ponte com dominio financeiro)
  +-- STOCK_LOG (historico de movimentacoes; NAO tem campo de tipo)
  |     elementKey -> ELEMENT
- |     sourceLocationKey -> local de onde a quantidade sai (stockLocation:: ou company::)
- |     destinationLocationKey -> local onde a quantidade entra (stockLocation:: ou company::)
+ |     sourceLocationKey -> local de onde a quantidade sai (em geral stockLocation:: ou company::)
+ |     destinationLocationKey -> local onde a quantidade entra (em geral stockLocation:: ou company::)
  |     activityLogKey -> realizacao que consumiu o insumo (activityLog::)
  |     billKey, companyKey -> conta e empresa que originaram o movimento
  +-- CATALOG (base pre-definida, somente leitura)
@@ -155,7 +155,7 @@ aegro stock locations --farm "<fazenda>" --output table
 aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --start-date 2025-09-01 --end-date 2026-03-13
 
-# Filtrar movimentacoes por local de origem
+# Saidas de um local (as entradas vem com --dest-key)
 aegro stock logs --farm "<fazenda>" --source-key stockLocation::def456
 
 # Registrar entrada de estoque (compra de 50kg a R$ 500)
@@ -304,33 +304,50 @@ movimentacao**: `MANUAL_ENTRY`, `MANUAL_REMOVAL`, `TRANSFER` e
 `ACTIVITY_CONSUMPTION` nao existem no JSON. Nao achar esses nomes nao quer dizer
 que nao houve consumo nem entrada.
 
-Para o saldo a regra e uma so: o log **tira** `quantity` do local em
-`sourceLocationKey` e **poe** no local em `destinationLocationKey`; lado ausente
-e fora do estoque. Some por local, na mesma unidade — cada log traz a sua em
-`quantity.unit`.
+**Saldo.** O log **tira** `quantity` do local em `sourceLocationKey` e **poe** no
+local em `destinationLocationKey`; lado ausente e fora do estoque. Some por
+local, convertendo cada log (`quantity.unit`) para a unidade da posicao em
+`stock items`. Destino `company::` e posicao no fornecedor, nao no armazem.
+`quantity` 0 nao move saldo — e ajuste de valor (juros ou desconto de parcela,
+diferenca de pedido) ou contagem de inventario que bateu: nao conte como compra,
+venda nem devolucao.
 
-A origem do movimento se le pelas chaves presentes. Chave que nao se aplica nao
-vem `null`: o campo some do JSON.
+**Origem.** Leia a tabela de cima para baixo e pare na primeira linha que casar.
+Chave que nao se aplica some do JSON (nao vem `null`); "nenhuma das tres" e sem
+`activityLogKey`, `billKey` e `companyKey`.
 
 | Chaves no log | O que e | Saldo |
 |---|---|---|
 | `activityLogKey` | Consumo de realizacao de atividade | sai da origem |
 | `billKey`, so destino | Conta: compra ou devolucao de venda | entra no destino |
 | `billKey`, so origem | Conta: venda ou devolucao de compra | sai da origem |
-| origem e destino | Transferencia; com origem `company::`, e a entrega de pedido de compra | sai da origem, entra no destino |
-| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra ainda no fornecedor | entra na posicao do fornecedor, nao no armazem |
+| origem e destino | Transferencia; com origem `company::`, em geral entrega de pedido de compra | sai da origem, entra no destino |
+| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra (a entrega e outro log, que tira de `company::`) | entra no fornecedor |
 | `companyKey` sem `billKey`, so origem | Entrega de venda (romaneio) | sai da origem |
-| nenhuma das tres, so destino | Entrada manual ou ganho de inventario | entra no destino |
-| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, ou perda de inventario | sai da origem |
+| nenhuma das tres, so destino | Entrada manual (inclusive compra lancada sem conta) ou ganho em contagem de inventario | entra no destino |
+| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, perda em contagem de inventario, ou entrega de venda sem comprador | sai da origem |
 
-"Nenhuma das tres" e sem `activityLogKey`, `billKey` e `companyKey`. A ultima
-linha junta origens que a API publica nao separa: para isolar abastecimento e
-manutencao, case com `aegro fuel-supplies list` e `aegro maintenances list` do
-periodo — mesmo `stockLocationKey`, `occurrenceDate` e insumo em `inputs`. Evento
-rateado entre safras vira varios logs, que somam a quantidade do insumo.
+Log que nao casa com nenhuma linha: aplique so a regra de saldo e mostre o log a
+quem opera.
 
-`stock logs` so traz movimento com um dos lados em local de estoque ou em
-fornecedor: colheita entrando no silo e venda saindo do silo nao aparecem.
+Compra feita por pedido de compra entra pelo pedido e pela entrega. O log com
+`billKey` dessa conta so traz o que passou do pedido, ou um ajuste de valor: a
+falta dele nao e "entrada nao registrada".
+
+Para separar a ultima linha, case com `aegro fuel-supplies list` e
+`aegro maintenances list` do periodo: `stockLocationKey` do evento igual ao
+`sourceLocationKey` do log, mesma `occurrenceDate`, insumo em `inputs` e a soma
+dos logs igual a quantidade do insumo — evento rateado entre safras vira um log
+por safra; tolere diferenca de arredondamento. O que nao casar e saida manual,
+perda de inventario ou entrega de venda sem comprador.
+
+`stock logs` so traz movimento com um lado em local de estoque ou fornecedor:
+colheita entrando no silo nao aparece. Posicao de `stock items` com `locationKey`
+fora de `stockLocation::` e `company::` (silo, contrato de venda) nao tem log
+ali; deixe-a fora da comparacao.
+
+Toda listagem aqui devolve 50 por pagina: repita com `--page 2`, `--page 3`...
+ate vir uma pagina com menos de 50.
 
 ### CRITICO: Formato de valor monetario em entry
 
@@ -400,7 +417,7 @@ aegro stock items --farm "<fazenda>" --element-key element::abc123 --output tabl
 aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --start-date 2025-09-01 --end-date 2026-03-31
 
-# Para filtrar por local especifico
+# So as saidas desse local; as entradas vem com --dest-key
 aegro stock logs --farm "<fazenda>" --element-key element::abc123 \
   --source-key stockLocation::def456 --start-date 2025-09-01
 ```
@@ -413,10 +430,14 @@ Posicao no local = Saldo inicial no local
                  - SUM(quantity dos logs com sourceLocationKey = local)
 
 Para verificar:
-1. aegro stock items --element-key element::xxx  (posicao atual por local)
-2. aegro stock logs --element-key element::xxx --start-date YYYY-MM-DD  (historico, todas as paginas)
-3. Somar os logs por local, na mesma unidade, e comparar com a posicao
+1. aegro stock items --farm "<fazenda>" --element-key element::xxx  (posicao atual por local)
+2. aegro stock logs --farm "<fazenda>" --element-key element::xxx  (historico inteiro, todas as paginas)
+3. Somar os logs por local, convertidos para a unidade da posicao, e comparar
 ```
+
+Sem `--start-date`, o saldo inicial e zero. Com `--start-date`, ele e a posicao
+naquela data, e nenhum comando a devolve: para conferir o saldo, use o historico
+inteiro.
 
 O que cada log e (consumo, compra, transferencia...) sai da tabela em
 "`stock logs` nao tem campo de tipo", na secao 5.

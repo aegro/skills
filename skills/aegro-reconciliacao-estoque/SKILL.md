@@ -1,5 +1,6 @@
 ---
 name: aegro-reconciliacao-estoque
+requires-cli: 0.14.0
 description: >-
   Explica, pela CLI `aegro`, divergencia entre o estoque registrado no Aegro,
   o consumo lancado
@@ -37,15 +38,18 @@ Para detalhes dos comandos e regras de negocio:
 
 ```
 Estoque Teorico = Estoque Inicial
-                  + Entradas (compras, devolucoes)
-                  + Transferencias recebidas
-                  - Consumo em atividades (realizacoes)
-                  - Transferencias enviadas
-                  - Saidas manuais (perdas, ajustes)
-                  - Abastecimento e manutencao de maquina
+                  + Entradas: compras e devolucoes de venda, transferencias
+                    recebidas (inclui entrega de pedido de compra), entradas
+                    manuais, ganhos de inventario
+                  - Saidas: consumo em atividades (realizacoes), vendas e
+                    devolucoes de compra, transferencias enviadas, saidas
+                    manuais, abastecimento e manutencao de maquina, perdas de
+                    inventario
 
 DIVERGENCIA = Estoque Atual (sistema) - Estoque Teorico
 ```
+
+Cada log entra uma vez so, na linha da tabela do passo 4 em que caiu.
 
 Se divergencia = 0, estoque esta conciliado.
 Se divergencia != 0, investigar causas.
@@ -78,42 +82,72 @@ aegro stock logs --farm "<fazenda>" --element-key element::<id> \
   --start-date 2025-09-01 --end-date 2026-03-31
 ```
 
-**O log nao tem campo de tipo.** Nao procure `ACTIVITY_CONSUMPTION`,
-`MANUAL_ENTRY`, `MANUAL_REMOVAL` nem `TRANSFER`: esses nomes nao existem na
-saida, e nao acha-los nao quer dizer que nao houve consumo. Cada log tira
-`quantity` do local em `sourceLocationKey` e poe no local em
-`destinationLocationKey`. A origem se le pelas chaves presentes — chave que nao
-se aplica some do JSON:
+A saida de `aegro stock logs` e de `aegro stock log <key>` **nao traz tipo de
+movimentacao**: `MANUAL_ENTRY`, `MANUAL_REMOVAL`, `TRANSFER` e
+`ACTIVITY_CONSUMPTION` nao existem no JSON. Nao achar esses nomes nao quer dizer
+que nao houve consumo nem entrada.
 
-| Chaves no log | O que e | Direcao |
+**Saldo.** O log **tira** `quantity` do local em `sourceLocationKey` e **poe** no
+local em `destinationLocationKey`; lado ausente e fora do estoque. Some por
+local, convertendo cada log (`quantity.unit`) para a unidade da posicao em
+`stock items`. Destino `company::` e posicao no fornecedor, nao no armazem.
+`quantity` 0 nao move saldo — e ajuste de valor (juros ou desconto de parcela,
+diferenca de pedido) ou contagem de inventario que bateu: nao conte como compra,
+venda nem devolucao.
+
+**Origem.** Leia a tabela de cima para baixo e pare na primeira linha que casar.
+Chave que nao se aplica some do JSON (nao vem `null`); "nenhuma das tres" e sem
+`activityLogKey`, `billKey` e `companyKey`.
+
+| Chaves no log | O que e | Saldo |
 |---|---|---|
-| `activityLogKey` | Consumo de realizacao de atividade | Saida |
-| `billKey`, so destino | Conta: compra ou devolucao de venda | Entrada |
-| `billKey`, so origem | Conta: venda ou devolucao de compra | Saida |
-| origem e destino | Transferencia; com origem `company::`, e a entrega de pedido de compra | Sai da origem, entra no destino |
-| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra ainda no fornecedor | Nao entra no armazem ate a entrega |
-| `companyKey` sem `billKey`, so origem | Entrega de venda (romaneio) | Saida |
-| nenhuma das tres, so destino | Entrada manual ou ganho de inventario | Entrada |
-| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, ou perda de inventario | Saida |
+| `activityLogKey` | Consumo de realizacao de atividade | sai da origem |
+| `billKey`, so destino | Conta: compra ou devolucao de venda | entra no destino |
+| `billKey`, so origem | Conta: venda ou devolucao de compra | sai da origem |
+| origem e destino | Transferencia; com origem `company::`, em geral entrega de pedido de compra | sai da origem, entra no destino |
+| `companyKey` sem `billKey`, so destino `company::` | Pedido de compra (a entrega e outro log, que tira de `company::`) | entra no fornecedor |
+| `companyKey` sem `billKey`, so origem | Entrega de venda (romaneio) | sai da origem |
+| nenhuma das tres, so destino | Entrada manual (inclusive compra lancada sem conta) ou ganho em contagem de inventario | entra no destino |
+| nenhuma das tres, so origem | Saida manual, abastecimento ou manutencao de maquina, perda em contagem de inventario, ou entrega de venda sem comprador | sai da origem |
 
-"Nenhuma das tres" e sem `activityLogKey`, `billKey` e `companyKey`.
+Log que nao casa com nenhuma linha: aplique so a regra de saldo e mostre o log a
+quem opera.
 
-Calcular totais de entrada e saida por local, na mesma unidade (`quantity.unit`).
+Compra feita por pedido de compra entra pelo pedido e pela entrega. O log com
+`billKey` dessa conta so traz o que passou do pedido, ou um ajuste de valor: a
+falta dele nao e "entrada nao registrada".
 
-A ultima linha junta origens que a API publica nao separa. Para isolar
-abastecimento e manutencao, case com `aegro fuel-supplies list` e
-`aegro maintenances list` no mesmo periodo: mesmo `stockLocationKey`,
-`occurrenceDate` e insumo em `inputs`. Evento rateado entre safras vira varios
-logs, que somam a quantidade do insumo. O que nao casar e saida manual ou perda
-de inventario.
+Para separar a ultima linha, case com `aegro fuel-supplies list` e
+`aegro maintenances list` do periodo: `stockLocationKey` do evento igual ao
+`sourceLocationKey` do log, mesma `occurrenceDate`, insumo em `inputs` e a soma
+dos logs igual a quantidade do insumo — evento rateado entre safras vira um log
+por safra; tolere diferenca de arredondamento. O que nao casar e saida manual,
+perda de inventario ou entrega de venda sem comprador.
+
+`stock logs` so traz movimento com um lado em local de estoque ou fornecedor:
+colheita entrando no silo nao aparece. Posicao de `stock items` com `locationKey`
+fora de `stockLocation::` e `company::` (silo, contrato de venda) nao tem log
+ali; deixe-a fora da comparacao.
+
+Toda listagem aqui devolve 50 por pagina: repita com `--page 2`, `--page 3`...
+ate vir uma pagina com menos de 50.
+
+Calcular totais de entrada e saida por local.
 
 ### 5. Cruzar com consumo em atividades
 
-Buscar realizacoes no periodo e filtrar as que usaram o elemento.
-Calcular total consumido em atividades.
+Buscar realizacoes no periodo (`aegro activities realizations`, todas as
+paginas) e filtrar as que usaram o elemento. Calcular total consumido em
+atividades.
+
 Comparar com os logs que tem `activityLogKey`: o valor e a `key` da realizacao
-(`activityLog::`), entao case um a um com `aegro activities realizations`.
-Realizacao do insumo sem log correspondente nao baixou o estoque.
+(`activityLog::`). Some os logs por `activityLogKey` antes de comparar — a
+realizacao gera um log por insumo aplicado, e pode ter mais de um do mesmo
+insumo. O log leva a data de **fim** da realizacao: a que termina depois do
+periodo tem o log fora dele.
+
+Realizacao do insumo sem log, depois disso, nao baixou o estoque — em geral foi
+lancada sem local de estoque.
 
 ### 6. Calcular divergencia
 
