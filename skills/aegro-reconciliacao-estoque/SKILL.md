@@ -96,7 +96,10 @@ Aplicar a formula de reconciliacao e quantificar a divergencia.
 Listar atividades que consomem o insumo (APPLICATION, FERTILIZATION, SOWING).
 Verificar:
 - Atividade planejada mas sem realizacao
-- Realizacao registrada mas sem baixa de estoque
+- Realizacao registrada mas sem baixa de estoque (realizacao sem local de
+  estoque grava e nao baixa)
+- Saida manual do mesmo insumo, quantidade e data de uma realizacao que ja
+  baixou: o insumo saiu duas vezes
 - Quantidade aplicada vs quantidade baixada
 
 ## Como Identificar Divergencias

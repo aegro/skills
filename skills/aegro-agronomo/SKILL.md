@@ -113,11 +113,26 @@ produtividade, aponte esses romaneios ao usuario em vez de soma-los calado.
 
 ### Realizacoes e Rateios
 - Uma atividade pode ter multiplas realizacoes (ex: colheita em 3 dias)
-- Realizacao **com insumos** lancada pela CLI nao baixa o estoque deles. Com
-  `--inputs` e `--stock-location-key`, o create responde erro 500 **e grava a
-  realizacao mesmo assim**, sem movimentar o estoque: nao repita o comando
-  (cada tentativa cria outra), confira com `activities realizations` e peca a
-  saida de estoque em separado (`/aegro-estoquista`) ou lance a baixa pela tela.
+- Realizacao **com insumos e com local de estoque** (`--inputs` e
+  `--stock-location-key`) baixa o estoque dos insumos na propria realizacao e
+  responde sucesso. **Nao** peca saida de estoque em separado
+  (`/aegro-estoquista`) nem lance a baixa pela tela: o insumo sairia duas vezes.
+- A realizacao tem **um** local de estoque, e todos os insumos dela saem dele.
+  Antes de lancar, pergunte de qual local saem os insumos que devem baixar
+  (`aegro stock locations`). Sem `--stock-location-key` a realizacao grava sem
+  erro e o estoque **nao se move** — igual a tela, onde o local e opcional. Serve
+  para fazenda que nao controla estoque; fora disso, diga ao usuario que o saldo
+  nao vai baixar, porque a resposta e de sucesso do mesmo jeito.
+- Local que nao existe, foi excluido, esta arquivado ou e de outra fazenda volta
+  422 e nada grava: corrija a chave e lance de novo.
+- A escrita nao e transacional: depois de erro de servidor (5xx) a realizacao
+  pode ter ficado gravada, com ou sem a baixa. **Nao repita o comando** (cada
+  tentativa cria outra realizacao). Confira com `activities realizations` e,
+  antes de qualquer saida manual, as movimentacoes do insumo (`aegro stock logs
+  --element-key <k> --start-date <data da realizacao>`): a baixa da realizacao
+  e a que traz `activityLogKey` igual a chave dela (`activityLog::`). So lance a
+  saida que de fato faltar — inclusive quando o aviso do CLI mandar pedir a
+  saida de estoque em separado.
 - Rateios: status `ACTIVE` ou `ARCHIVED`, soma percentuais = 100%
 
 ---
@@ -270,6 +285,22 @@ aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 
 # 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Realizar aplicacao com insumos: a baixa sai do --stock-location-key, na propria
+# realizacao. Sem ele grava igual e o estoque nao se move. Nao lance saida a parte.
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6719e90f726622b7f549 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":2.5,"unit":"L/HA"}}]' \
+  --stock-location-key stockLocation::def456 --dry-run
+# Usuario conferiu local, insumos e dose? Repita o MESMO comando com --execute:
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6719e90f726622b7f549 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":2.5,"unit":"L/HA"}}]' \
+  --stock-location-key stockLocation::def456 --execute
 
 # Criar realizacao ja com a ficha de aplicacao anexada (--file exige OAuth)
 aegro activities create-realization --farm "Fazenda Sul" \
