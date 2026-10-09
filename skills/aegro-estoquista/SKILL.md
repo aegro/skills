@@ -47,7 +47,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Entrada manual            | `stock entry`          | Registra compra ou recebimento. Possui valor monetario.                                    |
 | Remocao manual            | `stock removal`        | Registra perda, ajuste ou descarte. Sem valor monetario.                                   |
 | Transferencia             | `stock transfer`       | Move quantidade entre dois locais. Sem valor monetario.                                    |
-| Consumo por atividade     | log com `activityLogKey` | Automatico. Gerado quando uma atividade realizada com local de estoque consome insumos. Nao lance saida manual para ele. |
+| Consumo por atividade     | log com `activityLogKey` | Automatico. Gerado quando uma atividade realizada com local de estoque consome insumos. Nunca lance saida manual por realizacao: o conserto e pela propria realizacao (`/aegro-agronomo`). |
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
