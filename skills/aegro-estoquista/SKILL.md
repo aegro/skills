@@ -47,7 +47,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Entrada manual            | `stock entry`          | Tipo MANUAL_ENTRY. Registra compra ou recebimento. Possui valor monetario.                 |
 | Remocao manual            | `stock removal`        | Tipo MANUAL_REMOVAL. Registra perda, ajuste ou descarte. Sem valor monetario.              |
 | Transferencia             | `stock transfer`       | Tipo TRANSFER. Move quantidade entre dois locais. Sem valor monetario.                     |
-| Consumo por atividade     | ACTIVITY_CONSUMPTION   | Automatico. Gerado quando uma atividade agricola realizada consome insumos.                |
+| Consumo por atividade     | ACTIVITY_CONSUMPTION   | Automatico. Gerado quando uma atividade realizada com local de estoque consome insumos; em `stock logs` traz `activityLogKey`. Nunca lance saida manual por realizacao: o conserto e pela propria realizacao (`/aegro-agronomo`). |
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
@@ -80,7 +80,7 @@ FARM
 Relacionamentos-chave:
 - STOCK_ITEM = intersecao ELEMENT x STOCK_LOCATION (posicao de estoque).
 - STOCK_LOG registra toda movimentacao (entrada, saida, transferencia, consumo).
-- ACTIVITY_REALIZATION gera STOCK_LOG de consumo automaticamente (dominio atividades).
+- ACTIVITY_REALIZATION com local de estoque gera STOCK_LOG de consumo automaticamente (dominio atividades).
 - CATALOG e somente leitura; serve para buscar elementos padrao do mercado.
 - `elements set-categories` conecta estoque ao dominio financeiro.
 

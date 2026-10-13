@@ -636,11 +636,11 @@ aegro financial create-bill \
 
 ```
 activities create-plan (planeja aplicacao com insumos)
-    → realizacao via Aegro App (execucao no campo)
+    → realizacao com local de estoque (Aegro App ou activities create-realization)
         → consumo de estoque automatico (baixa gerada pela realizacao)
 ```
 
-**Nota:** A realizacao no campo gera baixa automatica de estoque. Se o estoque nao baixou apos realizacao, verificar se a realizacao tem insumos vinculados.
+**Nota:** A realizacao com insumos e local de estoque gera a baixa sozinha, pelo app ou pela CLI: nao lance saida de estoque em separado, que o insumo sai duas vezes. Se o estoque nao baixou, verifique se a realizacao tem insumos **e** local de estoque — sem local ela grava e nao move estoque, igual a tela. O conserto e pela propria realizacao, nunca com saida manual (ver `/aegro-agronomo`).
 
 ```bash
 # 1. Planejar aplicacao
@@ -649,7 +649,7 @@ aegro activities create-plan --farm "Fazenda Aegro" \
   --type APPLICATION \
   --start-date "2026-03-15" \
   --observations "Aplicacao herbicida pre-emergente" \
-  --inputs '[{"elementKey": "element::5a9c2d3e4f5b6a78", "amount": {"magnitude": 2.5, "unit": "L/HA"}}]' \
+  --inputs '[{"elementKey": "element::5a9c2d3e4f5b6a78", "amount": {"magnitude": 125, "unit": "L"}}]' \
   --dry-run
 
 # 2. Verificar realizacoes (apos execucao no campo)

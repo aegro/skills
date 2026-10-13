@@ -50,7 +50,7 @@ FARM (fazenda)
 │   ├── CROP_GLEBE (talhao vinculado a safra = area plantada)
 │   ├── ACTIVITY (atividade agricola)
 │   │   ├── PLAN (planejamento: cropGlebeKeys[], inputs[] → ELEMENTS)
-│   │   └── REALIZATION[] (execucoes, impacta STOCK)
+│   │   └── REALIZATION[] (execucoes; com local de estoque, baixa STOCK)
 │   ├── HARVEST_LOG (romaneios: cropGlebes[], pesos, seedKey)
 │   ├── CROP_PRORATE (rateios entre talhoes)
 │   └── HARVEST_DISCOUNTS (config umidade/impureza)
@@ -113,11 +113,49 @@ produtividade, aponte esses romaneios ao usuario em vez de soma-los calado.
 
 ### Realizacoes e Rateios
 - Uma atividade pode ter multiplas realizacoes (ex: colheita em 3 dias)
-- Realizacao **com insumos** lancada pela CLI nao baixa o estoque deles. Com
-  `--inputs` e `--stock-location-key`, o create responde erro 500 **e grava a
-  realizacao mesmo assim**, sem movimentar o estoque: nao repita o comando
-  (cada tentativa cria outra), confira com `activities realizations` e peca a
-  saida de estoque em separado (`/aegro-estoquista`) ou lance a baixa pela tela.
+- Realizacao **com insumos e com local de estoque** (`--inputs` e
+  `--stock-location-key`) baixa o estoque dos insumos na propria realizacao e
+  responde sucesso. **Nao** peca saida de estoque em separado
+  (`/aegro-estoquista`) nem lance a baixa pela tela: o insumo sairia duas vezes.
+- O `amount` de cada insumo e a **quantidade total**, e e ela que sai do estoque
+  — nunca a dose por hectare (ver "Formato --inputs").
+- A realizacao tem **um** local de estoque, e todos os insumos de estoque dela
+  saem dele (servico nao baixa). Antes de lancar:
+  - pergunte de qual local saem os insumos (`aegro stock locations`);
+  - confira o saldo de cada insumo nesse local (`aegro stock items
+    --location-key <local> --element-key <k>`): sem saldo o servidor aceita e
+    deixa o item negativo;
+  - insumos em locais diferentes: mostre isso ao usuario e deixe ele escolher
+    entre transferir antes para um local so (`stock transfer`, em
+    `/aegro-estoquista`) ou lancar uma realizacao por local.
+- Sem `--stock-location-key` a realizacao grava sem erro e o estoque **nao se
+  move** — igual a tela, onde o local e opcional. Serve para fazenda que nao
+  controla estoque; fora disso, diga ao usuario que o saldo nao vai baixar,
+  porque a resposta e de sucesso do mesmo jeito.
+- No `create-realization`, local que nao existe, foi excluido, esta arquivado ou
+  e de outra fazenda volta 422 e nada grava: corrija a chave e lance de novo.
+- **Toda edicao refaz a baixa da realizacao**: `update-realization` (inclusive
+  `--file` e `machineHours`), `files attach` e a edicao pela tela regravam o
+  consumo dos insumos a partir do local dela. Por isso:
+  - realizacao com insumos que ficou sem baixa (gravada sem local, ou depois de
+    erro de servidor) se conserta **pela propria realizacao**, com
+    `update-realization --body '{"stockLocationKey":"..."}'` (exemplo em 4.4): a
+    baixa nasce ligada a ela;
+  - **nunca** complete com saida manual (`stock removal`): ela fica solta, e a
+    proxima edicao da realizacao tira o insumo de novo;
+  - antes de editar realizacao com insumos e local que **nao** tem baixa no
+    `stock logs`, procure saida manual do mesmo insumo lancada no lugar dela.
+    Se houver, a edicao vai baixar de novo: mostre ao usuario e deixe ele decidir.
+- A escrita nao e transacional: depois de erro de servidor (5xx) ou timeout a
+  realizacao pode ter ficado gravada, com ou sem a baixa. Siga a "Logica de
+  Retry" de `/aegro-operacional`: confira com `activities realizations` e so
+  lance de novo se a busca completa nao achar nada. Se achou, confira a baixa
+  antes de qualquer conserto — para **cada** insumo de estoque, `aegro stock logs
+  --element-key <k> --start-date <inicio> --end-date <fim da realizacao>`,
+  paginando ate vir menos de 50. A baixa e o log com `activityLogKey` igual a
+  chave da realizacao (`activityLog::`, que vem de `activities realizations`).
+  O aviso do CLI que manda "pedir a saida de estoque em separado" nao vale: siga
+  esta regra.
 - Rateios: status `ACTIVE` ou `ARCHIVED`, soma percentuais = 100%
 
 ---
@@ -260,7 +298,7 @@ aegro activities create-plan --farm "<fazenda>" \
   --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
   --tag "Plantio Soja TMG 2381" \
   --observations "Plantio soja TMG 2381" \
-  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":2500,"unit":"kg"}}]' \
   --dry-run
 
 # Excluir uma atividade (cascata: plano + realizacoes).
@@ -270,6 +308,30 @@ aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 
 # 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Realizar aplicacao com insumos: a baixa sai do --stock-location-key, na propria
+# realizacao. Sem ele grava igual e o estoque nao se move. Nao lance saida a parte.
+# amount = quantidade total: 2,5 L/ha x 50 ha = 125 L.
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6740e90f726622b7f571 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":125,"unit":"L"}}]' \
+  --stock-location-key stockLocation::def456 --dry-run
+# Usuario conferiu local, saldo e quantidade? Troque --dry-run por --execute:
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6740e90f726622b7f571 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":125,"unit":"L"}}]' \
+  --stock-location-key stockLocation::def456 --execute
+
+# Realizacao com insumos que ficou sem baixa (sem local, ou depois de 5xx): conserte
+# pela propria realizacao - a baixa nasce ligada a ela. Nunca com stock removal.
+aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
+  --body '{"stockLocationKey":"stockLocation::def456"}' --dry-run
+aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
+  --body '{"stockLocationKey":"stockLocation::def456"}' --execute
 
 # Criar realizacao ja com a ficha de aplicacao anexada (--file exige OAuth)
 aegro activities create-realization --farm "Fazenda Sul" \
@@ -586,23 +648,28 @@ Sempre usar a chave completa com prefixo. Os hexadecimais sao IDs MongoDB de 24 
 - Se retornar exatamente 50 itens, ha mais paginas
 - Iterar `--page 2`, `--page 3`... ate receber menos de 50
 
-### Formato --inputs (create-plan)
+### Formato --inputs (create-plan e create-realization)
 
 O parametro `--inputs` recebe string JSON com array de objetos:
 
 ```json
 [
-  {"elementKey": "element::abc123", "amount": {"magnitude": 2.5, "unit": "L/HA"}},
-  {"elementKey": "element::def456", "amount": {"magnitude": 150, "unit": "ML/HA"}}
+  {"elementKey": "element::abc123", "amount": {"magnitude": 125, "unit": "L"}},
+  {"elementKey": "element::def456", "amount": {"magnitude": 7500, "unit": "mL"}}
 ]
 ```
+
+`amount` e a **quantidade total** do insumo no registro, numa unidade
+compativel com a dele (`kg`, `g`, `t`, `L`, `mL`, `un`) — **nao** a dose por
+hectare. Dose x area: 2,5 L/ha em 50 ha e `125 L`; o Aegro calcula a dose
+dividindo pela area. Unidade por area (`L/HA`, `KG/HA`) volta 422: refaca a
+conta, nao troque so a unidade. Na realizacao com local, e esse total que sai
+do estoque.
 
 Use `elementKey` + `amount`. Nao use `productKey` (campo de compras) nem
 `quantity` em atividades. Rode `--dry-run` antes e, apos executar, confira os
 insumos persistidos com `aegro activities plan <ACTIVITY_KEY>` ou
 `aegro activities get-plan <PLAN_KEY>`.
-
-Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 
 ### Fluxo de Pesagem de Colheita
 

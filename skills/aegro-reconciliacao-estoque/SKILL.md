@@ -96,7 +96,12 @@ Aplicar a formula de reconciliacao e quantificar a divergencia.
 Listar atividades que consomem o insumo (APPLICATION, FERTILIZATION, SOWING).
 Verificar:
 - Atividade planejada mas sem realizacao
-- Realizacao registrada mas sem baixa de estoque
+- Realizacao registrada mas sem baixa de estoque (realizacao sem local de
+  estoque grava e nao baixa). Em `stock logs`, a baixa de uma realizacao e o
+  log com `activityLogKey` igual a chave dela; saida manual vem sem esse campo.
+- Saida manual do mesmo insumo e quantidade, em data proxima, de uma realizacao
+  que ja tem baixa: o insumo saiu duas vezes. Mostre as duas ao usuario e deixe
+  ele decidir o que desfazer — nao exclua a realizacao por conta propria.
 - Quantidade aplicada vs quantidade baixada
 
 ## Como Identificar Divergencias
