@@ -297,8 +297,11 @@ nao sao consumidos, e recarregar ou reabrir funciona normalmente.
 | 0 | Sucesso | Operacao concluida |
 | 1 | Erro generico | Falha inesperada, timeout, erro de rede |
 | 2 | Erro de autenticacao | API key invalida, fazenda nao selecionada |
-| 3 | Nao encontrado | Recurso com chave invalida ou inexistente |
+| 3 | Nao encontrado | Escrita (ou leitura que nao e `get`) cuja chave nao existe **nesta fazenda** — pode existir em outra |
 | 4 | Erro de validacao | Campos obrigatorios faltando, formato invalido |
+
+`get` por chave que nao acha o registro pode **sair com 0**, com a frase "... nao
+encontrado(a)" na saida no lugar do JSON. Exit 0 nao prova que achou: leia a saida.
 
 ### Erros em JSON (stderr)
 
@@ -830,15 +833,37 @@ Depois de 5xx ou timeout numa escrita, nesta ordem:
 Erros **4xx** (400, 401, 403, 404, 422) nunca se resolvem repetindo: corrija o
 comando.
 
+### "Nao encontrado" e resposta sem corpo
+
+- **"Nao encontrado" quer dizer "nao existe NESTA fazenda".** A API responde igual
+  para chave inexistente e para chave de outra fazenda, de proposito. Antes de
+  dizer que o registro nao existe, confira a fazenda do comando — `--farm`, ou o
+  `farms select` global, que outra sessao pode ter trocado. CLI recente ja diz na
+  mensagem qual fazenda usou e de onde ela veio.
+- **Nao decida pelo codigo HTTP.** O mesmo "nao encontrado" chega como 204, 404 ou
+  ate 403, conforme o endpoint, e esses codigos estao mudando no servidor. Decida
+  pelo que o CLI diz.
+- **Registro devolvido pode ser de outra fazenda.** Com login OAuth, o `get` por
+  chave de alguns endpoints devolve o registro de outra fazenda do mesmo usuario.
+  Quando o retorno trouxer `farmKey`, compare com a fazenda do comando antes de
+  usar o dado.
+- **Resposta sem corpo numa escrita nunca e confirmacao.** Releia o registro (`get`
+  ou listagem) antes de dizer que gravou. O CLI recusa como erro a maior parte
+  desses casos; nos que ele aceita (excluir, vincular NF-e a contrato), conferir e
+  com voce.
+- **Rota inexistente nao e registro inexistente.** Erro `ROUTE_NOT_FOUND` quer dizer
+  que o servidor nao conhece o endpoint: confira o `--env` e a versao do CLI, e nao
+  conclua nada sobre o registro.
+
 ### Erros Comuns e Diagnostico
 
 | HTTP | Significado | Acao |
 |------|-------------|------|
 | 500 | Erro interno do servidor | Leitura: pode repetir. **Escrita: nao repita — procure o registro primeiro** (ver "Logica de Retry"). Se persistir com os mesmos dados, e achado novo: reporte |
 | 422 | Erro de validacao | Leia a mensagem: em campo de enumeracao e unidade ela **lista os valores aceitos**. Nao faz retry, e nao e bug do servidor |
-| 404/204 | Recurso nao encontrado | Validar formato da chave (`tipo::hexstring`). Chave pode estar errada |
+| 404/204 | Nao existe **nesta fazenda** | Confira a fazenda do comando e o formato da chave (`tipo::hexstring`) — ver acima |
 | 401 | Nao autenticado | Verificar API key com `aegro auth status`. Em **staging**, 401 no inicio do dia e esperado (reset diario) — refazer `aegro auth login --env staging` |
-| 403 | Sem permissao | Token nao tem permissao para a operacao. Solicitar novo token |
+| 403 | Sem permissao — ou, em alguns endpoints, chave de outra fazenda | Confira a fazenda do comando; se for a certa, falta permissao ao token ou ao usuario |
 | Timeout | Sem resposta em 30s | Leitura: pode repetir, a API pode estar lenta. **Escrita: o registro pode ter sido gravado — procure antes de repetir** |
 
 ### Dicas Gerais
