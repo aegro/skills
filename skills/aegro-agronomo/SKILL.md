@@ -50,7 +50,7 @@ FARM (fazenda)
 │   ├── CROP_GLEBE (talhao vinculado a safra = area plantada)
 │   ├── ACTIVITY (atividade agricola)
 │   │   ├── PLAN (planejamento: cropGlebeKeys[], inputs[] → ELEMENTS)
-│   │   └── REALIZATION[] (execucoes, impacta STOCK)
+│   │   └── REALIZATION[] (execucoes; com local de estoque, baixa STOCK)
 │   ├── HARVEST_LOG (romaneios: cropGlebes[], pesos, seedKey)
 │   ├── CROP_PRORATE (rateios entre talhoes)
 │   └── HARVEST_DISCOUNTS (config umidade/impureza)
@@ -113,11 +113,49 @@ produtividade, aponte esses romaneios ao usuario em vez de soma-los calado.
 
 ### Realizacoes e Rateios
 - Uma atividade pode ter multiplas realizacoes (ex: colheita em 3 dias)
-- Realizacao **com insumos** lancada pela CLI nao baixa o estoque deles. Com
-  `--inputs` e `--stock-location-key`, o create responde erro 500 **e grava a
-  realizacao mesmo assim**, sem movimentar o estoque: nao repita o comando
-  (cada tentativa cria outra), confira com `activities realizations` e peca a
-  saida de estoque em separado (`/aegro-estoquista`) ou lance a baixa pela tela.
+- Realizacao **com insumos e com local de estoque** (`--inputs` e
+  `--stock-location-key`) baixa o estoque dos insumos na propria realizacao e
+  responde sucesso. **Nao** peca saida de estoque em separado
+  (`/aegro-estoquista`) nem lance a baixa pela tela: o insumo sairia duas vezes.
+- O `amount` de cada insumo e a **quantidade total**, e e ela que sai do estoque
+  — nunca a dose por hectare (ver "Formato --inputs").
+- A realizacao tem **um** local de estoque, e todos os insumos de estoque dela
+  saem dele (servico nao baixa). Antes de lancar:
+  - pergunte de qual local saem os insumos (`aegro stock locations`);
+  - confira o saldo de cada insumo nesse local (`aegro stock items
+    --location-key <local> --element-key <k>`): sem saldo o servidor aceita e
+    deixa o item negativo;
+  - insumos em locais diferentes: mostre isso ao usuario e deixe ele escolher
+    entre transferir antes para um local so (`stock transfer`, em
+    `/aegro-estoquista`) ou lancar uma realizacao por local.
+- Sem `--stock-location-key` a realizacao grava sem erro e o estoque **nao se
+  move** — igual a tela, onde o local e opcional. Serve para fazenda que nao
+  controla estoque; fora disso, diga ao usuario que o saldo nao vai baixar,
+  porque a resposta e de sucesso do mesmo jeito.
+- No `create-realization`, local que nao existe, foi excluido, esta arquivado ou
+  e de outra fazenda volta 422 e nada grava: corrija a chave e lance de novo.
+- **Toda edicao refaz a baixa da realizacao**: `update-realization` (inclusive
+  `--file` e `machineHours`), `files attach` e a edicao pela tela regravam o
+  consumo dos insumos a partir do local dela. Por isso:
+  - realizacao com insumos que ficou sem baixa (gravada sem local, ou depois de
+    erro de servidor) se conserta **pela propria realizacao**, com
+    `update-realization --body '{"stockLocationKey":"..."}'` (exemplo em 4.4): a
+    baixa nasce ligada a ela;
+  - **nunca** complete com saida manual (`stock removal`): ela fica solta, e a
+    proxima edicao da realizacao tira o insumo de novo;
+  - antes de editar realizacao com insumos e local que **nao** tem baixa no
+    `stock logs`, procure saida manual do mesmo insumo lancada no lugar dela.
+    Se houver, a edicao vai baixar de novo: mostre ao usuario e deixe ele decidir.
+- A escrita nao e transacional: depois de erro de servidor (5xx) ou timeout a
+  realizacao pode ter ficado gravada, com ou sem a baixa. Siga a "Logica de
+  Retry" de `/aegro-operacional`: confira com `activities realizations` e so
+  lance de novo se a busca completa nao achar nada. Se achou, confira a baixa
+  antes de qualquer conserto — para **cada** insumo de estoque, `aegro stock logs
+  --element-key <k> --start-date <inicio> --end-date <fim da realizacao>`,
+  paginando ate vir menos de 50. A baixa e o log com `activityLogKey` igual a
+  chave da realizacao (`activityLog::`, que vem de `activities realizations`).
+  O aviso do CLI que manda "pedir a saida de estoque em separado" nao vale: siga
+  esta regra.
 - Rateios: status `ACTIVE` ou `ARCHIVED`, soma percentuais = 100%
 
 ---
@@ -260,7 +298,7 @@ aegro activities create-plan --farm "<fazenda>" \
   --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 \
   --tag "Plantio Soja TMG 2381" \
   --observations "Plantio soja TMG 2381" \
-  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":50,"unit":"KG/HA"}}]' \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":2500,"unit":"kg"}}]' \
   --dry-run
 
 # Excluir uma atividade (cascata: plano + realizacoes).
@@ -270,6 +308,30 @@ aegro activities realizations --activity-key activity::68dd6719e90f726622b7f549 
 # 2) Confira a requisicao (nao valida no servidor) e efetive, com o MESMO --farm nos dois:
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --dry-run --farm "Fazenda Sul"
 aegro activities delete-activity activity::68dd6719e90f726622b7f549 --execute --farm "Fazenda Sul"
+
+# Realizar aplicacao com insumos: a baixa sai do --stock-location-key, na propria
+# realizacao. Sem ele grava igual e o estoque nao se move. Nao lance saida a parte.
+# amount = quantidade total: 2,5 L/ha x 50 ha = 125 L.
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6740e90f726622b7f571 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":125,"unit":"L"}}]' \
+  --stock-location-key stockLocation::def456 --dry-run
+# Usuario conferiu local, saldo e quantidade? Troque --dry-run por --execute:
+aegro activities create-realization --farm "Fazenda Sul" \
+  --crop-key crop::68dd6719e90f726622b7f549 --type APPLICATION --start-date 2026-08-01 \
+  --activity-key activity::68dd6740e90f726622b7f571 \
+  --crop-glebe-key cropGlebe::68dd6730e90f726622b7f555 --area 50 \
+  --inputs '[{"elementKey":"element::abc123","amount":{"magnitude":125,"unit":"L"}}]' \
+  --stock-location-key stockLocation::def456 --execute
+
+# Realizacao com insumos que ficou sem baixa (sem local, ou depois de 5xx): conserte
+# pela propria realizacao - a baixa nasce ligada a ela. Nunca com stock removal.
+aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
+  --body '{"stockLocationKey":"stockLocation::def456"}' --dry-run
+aegro activities update-realization activityLog::68dd6730e90f726622b7f560 --farm "Fazenda Sul" \
+  --body '{"stockLocationKey":"stockLocation::def456"}' --execute
 
 # Criar realizacao ja com a ficha de aplicacao anexada (--file exige OAuth)
 aegro activities create-realization --farm "Fazenda Sul" \
@@ -316,8 +378,8 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
 - **O anexo e um ticket de pesagem?** Sem bruto **ou** sem tara no papel (nota
   fiscal de venda ou remessa, relatorio de periodo, print sem tara), nao e
   romaneio: diga isso ao usuario e pergunte o ticket, em vez de inventar pesos.
-  Documento que soma varias cargas (varios tickets, relatorio de periodo) vira um
-  romaneio por carga, ou pergunte ao usuario como ele quer registrar — nunca some
+  Documento ou conjunto de anexos com varias cargas (varios tickets, uma foto por
+  carga, relatorio de periodo) vira um romaneio por carga, ou pergunte ao usuario como ele quer registrar - nunca some
   as cargas num romaneio so.
 - **Carga dividida:** quando bruto - tara nao e o peso desta carga (o ticket
   reparte uma pesagem entre destinos, contratos ou talhoes), nao ajuste bruto nem
@@ -329,12 +391,20 @@ a CLI tiver), `--observations`, `--identifier`, `--invoice-code`, `--romaneio-co
     e a **tara**, e a de saida e o bruto — nao inverta;
   - **toneladas**: converta para kg antes (`31,86 t` = `31860`); cuidado com a
     virgula de milhar (`31,860` pode ser 31.860 kg);
-  - **planilha com bruto e tara carga a carga** (nao e ticket, mas traz cada
-    pesagem): um romaneio por linha, confirmando com o usuario antes;
-  - **uma pesagem descarregada em dois destinos** (bitrem em dois silos): um
-    romaneio so, com os destinos em `--observations`, ou pergunte como ele registra;
   - **teor ou desconto escrito a mao** sobre um ticket sem desconto: nao e desconto
-    do ticket — pergunte ao usuario antes de lancar.
+    do ticket - pergunte ao usuario antes de lancar;
+  - **rotulos que enganam:** leia o que o numero e, nao so o rotulo - ha ticket em
+    que "Peso Liquido" vem antes dos descontos (e o produto), "Peso Bruto" e o
+    produto ou "Peso Total" e o bruto. Confira pela conta: bruto - tara = produto,
+    produto - descontos = liquido;
+  - **nome do desconto diferente do tipo da safra** (ex.: "Ardidos" no ticket e
+    "Avariados" na safra): se a linha desconta 0 kg, nao pergunte - cite o item e o
+    teor em `--observations`; se desconta kg, pergunte ao usuario qual tipo usar;
+  - **raros:** planilha com bruto e tara carga a carga e um romaneio por linha,
+    confirmando antes; dois tickets da mesma carga (origem e destino) e um romaneio
+    so, com o ticket que o usuario indicar; desconto sem nome (coluna
+    "desconto" em kg): pergunte o tipo antes; ticket de outra cultura que a da safra
+    (soja numa safra de milho): pergunte em qual safra lancar.
 - **Semente e obrigatoria.** Sem `--seed-key` o Aegro recusa. Use a cultivar do
   ticket ou a generica da cultura da safra (`aegro elements list --category SEED`).
 - **Nomes dos descontos:** rode `aegro crops harvest-discounts <safra>` e use os
@@ -363,8 +433,13 @@ ticket, nada e gravado e a mensagem diz a causa que os numeros permitem afirmar
 — siga o que ela disser:
 - **"fecha se ... for calculado sobre o peso SEM impureza"**: o armazem usou outra
   base. Informe o **kg de cada linha** como o ticket imprime — o Aegro grava o kg
-  como veio — ou peca ao usuario para ajustar a base na configuracao da safra;
-- **"o proprio ticket nao fecha"** (linhas todas em kg): nao lance. Mostre ao
+  como veio - ou peca ao usuario para ajustar a base na configuracao da safra. Se
+  o ticket so imprime as taxas (sem kg), a mensagem diz isso: ou o usuario ajusta a
+  base da safra pela tela e voce lanca de novo, ou `MANUAL` com os cinco pesos do
+  ticket e as taxas em `--observations`;
+- **"o proprio ticket nao fecha"** (linhas todas em kg): se o ticket imprime um
+  desconto que a safra nao tem como tipo e ele explica a diferenca exata, siga
+  "Desconto do ticket sem tipo na safra" abaixo. Senao, nao lance: mostre ao
   usuario produto, linhas e liquido do papel e pergunte — nao ajuste numero para
   caber, nem em `MANUAL`;
 - **"o Aegro desconta MAIS que o ticket"**: nao e desconto faltando; confira taxa
@@ -377,7 +452,7 @@ Diferenca maior que um quinto do produto nao e desconto: a CLI recusa sem sugeri
 calcula e o Aegro. Exige `aegro auth login`; com API key, use o `MANUAL` abaixo.
 
 **Desconto do ticket sem tipo na safra** (taxa de servico, taxa de recepcao,
-amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
+secagem, amostra): **a CLI nao registra.** Ele nao vira linha de desconto, e a CLI nao
 cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
 - cadastrar o tipo na safra pela tela e voce lancar em `AUTOMATIC`; ou
 - lancar em `MANUAL` com os cinco pesos do ticket (o descontado e o total do
@@ -385,9 +460,9 @@ cadastra tipo de desconto na safra. Diga isso ao usuario e deixe ele escolher:
   desconto sem tipo escrito em `--observations`, ex.:
   `--observations "Taxa de servico do armazem: 2590 kg (sem tipo na safra)"`.
   A CLI avisa em `atencaoDescontoSemLinha` que as linhas somam menos que o
-  descontado — e o esperado nesse caso. Se a parte sem linha passar de um quinto
-  do produto, a CLI recusa: isso nao e desconto (carga dividida, ticket que nao
-  fecha) — pergunte ao usuario.
+  descontado - e o esperado nesse caso. Se, **havendo linhas**, a parte sem linha
+  passar de um quinto do produto, a CLI recusa: isso nao e desconto (carga
+  dividida, ticket que nao fecha) - pergunte ao usuario.
 
 **Ticket so com teores** (umidade 22,8, impureza 1,2 e nenhuma taxa ou peso de
 desconto): nao lance com `0%`. Pergunte ao usuario se o armazem descontou e
@@ -395,8 +470,10 @@ quanto (taxa ou kg), ou se o teor esta dentro da base e o desconto e zero. Se o
 ticket **imprime** o desconto como 0 (ex.: "desconto 0,00 kg"), isso ja e a
 resposta: lance `0kg` sem perguntar. Leituras de qualidade que nao sao desconto
 (PH, ATR, Brix, Pol) vao so em `--discount-index` (ex.: `--discount-index
-"PH=77"`), sem `--discount`. O `--dry-run` lista em `teorComDescontoZero` as
-linhas com teor e desconto 0 — so para conferencia: se o papel imprime o 0, siga.
+"PH=77"`), sem `--discount`. No `MANUAL`, o teor de qualquer desconto tambem pode
+ir sozinho em `--discount-index` (o descontado e o do ticket; o teor so registra);
+no `AUTOMATIC` a CLI recusa teor sem `--discount` do mesmo nome, exceto leitura
+de qualidade.
 
 ```bash
 # Ensaio: a previa do servidor aparece em calculadoPeloServidor e liquidoDoTicket
@@ -436,8 +513,11 @@ Ticket que imprime so a taxa de cada desconto, sem o kg: prefira o `AUTOMATIC`
 (a CLI com previa calcula o kg pela taxa e confere com o liquido do ticket). Se
 tiver de ser `MANUAL` (API key ou CLI antiga), lance os cinco pesos do ticket sem
 linhas de desconto e escreva as taxas em `--observations` (ex.: `"Umidade 1,7%;
-Impureza 0,5% (so taxa no ticket)"`) — a CLI avisa que o descontado nao tem
-linha, e e o esperado nesse caso. Nunca invente o kg de uma linha.
+Impureza 0,5% (so taxa no ticket)"`) e, na CLI com previa, os teores que o
+ticket imprimir em `--discount-index` (teor nao e a taxa do desconto). A CLI
+avisa que o descontado nao tem linha, e e o esperado nesse caso, mesmo com
+desconto alto (grao umido desconta 25% ou mais); so acima de metade do produto
+ela recusa. Nunca invente o kg de uma linha.
 
 ```bash
 aegro harvest-logs create --farm "<fazenda>" \
@@ -459,8 +539,12 @@ aegro harvest-logs create --farm "<fazenda>" \
 ```
 
 **Depois de gravar, leia `avisos` e confira o liquido.** Na CLI com previa, a
-saida traz `avisos` (teor com desconto 0, descontado sem linha, descontado alto)
-tambem no `--execute`: leve cada um ao usuario. Leia `conferenciaDoLiquido`:
+saida traz `avisos` tambem no `--execute` (no `MANUAL`: descontado sem linha e
+descontado alto; nos dois modos: taxa e kg da mesma linha que nao batem): leve
+cada um ao usuario. O de taxa x kg
+(`atencaoTaxaKg` no ensaio) quer dizer que o kg nao e a taxa aplicada ao produto
+nem ao peso sem impureza - confira no ticket se o kg e daquela linha e se a taxa e
+o percentual do desconto, antes do `--execute`. Leia `conferenciaDoLiquido`:
 - `"conferido": true` — o liquido gravado e o previsto; cite ao usuario o
   `liquidoGravadoKg`.
 - `"conferido": false` — o romaneio **foi gravado** e o liquido nao pode ser
@@ -489,7 +573,9 @@ certa. Se um nome de campo for recusado, ele mudou; confira com `--help`.
 
 **Anexo no romaneio** (foto da nota, ticket de balanca):
 `aegro files attach --farm "<fazenda>" --entity harvest-log --key harvestLog::<id> --file ./ticket.jpg --execute`
-(exige OAuth; releitura de conferencia inclusa). Se o `attach` falhar dizendo que
+(exige OAuth; releitura de conferencia inclusa). Com varios arquivos, anexe o
+ticket da carga (e o que o usuario pedir); nao anexe documento pessoal (CNH, RG,
+comprovante de PIX). Se o `attach` falhar dizendo que
 **nada foi anexado**, repetir o mesmo comando e seguro — a CLI ja tenta uma vez
 sozinha em falha de conexao. Se ela disser que os arquivos **ja estao no S3**, use o
 comando que ela imprime (reaproveita o upload, sem duplicar). Consulta:
@@ -562,23 +648,28 @@ Sempre usar a chave completa com prefixo. Os hexadecimais sao IDs MongoDB de 24 
 - Se retornar exatamente 50 itens, ha mais paginas
 - Iterar `--page 2`, `--page 3`... ate receber menos de 50
 
-### Formato --inputs (create-plan)
+### Formato --inputs (create-plan e create-realization)
 
 O parametro `--inputs` recebe string JSON com array de objetos:
 
 ```json
 [
-  {"elementKey": "element::abc123", "amount": {"magnitude": 2.5, "unit": "L/HA"}},
-  {"elementKey": "element::def456", "amount": {"magnitude": 150, "unit": "ML/HA"}}
+  {"elementKey": "element::abc123", "amount": {"magnitude": 125, "unit": "L"}},
+  {"elementKey": "element::def456", "amount": {"magnitude": 7500, "unit": "mL"}}
 ]
 ```
+
+`amount` e a **quantidade total** do insumo no registro, numa unidade
+compativel com a dele (`kg`, `g`, `t`, `L`, `mL`, `un`) — **nao** a dose por
+hectare. Dose x area: 2,5 L/ha em 50 ha e `125 L`; o Aegro calcula a dose
+dividindo pela area. Unidade por area (`L/HA`, `KG/HA`) volta 422: refaca a
+conta, nao troque so a unidade. Na realizacao com local, e esse total que sai
+do estoque.
 
 Use `elementKey` + `amount`. Nao use `productKey` (campo de compras) nem
 `quantity` em atividades. Rode `--dry-run` antes e, apos executar, confira os
 insumos persistidos com `aegro activities plan <ACTIVITY_KEY>` ou
 `aegro activities get-plan <PLAN_KEY>`.
-
-Unidades comuns: `KG/HA`, `L/HA`, `ML/HA`, `G/HA`, `KG`, `L`, `UN`.
 
 ### Fluxo de Pesagem de Colheita
 

@@ -158,8 +158,12 @@ divergencia e so sobrescreva com `--installments`/`--prompt` se o usuario
 confirmar. Nota a prazo ja quitada: lance pelas duplicatas (nascem em aberto)
 e registre os pagamentos em seguida com `financial settle-installments` — um
 lote so, cada parcela com a data e a conta em que foi paga de fato (o `realize`
-baixaria todas na data de vencimento de cada duplicata). Sintaxe e regras do
-arquivo em `/aegro-financeiro`.
+baixaria todas na data de vencimento de cada duplicata). **Pergunte ao usuario
+a data e a conta de cada pagamento**: nunca assuma a data de emissao nem a conta
+do lancamento. As chaves das parcelas novas nao vem prontas na saida do
+`launch-bill`: pegue o `billId` dela e liste com `aegro financial installments
+--farm "<fazenda>" --bill-key bill::<id>`. Sintaxe e regras do arquivo em
+`/aegro-financeiro`.
 
 ### Vencimento diferente do que a nota diz
 
@@ -179,7 +183,9 @@ nota 30/60/90 com `--due-days 15` vira 45/75/105. Nao e "N dias depois da
 emissao" quando a nota tem duplicatas — nesse caso ("paga tudo 15 dias depois
 da emissao", nota com duplicatas a 30 dias) nenhuma flag traduz a instrucao:
 pergunte se o cliente quer uma parcela so (`--installments 1 --due-date
-AAAA-MM-DD`) ou manter o carne da nota. `--due-date` **fixa** a data e so vale
+AAAA-MM-DD`) ou manter o carne da nota. As duplicatas sao o cronograma real:
+so troque por `--installments 1` com o sim explicito do usuario, nunca por
+conta propria. `--due-date` **fixa** a data e so vale
 com UMA parcela — em nota parcelada o comando recusa, porque fixar colapsaria o
 carne numa data so.
 
@@ -220,6 +226,7 @@ list (janela recente, --not-launched)
 3. CLASSIFICAR pelo trio: papel da fazenda (emitiu/recebeu) + CFOP + natureza
         |
 4. CONCILIAR (padrao): produtos (item -> elemento); fornecedor/produtor por CNPJ
+   (excecao: item sem quantidade -> nao concilia, secao 3)
         |
 5. launch-bill (ou launch-purchase-order) --dry-run  ->  conferir  ->  --execute
         |
@@ -313,7 +320,50 @@ o bloqueio do CLI como segunda rede, nao como a primeira.
 - So siga para `launch-bill` se o usuario confirmar explicitamente o efeito
   financeiro real, e registre essa confirmacao na conversa.
 
+**Nota COMPLEMENTAR (de preco ou valor): quantidade zero e o formato certo.**
+Reconheca pela natureza da operacao ("Nota Complementar de Preco") e pelo item
+com `quantidade: 0` no `items`, com o valor preenchido. E o caso tipico da usina
+pagando premio ou diferenca de preco da cana ja entregue. A mercadoria foi
+declarada na nota ORIGINAL; a complementar so acerta o valor. Por isso a
+quantidade vem zerada: repeti-la contaria a entrega duas vezes. **A nota NAO
+esta errada** — nao peca ao cliente para corrigi-la.
+
+Item com quantidade zero nao e exclusivo da complementar: tambem aparece em nota
+de ajuste, de devolucao, de credito ou debito e ate de finalidade normal. Quem
+diz qual e o campo `finNFe` do XML, que o CLI le e mostra (ver abaixo).
+
+- **Como lancar:** receita (ou despesa) so de valor, **sem estoque**. Se o CFOP
+  for de entrada (1xxx/2xxx), passe `--revenue` ou `--expense` explicito — o CLI
+  nao classifica sozinho. A complementar e excecao ao default de arquivar dessas
+  notas: ela tem efeito financeiro real.
+- **Nao passe `--stock-harvest` nem `--stock-location`:** nao ha mercadoria, e o
+  comando recusa com exit 4.
+- **Nao concilie o item nesta nota:** a conta vai sem insumos, e o comando
+  recusa `--conciliate` (exit 4) para nao salvar um de/para que valeria para as
+  proximas notas do fornecedor. O aviso de "mapeamento com defeito" que ele
+  imprime vale para as **proximas notas de entrega**, nao para esta.
+- **Leia o texto da nota antes do rateio:** ele costuma dizer a safra de
+  referencia ("COMPL. PRECO REF. PREMIO SAFRA 2025/26"), que pode ser anterior
+  a safra corrente. Rateie nela com `--apportion-crop "<safra>"` e confirme com o
+  usuario. Em receita o servidor pode descartar o rateio: leia a conferencia que
+  o comando imprime depois de lancar.
+- **Retencao (ex. INSS) citada no texto:** o lancamento sai pelo valor cheio da
+  nota. Pergunte ao usuario como a fazenda registra a retencao, e nao altere o
+  `--total` sem essa decisao.
+- **Confira no dry-run se o CLI trata o caso:** o `preview` deve trazer
+  `notaSemQuantidade` (com `finNFe` e `semInsumos: true`), e o stderr avisa "Nota
+  sem quantidade ...". Com `finNFe: 2` e complementar; com `finNFe: null` o XML
+  nao foi lido — confirme a finalidade pela natureza da operacao antes de
+  seguir. Nota de **devolucao** (`finNFe: 4`) o comando recusa: revise na UI.
+- **Sem `notaSemQuantidade` no preview, NAO rode o execute:** o CLI ainda manda o
+  item com quantidade zero, e o servidor devolve `400 Requisicao invalida` so com
+  `correlationId`, com qualquer combinacao de flags. Nao tente variacoes: lance
+  pela UI.
+
 ### 4. Conciliar entidades — por padrao, sempre
+
+> **Excecao:** nota com item sem quantidade (complementar e afins, secao 3) nao
+> se concilia — a conta vai sem insumos e o comando recusa `--conciliate`.
 
 Conciliar preserva o **detalhamento por item** (elemento do catalogo, custo,
 estoque). Conduza a conciliacao salvo opt-out explicito:
@@ -357,20 +407,16 @@ estoque). Conduza a conciliacao salvo opt-out explicito:
 > | `SOLUPAN SD4=40 5LT SINODET` | `SOLUPAN GALAO` |
 > | `ONU 1202 - OLEO DIESEL B S500 ADITIVADO` | `DIESEL` |
 >
-> Regra pratica: **mostre a descricao da nota e o nome sugerido lado a lado e
-> peca confirmacao para toda sugestao — com UMA excecao, abaixo.** Nao julgue
-> voce mesmo se sao "obviamente o mesmo produto": `ADUBO FB 20 00 20` e
+> Regra pratica: **mostre a descricao da nota e o nome do catalogo lado a lado e
+> peca o "sim" do usuario para toda sugestao, sem excecao.** Nao julgue voce
+> mesmo se sao "obviamente o mesmo produto": `ADUBO FB 20 00 20` e
 > `ADUBO BT 20 00 20` passam nesse teste e sao adubos de marcas diferentes. Quem
 > erra ao olhar as duas strings e o mesmo que erraria de novo.
 >
-> A excecao: o nome do catalogo esta **inteiramente contido** na descricao da
-> nota (`GC GASOLINA COMUM` -> `GASOLINA COMUM`) **e** o produto nao e
-> combustivel nem defensivo. Ai a nota so disse mais, e voce pode aceitar sem
-> perguntar. Qualquer palavra no catalogo que a nota nao diz — marca, formulacao,
-> concentracao, embalagem — exige o "sim" do usuario. Em combustivel e
-> defensivo, confirme mesmo no caso "contido": a nota pode dizer MAIS e ser
-> outro produto (`ONU 1202 - OLEO DIESEL B S500 ADITIVADO` -> `DIESEL`;
-> aditivado e outro produto).
+> Nem o nome do catalogo **inteiramente contido** na descricao da nota e seguro:
+> a nota pode dizer MAIS e ser outro produto. `ONU 1202 - OLEO DIESEL B S500
+> ADITIVADO` -> `DIESEL` (aditivado e outro produto); `UREIA PROTEGIDA NBPT` ->
+> `UREIA` (outro fertilizante). Confirme tambem nesses casos.
 >
 > Suspeitando de de/para ja salvo errado, o conserto e `conciliate` com o item
 > certo — ele regrava o vinculo e vale para as proximas notas.
@@ -455,6 +501,11 @@ aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
   --category "Venda Agricola" --bank-account "<conta bancaria>" \
   --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
   --farm "<Fazenda>" --env prod --dry-run
+# so depois de o usuario conferir o preview, o MESMO comando com --execute:
+aegro received-fiscal-documents launch-bill <NUMERO> --revenue \
+  --category "Venda Agricola" --bank-account "<conta bancaria>" \
+  --stock-harvest asset::<id-do-silo> --stock-harvest-crop "Safra Arroz 25/26" \
+  --farm "<Fazenda>" --env prod --execute
 ```
 
 Tres coisas que fazem o comando parar antes de escrever — e o conserto:
@@ -551,6 +602,7 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
 | Desde a **v0.17.0** o `launch-bill` **bloqueia** NF de nao-compra (59xx/69xx) lancada como **despesa**; em receita nao dispara. | Libere com `--allow-non-purchase` so apos conferir. O guard le so o CFOP — a natureza da operacao continua sendo leitura sua (secao 3). |
+| Nota com item sem quantidade (complementar e afins) cujo dry-run **nao** traz `notaSemQuantidade` no `preview`: o execute devolve `400 Requisicao invalida` so com `correlationId`. | Nao e defeito da nota nem da conciliacao — nao repita variacoes de flags. Lance pela UI (secao 3). |
 | Total divergente (`value` dos produtos x `totalValue` da nota com frete/impostos) **para** o lancamento na v0.17.0+. | Confira os dois no `items` e escolha explicitamente com `--total <valor>`. |
 | `--stock-location` **nunca** da baixa de producao — e o estoque de **insumo**, e em nota de receita o comando para (exit 4). | Venda de graos usa `--stock-harvest <asset::silo>` (secao 5b), CLI v0.18.0+. |
 | Apos `--execute` com estoque, o envelope pode sair `partial` com `stockUnverified`. | **Nao relance** — a conta foi criada; faltou a *conferencia*. Confira na UI (Estq. Producao -> Movimentacoes). |
