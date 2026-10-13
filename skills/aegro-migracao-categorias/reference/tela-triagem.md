@@ -372,7 +372,7 @@ const MOTIVOS = {
   'settled-recurrence-inputs': ['Recorrente com parcela ja paga',
     'O Aegro recusa alterar os itens desse lancamento. A categoria da conta inteira ainda poderia ser trocada.'],
   'revenue-item-apportioned-noop': ['Receita com itens e rateio de safra',
-    'Medido: o Aegro responde vazio e nao grava. Bloqueado antes da escrita para nao contar como migrado.'],
+    'O Aegro nao gravava esse tipo de lancamento e deixou de falhar assim; a ferramenta ainda o segura por precaucao. Migra depois, com o mesmo comando e sem retrabalho.'],
   'stock-location-closed': ['Rateio aponta para cadastro excluido',
     'O rateio aponta para um local de estoque (ou patrimonio, safra, fornecedor) que foi excluido. O Aegro ja aceita esses lancamentos; a ferramenta ainda os segura por precaucao. Migram depois, sem retrabalho.'],
   'apportion-per-item': ['Itens travados pela apropriacao de custo por item',

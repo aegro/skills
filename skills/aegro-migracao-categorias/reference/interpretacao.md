@@ -108,20 +108,20 @@ viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
 
 ### `revenue-item-apportioned-noop` — o segundo no-op medido
 
-Conta de **receita** com itens **e** rateio de safra: o PATCH publico responde
-**vazio** e nao grava nada. **Nenhuma** dessas grava, e **todas** as combinacoes
-vizinhas gravam: receita com item sem rateio, receita no nivel da conta, despesa
-com item (com ou sem rateio). `recurrence` e nulo nelas, entao **nao
-e o FNC-184**.
+Conta de **receita** com itens **e** rateio de safra: o PATCH publico respondia
+**vazio** e nao gravava nada. **Nenhuma** dessas gravava, e **todas** as
+combinacoes vizinhas gravavam: receita com item sem rateio, receita no nivel da
+conta, despesa com item (com ou sem rateio). `recurrence` e nulo nelas, entao
+**nao e o FNC-184**.
 
-Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
-elas seriam contadas como migradas e so o `verify` descobriria depois. O bloqueio
-existe para que nem cheguem a ser escritas.
+Como a resposta vinha vazia, o `apply` nao tinha como flagrar — sem este
+bloqueio elas seriam contadas como migradas e so o `verify` descobriria depois.
+O bloqueio existe para que nem cheguem a ser escritas.
 
-**O sintoma era resposta sem corpo, e ela sumiu do endpoint** (secao 4.1). Este
-motivo nunca teve causa nomeada, so o sintoma — entao trate-o como nao remedido
-ate alguem remedir. Conversa com a EV igual a do `recurrence`: nao e erro dela, e
-um conjunto que migra depois, sem trabalho novo.
+Este motivo nunca teve causa nomeada, so o sintoma, e o sintoma nao aparece mais
+(secao 4.1): hoje o bloqueio e precaucao, e resposta sem corpo vinda de uma conta
+desta classe e achado novo. Conversa com a EV igual a do `recurrence`: nao e erro
+dela, e um conjunto que migra depois, sem trabalho novo.
 
 ### `stock-location-closed` — CORRIGIDO no servidor; o bloqueio agora e precaucao
 
