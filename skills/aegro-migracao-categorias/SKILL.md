@@ -1,6 +1,6 @@
 ---
 name: aegro-migracao-categorias
-requires-cli: 0.20.0
+requires-cli: 0.25.0
 description: >-
   Conduz a migracao de categoria financeira em massa no Aegro (milhares de
   lancamentos saindo de categorias arquivadas para a arvore nova) pela CLI
@@ -102,6 +102,7 @@ chega por `aegro skills sync` (sem release do CLI) e pode encontrar CLI velho:
 | `--only-bill` no `apply` | para reaplicar um subconjunto, monte um de/para dedicado com overrides e rode um `plan` inteiro |
 | `--max-transient-failures` | 429 conta como falha e aborta o lote por `--max-failures`: baixe `--concurrency` para 2 antes de comecar |
 | `<plano>.verify.json` | `chavesQueFalharam` vem cortado em 20; para a lista inteira, releia conta a conta (custa minutos) |
+| `--no-allow-closed-stock-location`, `--no-allow-revenue-item-apportioned` | este CLI **bloqueia por padrao** duas classes que o Aegro ja grava (rateio em local de estoque fora da listagem; receita com itens e rateio de safra), e nao tem flag para solta-las. Atualize antes do `plan` — senao elas chegam como `blocked` e alguem vai querer arruma-las na tela (secao 10, item 2) |
 
 O risco que sobra e real: guard novo no CLI que a skill nao conhece produz plano
 que parece certo e nao e. Se algo na saida do CLI nao bater com o que esta
@@ -705,7 +706,7 @@ Detalhe campo a campo em
 | `migrados` | saiu da categoria antiga — OK |
 | `naoTentados` | **nao e falha.** E o que falta aplicar (normal depois do canario) |
 | `falharam` | tentadas e ainda na antiga |
-| `falhaSilenciosa` | **a mais grave**: ledger diz OK e a conta continua na antiga. Com os guards atuais deve ser **0** — ver [interpretacao.md](reference/interpretacao.md) 4.1 |
+| `falhaSilenciosa` | **a mais grave**: ledger diz OK e a conta continua na antiga. As tres causas conhecidas nao chegam aqui num CLI atual; o que aparecer e a causa sem nome da 9.1 ou achado novo — ver [interpretacao.md](reference/interpretacao.md) 4.1 |
 | `naCaudaAindaNaAntiga` | cauda, bloqueado e mantido: o plano sabe que ficam. **Informativo** |
 | `colateralDeVerdade` | conta que o plano nunca viu. **> 0 e o unico caso que pede replanejar** |
 | `alteracaoColateral` | mudou campo alem da categoria — **pare e investigue** |
@@ -830,28 +831,43 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
 
 1. **Toda escrita e proposta, nunca silencio.** Mostre o agregado e peca
    confirmacao antes de cada `apply --execute`. A EV decide; voce conduz.
-2. **Escrita que responde sucesso pode nao ter gravado.** Sao **tres** causas
-   medidas de no-op silencioso, e o `plan` bloqueia as tres: `recurrence`,
-   `revenue-item-apportioned-noop` e `stock-location-closed` — as tres ja
-   corrigidas ou contornadas no servidor, entao hoje o bloqueio e precaucao.
-   Confira o numero por motivo em `meta.blockedByReason`. `falhaSilenciosa > 0`
-   num CLI atual significa **guard faltando ou causa nova** — pare e investigue
-   ([interpretacao.md](reference/interpretacao.md) 4.1). Por isso `verify` nunca e
-   opcional.
-3. **Recorrente MIGRA por default.** O no-op silencioso do FNC-184 foi corrigido
-   no servidor e esta em producao. O que voce precisa fazer com isso:
-   - **nao repita "o Aegro nao grava recorrente"**. Era verdade e nao e mais; a
-     tela tambem foi corrigida.
-   - o `plan` **avisa** quantos recorrentes entraram, nomeando a release. Repasse:
-     e escrita que antes nao acontecia.
-   - `--no-allow-recurrent` e o escape, e serve para um caso so: **servidor mais
-     antigo que o fix** (serv-core local desatualizado, por exemplo). O CLI nao tem
-     como saber a versao — quem sabe e quem roda.
-   - sobra o 422 de recorrente **com parcela paga E itens**, bloqueado como
-     `settled-recurrence-inputs`. No nivel da conta a mesma conta migra, e a
-     maioria e de nivel conta.
-   - canario + verify continuam obrigatorios, **nao** por causa do FNC-184, e sim
-     porque nenhuma escrita em massa aqui vai sem canario.
+2. **Escrita que responde sucesso pode nao ter gravado** — por isso `verify`
+   nunca e opcional. Tres classes ja responderam sucesso sem gravar; o Aegro
+   atual grava as tres, e o `plan` as **migra por padrao**. Cada uma tem um
+   escape que volta a bloquea-la:
+
+   | Classe | Escape no `plan` | Motivo do `blocked` |
+   |---|---|---|
+   | lancamento recorrente | `--no-allow-recurrent` | `recurrence` |
+   | rateio apontando para local de estoque fora da listagem | `--no-allow-closed-stock-location` | `stock-location-closed` |
+   | receita com itens e rateio de safra | `--no-allow-revenue-item-apportioned` | `revenue-item-apportioned-noop` |
+
+   - **Os escapes servem para um caso so: servidor mais antigo que a correcao**
+     (serv-core local desatualizado, por exemplo), onde o PATCH responde sucesso
+     e nao grava. O CLI nao sabe a versao do servidor — quem sabe e quem roda.
+     Contra producao ou staging, nao passe nenhum.
+   - O `plan` **avisa** no stderr quantos lancamentos de cada classe entraram.
+     Repasse: e escrita que antes nao acontecia.
+   - **Um desses tres motivos em `meta.blockedByReason` sem o escape na linha de
+     comando e CLI velho**: antes da 0.25.0 o `plan` bloqueava as duas ultimas
+     por padrao, sem flag para solta-las (e, antes da 0.20.0, tambem a
+     recorrente). Atualize (secao 1.1) e rode o `plan` de
+     novo — elas entram sem trabalho novo da EV. Nao mande arrumar na tela o que o
+     CLI atual migra.
+   - **Com o escape**, o bloqueio e o que foi pedido. Se o servidor nao e antigo,
+     foi engano: rode o `plan` de novo sem a flag.
+   - **Contra servidor antigo sem o escape**, o CLI atual nao deixa passar calado:
+     a recorrente cai no ledger como `noop-suspected` e as outras duas como falha
+     com `status: 204`. Falha concentrada numa dessas classes e esse caso: pare e
+     gere o plano de novo com o escape da classe
+     ([interpretacao.md](reference/interpretacao.md) 4.1).
+   - `falhaSilenciosa > 0` num CLI atual nao e nenhuma das tres: e a causa sem
+     nome da secao 9.1 ou achado novo.
+3. **Recorrente com parcela paga E itens fica de fora** (`settled-recurrence-inputs`):
+   o Aegro recusa alterar os itens dela com 422. No nivel da conta a mesma conta
+   migra, e a maioria e de nivel conta. Fora isso, **nao repita "o Aegro nao grava
+   recorrente"**: grava, inclusive pela tela. Canario + verify continuam
+   obrigatorios porque nenhuma escrita em massa aqui vai sem canario.
 4. **Nunca chute destino.** Sem regra e sem override, o lancamento fica
    `unresolved` e **nao e escrito**. Isso e feature.
 5. **Destino obvio pode ser sintetico.** A ativa "Manutencao de Maquinas e
@@ -919,7 +935,7 @@ de producao, entao o link abre a conta real e alguem pode achar que ja foi mexid
 | Comando | Params principais | Tipo |
 |---|---|---|
 | `financial category-usage` | `--from <cat>` (repetivel) `[--group-by tag,company,element,level]` `[--top N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--sweep-concurrency N]` | leitura |
-| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--no-labels]` `[--samples N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--resume/--no-resume]` `[--no-allow-recurrent]` `[--sweep-concurrency N]` | leitura |
+| `financial migrate-category plan` | `--map <json>` `--out <jsonl>` `[--no-suggest]` `[--no-labels]` `[--samples N]` `[--start-date --end-date]` `[--effective-start --effective-end]` `[--resume/--no-resume]` `[--sweep-concurrency N]` `[--no-allow-recurrent]` `[--no-allow-closed-stock-location]` `[--no-allow-revenue-item-apportioned]` (os tres so contra servidor antigo — secao 10, item 2) | leitura |
 | `financial migrate-category apply` | `--plan <jsonl>` `--approve sha256:...` `[--limit N]` `[--stratify-by apportion,level,cashFlow]` `[--only-bill <chave>]` `[--concurrency 4]` `[--max-failures 25]` `[--max-transient-failures 200]` `[--max-plan-age-hours 24]` `--dry-run`/`--execute` | **escrita** |
 | `financial migrate-category verify` | `--plan <jsonl>` `[--sample 10]` — grava `<plano>.verify.json` com as listas inteiras | leitura |
 | `fin-categories list` | `[--status ACTIVE]` `[--type]` `[--operation-type]` `[--search-text]` `[--page N]` | leitura |

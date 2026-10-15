@@ -22,37 +22,35 @@ chuta. O trabalho e transformar `unresolved` em `planned` ou em `kept` pela tela
 
 ## 2. Motivos de bloqueio
 
-### `recurrence` — CORRIGIDO no servidor; o bloqueio agora e precaucao
+### `recurrence` — so com `--no-allow-recurrent`
 
-O lancamento e recorrente. O PATCH da API publica em bill recorrente **respondia
-200 e nao salvava** (FNC-184: `updateBillWithRecurrences` devolvia a bill antiga do
-banco). Numa base de folha isso significaria "migrei 3 mil contas" com zero
-persistido.
+O `plan` **migra recorrente por padrao**. Este motivo so aparece quando o plano
+foi gerado com `--no-allow-recurrent`, o escape para servidor mais antigo que a
+correcao — la o PATCH em recorrente responde 200 com a conta antiga e nao grava.
 
-**Isso foi corrigido no servidor** e esta em producao.
+- Gerado **com** a flag contra producao ou staging: foi engano. Rode o `plan` de
+  novo sem ela.
+- Gerado **sem** a flag e mesmo assim com `recurrence`: CLI anterior a 0.20.0,
+  que bloqueava por padrao. Atualize e rode o `plan` de novo.
 
-O `plan` **migra recorrente por default**. `--no-allow-recurrent`
-volta a bloquear, e serve para um caso so: servidor que ainda nao recebeu a
-correcao do FNC-184 (o CLI nao sabe a versao do que esta chamando). O que fica de fora e o recorrente
-**com parcela paga E itens** (`settled-recurrence-inputs`); no nivel da conta ele
-migra, e a maioria e de nivel conta.
+Mesmo no padrao fica de fora o recorrente **com parcela paga E itens**
+(`settled-recurrence-inputs`): o Aegro recusa alterar os itens dele. No nivel da
+conta ele migra, e a maioria e de nivel conta.
 
-O plano bloqueia de proposito, em vez de mandar uma escrita que a gente sabe que
-nao persiste. **Como dizer a EV:**
+**Como dizer a EV**, quando o escape foi usado de proposito:
 
-> Esses N lancamentos sao recorrentes. Tem um bug conhecido no backend em que
-> salvar categoria de lancamento recorrente pela API nao grava — e responde
-> "deu certo". Preferimos nao mexer neles agora a fingir que migrou. Quando o
-> fix subir, eles migram com o mesmo comando, sem trabalho novo seu.
+> Esses N lancamentos sao recorrentes, e o servidor desta rodada ainda nao grava
+> alteracao neles. Ficaram de fora para nao fingir que migraram; rodando contra o
+> Aegro atualizado, entram com o mesmo comando, sem trabalho novo seu.
 
-O numero e a evidencia que prioriza o fix: **reporte-o**. Cuidado com dois campos
-diferentes no `meta.json`, de proposito:
+Cuidado com dois campos diferentes no `meta.json`, de proposito:
 
 - `recurrentInSweep` — quantos recorrentes existem no recorte;
-- `recurrentBlocked` — quantos o plano de fato bloqueou.
+- `recurrentBlocked` — quantos o plano bloqueou como `recurrence` (zero sem o
+  escape; o `settled-recurrence-inputs` conta a parte, em `blockedByReason`).
 
 Recorrente que nao casa com regra nenhuma fica `unresolved`, nao `blocked`.
-Somar os dois infla a evidencia — nao some.
+Nao some os dois.
 
 ### `override-multi-source` — a decisao conta a conta nao alcanca duas origens
 
@@ -106,47 +104,49 @@ porque, sem ele, o destino de `@element` escaparia dos guards do `resolve_map`,
 viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
 **aborta o lote inteiro**. Descobrir isso no meio de um lote grande seria caro.
 
-### `revenue-item-apportioned-noop` — o segundo no-op medido
+### `revenue-item-apportioned-noop` — so com `--no-allow-revenue-item-apportioned`
 
-Conta de **receita** com itens **e** rateio de safra: o PATCH publico responde
-**vazio** e nao grava nada. **Nenhuma** dessas grava, e **todas** as combinacoes
-vizinhas gravam: receita com item sem rateio, receita no nivel da conta, despesa
-com item (com ou sem rateio). `recurrence` e nulo nelas, entao **nao
-e o FNC-184**.
+Conta de **receita** com itens **e** rateio de safra. Em servidor sem a correcao,
+o PATCH responde **vazio** e nao grava; o Aegro atual grava, e o `plan` **migra
+por padrao**. O motivo aparece em dois casos:
 
-Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
-elas seriam contadas como migradas e so o `verify` descobriria depois. O bloqueio
-existe para que nem cheguem a ser escritas.
+- plano gerado com `--no-allow-revenue-item-apportioned` — o escape para servidor
+  antigo. Contra producao ou staging foi engano: rode o `plan` de novo sem ela;
+- CLI anterior a 0.25.0, que bloqueava por padrao sem flag para soltar. Atualize
+  e rode o `plan` de novo.
 
-**O sintoma era 204 sem corpo, e esse 204 sumiu do endpoint** (secao 4.1). Este
-motivo nunca teve causa nomeada, so o sintoma — entao trate-o como nao remedido
-ate alguem remedir. Conversa com a EV igual a do `recurrence`: nao e erro dela, e
-um conjunto que migra depois, sem trabalho novo.
+Contra servidor antigo **sem** o escape, o CLI atual nao conta a resposta vazia
+como sucesso: a linha cai no ledger como falha com `status: 204`. Falha
+concentrada nesta classe e esse caso — replaneje com o escape.
 
-### `stock-location-closed` — CORRIGIDO no servidor; o bloqueio agora e precaucao
+Conversa com a EV igual a do `recurrence`: nao e erro dela, e um conjunto que
+migra contra o Aegro atualizado, sem trabalho novo.
 
-O rateio de custo da conta aponta para um **local de estoque fechado**: local que
+### `stock-location-closed` — so com `--no-allow-closed-stock-location`
+
+O rateio de custo da conta aponta para um local de estoque **fora da listagem**:
 responde ao `stock location get` mas **nao aparece** no `stock locations list`.
+Em servidor sem a correcao, o PATCH recusava calado, com **204 sem corpo**, toda
+conta cujo rateio apontasse para **cadastro excluido** — local de estoque,
+patrimonio, safra ou fornecedor. O Aegro atual preserva o vinculo ja gravado e a
+conta segue editavel, e o `plan` **migra por padrao**. O motivo aparece em dois
+casos:
 
-**A recusa que causava isso foi corrigida no servidor, e o fix esta em
-producao.** Ela nao era do local de estoque: o PATCH recusava quando o rateio
-apontava para **qualquer cadastro excluido** — patrimonio, safra, fornecedor ou
-local de estoque — e recusava calado, com **204 sem corpo**, que todo cliente le
-como sucesso. (O "200 com o corpo da conta" registrado aqui antes era leitura do
-CLI, que nao imprime o status cru; em HTTP era 204.)
+- plano gerado com `--no-allow-closed-stock-location` — o escape para servidor
+  antigo. Contra producao ou staging foi engano: rode o `plan` de novo sem ela;
+- CLI anterior a 0.25.0, que bloqueava por padrao sem flag para soltar. Atualize
+  e rode o `plan` de novo.
 
-Hoje o vinculo **ja gravado** e preservado e a conta segue editavel, igual a tela
-do Aegro. So a **criacao** de lancamento exige cadastro ativo, e referencia
-inexistente volta **422 nomeando a chave**. Nao ha mais 204 nesse endpoint.
-
-**O CLI ainda bloqueia**, e nao ha flag para desligar: essas contas continuam
-chegando como `blocked` com este motivo. Elas **nao estao em risco** — quando o
-guard sair, migram com o mesmo comando. Ate la, o caminho para um punhado delas e
-a tela (secao 4.1).
+Com o escape, uma listagem de locais **vazia** bloqueia toda conta com rateio de
+estoque, e o `plan` avisa no stderr. Antes de concluir que o cadastro tem local
+fechado, confira com `aegro stock locations` — pode ser falha de leitura.
 
 **Nao existe campo de status** — a listagem publica traz so `key`, `name`,
 `farmKey` e as datas de auditoria. O discriminante do guard e "aparece na
 listagem?", uma inferencia, nao um contrato da API.
+
+Caso classico: o local foi **substituido por um novo de nome quase identico** e as
+contas antigas continuaram apontando para o fechado.
 
 ### `apportion-per-item` — recusa limpa, e nao no-op
 
@@ -168,10 +168,6 @@ E raro a ponto de so aparecer em canario estratificado — amostra seca nao o
 toca. Para a EV: *"esse tem o custo dividido item por item, e o Aegro so deixa
 mexer nele pela tela"*.
 
-Caso classico: o local foi **substituido por um novo de nome quase identico** e as
-contas antigas continuaram apontando para o fechado. Suspeite sempre que a fazenda
-tiver reorganizado o estoque.
-
 ---
 
 ## 3. Classes no ledger (`<plano>.ledger.jsonl`)
@@ -183,8 +179,8 @@ pula o que tem `ok: true`.
 |---|---|---|
 | `ok` | Escreveu | — |
 | `structural` | 422 de payload malformado (`financial-category.with-inputs`, `input-order.required`, `cost-apportion`, `financial-category.not-found`, `financial-category.type`) | **O lote aborta no primeiro.** E bug de plano: conserte o de/para e replaneje. Nao suba `--max-failures` |
-| `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Era a assinatura do FNC-184, hoje corrigido; num servidor atualizado isto aponta para a quarta causa, sem causa conhecida (4.1). Rode o `verify` |
-| `ok` com `result` vazio | Resposta **sem corpo** (204) lida como sucesso | Nao ha mais 204 no PATCH de rateio. Se aparecer, e causa nova: **pare** e junte as chaves |
+| `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Concentrado em recorrentes: servidor sem a correcao de recorrente — pare e replaneje com `--no-allow-recurrent` (4.1). Fora delas, e a causa sem nome (4.1). Rode o `verify` |
+| falha com `status: 204` | Resposta **sem corpo**: nada gravou. O CLI atual registra como falha (em geral `rejected`); antes da 0.25.0 entrava como `ok` | Concentrado em receita com itens + rateio de safra, ou em rateio de local fora da listagem: servidor antigo — pare e replaneje com o escape da classe (4.1). Fora delas, e causa nova: **pare** e junte as chaves |
 | `financial-close` | Fechamento financeiro recusou | Inesperado: o guard so reprova mudanca de saldo, e trocar categoria nao muda saldo. Reporte |
 | `not-found` | 404 | A conta sumiu entre o plano e a escrita. Replaneje |
 | `server` | 5xx | Ja teve retry com backoff. Se persistir, pare |
@@ -207,7 +203,7 @@ e compara. Nao faz um GET por conta.
 | `migrados` | saiu da categoria antiga | — |
 | `naoTentados` | planejadas **sem linha no ledger** | **Nao e falha.** E o que falta aplicar. Depois de um canario de 20 em 64, esperar 44 aqui e o certo |
 | `falharam` | tentadas e ainda na antiga | Investigue pela classe no ledger |
-| `falhaSilenciosa` | ledger diz **ok** e a conta continua na antiga | **A mais grave.** Com os guards atuais deve ser **0**; se nao for, e CLI sem guard ou causa nova — ver 4.1. **Nao siga para o lote** |
+| `falhaSilenciosa` | ledger diz **ok** e a conta continua na antiga | **A mais grave.** As tres causas conhecidas nao chegam aqui num CLI atual; o que aparecer e CLI anterior a 0.25.0, a causa sem nome ou achado novo — ver 4.1. **Nao siga para o lote** |
 | `naCaudaAindaNaAntiga` | cauda + bloqueado + mantido: o plano sabe que ficam | **informativo**, nao e falha (4.3) |
 | `colateralDeVerdade` | chave que o plano nunca viu | > 0 e o unico caso que pede replanejar (4.3) |
 | `amostraConferida` | deep-diff campo a campo | Ver abaixo |
@@ -215,68 +211,61 @@ e compara. Nao faz um GET por conta.
 
 Sai com **codigo 1** quando algo tentado falhou.
 
-### 4.1 Sao TRES as causas de `falhaSilenciosa`, e o `plan` bloqueia as tres
+### 4.1 As tres causas conhecidas de no-op migram por padrao
 
-Duas estao **corrigidas no servidor**, e a terceira perdeu o sintoma junto; o
-`plan` continua bloqueando as tres por precaucao, e so `recurrence` tem flag.
+Tres classes ja responderam sucesso sem gravar. O Aegro atual grava as tres, e o
+`plan` as **migra por padrao**; cada uma tem um escape que volta a bloquea-la,
+para usar **so** contra servidor sem a correcao:
 
-| Causa | Sintoma na API | `blockedReason` |
-|---|---|---|
-| **FNC-184** — bill recorrente (**corrigido no servidor** e em producao; o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
-| Receita com itens e rateio de safra | **204 sem corpo** | `revenue-item-apportioned-noop` |
-| Rateio apontando para cadastro excluido (**corrigido no servidor**; era o caso do "local de estoque fechado" e o das contas com rateio de patrimonio) | **204 sem corpo** | `stock-location-closed` |
+| Classe | Sintoma em servidor sem a correcao | Escape | `blockedReason` |
+|---|---|---|---|
+| Lancamento recorrente | 200 com a conta antiga | `--no-allow-recurrent` | `recurrence` |
+| Receita com itens e rateio de safra | **204 sem corpo** | `--no-allow-revenue-item-apportioned` | `revenue-item-apportioned-noop` |
+| Rateio apontando para cadastro excluido (o guard olha local de estoque fora da listagem) | **204 sem corpo** | `--no-allow-closed-stock-location` | `stock-location-closed` |
 
-**Os dois 204 vinham da mesma recusa**, que hoje nao existe mais nesse endpoint:
-o PATCH nao devolve 204 em nenhum caso de rateio. Cadastro excluido que a conta
-**ja referenciava** e preservado e a conta segue editavel; referencia inexistente
-volta **422 nomeando a chave**. O `revenue-item-apportioned-noop` nunca teve
-causa nomeada, so o sintoma — e o sintoma era esse 204: **remeca antes de
-tratar como no-op vivo.**
+No Aegro atual o cadastro excluido que a conta **ja referenciava** e preservado e
+a conta segue editavel; referencia inexistente volta **422 nomeando a chave**.
+
+**No CLI atual nenhuma delas passa calada, nem contra servidor antigo**: o 200 com
+a categoria antiga vira `noop-suspected` e o 204 vira falha com `status: 204` no
+ledger. Entao elas aparecem em `falharam`, nao em `falhaSilenciosa`. Lote que
+falha concentrado numa dessas classes e servidor antigo: pare, gere o plano de
+novo com o escape da classe e leve o hash novo para aprovacao.
 
 E existe uma **quarta**, sem causa identificada: cerca de 3% das contas
 respondem "200" e nao gravam, sendo estruturalmente identicas as que gravaram.
 Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e o
 `verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
-lista com link. Desconfie do "200": na saida do CLI **um 204 e indistinguivel de
-um 200**, e foi exatamente essa confusao que escondeu a causa acima. Um 204 hoje
-vem de outro lugar, e e achado novo.
-
-As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
-`blocked` e **nao** em `falhaSilenciosa`. Confira o numero por motivo em
-`meta.blockedByReason`.
+lista com link.
 
 > **`override-multi-source` nao entra nesta lista, e a diferenca importa.** Ele
 > nao e um no-op da API: a escrita **funcionaria** — e e justamente esse o
 > problema, porque gravaria o destino errado em metade dos itens. Nao procure
 > sintoma na resposta do servidor; a causa esta no arquivo de/para (secao 2).
 
-**Se `falhaSilenciosa` vier > 0 mesmo assim**, e uma destas duas coisas — e a
-distincao importa:
+**Se `falhaSilenciosa` vier > 0**, alem da quarta causa, confira estas duas — e
+a distincao importa:
 
-1. **CLI sem um dos guards.** Skill nova contra CLI antigo escreve essas contas.
-   Confira `meta.blockedByReason`: se a chave nao existe, o guard nao rodou.
-   Contra servidor atual isso nao e mais perda — mas atualize o CLI, porque o
-   mesmo CLI antigo nao tem os outros guards.
-2. **Causa nova.** Nenhum dos tres motivos explica, e ai e achado nao mapeado:
+1. **CLI anterior a 0.25.0.** Ele contava a resposta sem corpo como sucesso: conta
+   de receita com itens e rateio de safra, ou com rateio em cadastro excluido,
+   escrita contra servidor antigo, caia aqui. Cruze as chaves com a tabela acima e
+   atualize o CLI antes do proximo lote.
+2. **Causa nova.** Nenhuma das classes acima explica, e ai e achado nao mapeado:
    junte as chaves e anexe em
    [tool-aegro-cli#100](https://github.com/aegro/tool-aegro-cli/issues/100), que e
    onde o dossie vive.
 
-**A regra do local fechado**, que o guard do CLI ainda aplica: o plano bloqueia
-quando `costApportionSummary.stockLocationEntries[]` referencia um **local de
-estoque fechado** — local que responde ao `stock location get` mas **nao
-aparece** no `stock locations list`. **Toda** conta apontando para um local fora
-da listagem falhava, e **nenhuma** das que apontam para locais listados — nenhuma
-outra dimensao (data, numero de itens, unidade) separava.
-
-O servidor ja nao recusa essas escritas (ver secao 2), entao o bloqueio hoje e
-precaucao, nao protecao.
-
-Caso classico: o local foi **substituido por um novo de nome quase identico** e as
-contas antigas continuaram apontando para o fechado. Suspeite sempre que a fazenda
-tiver reorganizado o estoque.
+**A regra do guard de local fechado** (so roda com
+`--no-allow-closed-stock-location`): o plano bloqueia quando
+`costApportionSummary.stockLocationEntries[]` referencia um local de estoque que
+responde ao `stock location get` mas **nao aparece** no `stock locations list`.
+Em servidor sem a correcao, toda conta assim falhava, e nenhuma das que apontam
+para locais listados. Suspeite dela sempre que a fazenda tiver reorganizado o
+estoque.
 
 #### Como diagnosticar em 2 minutos
+
+Para confirmar que falhas concentradas sao esta classe (servidor antigo):
 
 ```bash
 # 1. os locais ABERTOS da fazenda
@@ -294,38 +283,22 @@ chave responde normalmente e nao prova nada.
 
 #### O que fazer com elas
 
-Com o guard ativo elas nunca sao escritas — chegam como `blocked` e o que resta e
-**explicar e decidir**:
-
-- **A UI grava**, e sempre gravou: abrir a conta em
-  `<host>/farm/<farmId>?billId=<billId>#farm-finance`, trocar a categoria e salvar
-  persiste. Para um punhado de contas, esse e o caminho hoje.
-- **Para muitas, nao mande a EV migrar na mao.** O servidor ja aceita essas
-  escritas; o que falta e o CLI parar de bloquear. Reporte o tamanho do balde e
-  deixe-o para a proxima rodada — dezenas pela UI e o problema original de volta.
-- **Se escaparam** (CLI sem o guard): **confira pelo `verify` antes de concluir
-  qualquer coisa.** Contra servidor atual elas gravam; o "nao reaplique" valia
-  quando a recusa ainda existia.
+- **CLI atual contra o Aegro atual:** elas migram. Nao ha o que fazer alem de
+  repassar o aviso do `plan`.
+- **Bloqueadas sem o escape na linha de comando:** CLI anterior a 0.25.0. Atualize
+  e rode o `plan` de novo. **Nao mande a EV migrar na mao** — dezenas pela tela e o
+  problema original de volta.
+- **Bloqueadas com o escape (servidor antigo):** para um punhado, a tela grava —
+  abrir a conta em `<host>/farm/<farmId>?billId=<billId>#farm-finance`, trocar a
+  categoria e salvar. Para muitas, reporte o tamanho do balde e deixe para a
+  rodada contra o servidor atualizado.
 - **Diga a EV o que aconteceu**, sem culpar recorrencia: "N contas ficaram de fora
-  porque o rateio delas aponta para um cadastro que foi excluido. O Aegro ja
-  aceita esses lancamentos; a ferramenta e que ainda os segura, e eles entram na
-  proxima rodada sem trabalho novo seu. As outras migraram normalmente."
+  porque o rateio delas aponta para um cadastro que foi excluido, e o servidor
+  desta rodada ainda nao aceita essa alteracao. Elas entram contra o Aegro
+  atualizado, sem trabalho novo seu. As outras migraram normalmente."
 
-#### O que esta descartado (cada um com teste)
-
-Latencia de indexacao (relidas 1h depois), concorrencia, categoria de destino (o
-mesmo destino grava em outras contas), fechamento financeiro (`INACTIVE`), formato
-do payload (falha igual com `{"financialCategoryKey"}` minimo, que nao toca em
-rateio), quantidade de itens (26, 13, 9 e 2 gravam), data do lancamento (2024 tem
-falha e sucesso), e categoria oficial do elemento (mesmo elemento em falha e em
-sucesso).
-
-**Rateio de patrimonio tinha o mesmo sintoma, e a mesma causa:** os patrimonios
-estavam **apagados**. Eles pareciam normais porque `GET /pub/v1/assets/{key}`
-responde **200 com o corpo completo e nao expoe `isDeleted` nem status** — pela
-API nao ha como ver. **200 num get de patrimonio nao prova que ele existe**; se
-precisar decidir por isso, confirme pela tela. O servidor ja nao recusa essas
-contas.
+**Rateio de patrimonio excluido tem a mesma causa.** Para conferir uma chave,
+`aegro assets get` traz `isDeleted` — olhe ele, nao `status` (SKILL.md 9.0).
 
 Se as chaves que falharam nao casarem com local fechado nem com cadastro
 excluido, e achado novo — anexe a amostra na issue #100 em vez de tentar
