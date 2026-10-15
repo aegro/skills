@@ -381,6 +381,13 @@ aegro elements set-categories --farm "<fazenda>" element::abc123 --expense-categ
 aegro elements set-categories --farm "<fazenda>" element::abc123 --clear-revenue
 ```
 
+### Local ou item "nao encontrado" pode ser de outra fazenda
+
+`stock location <key>` e `stock item <key>` que nao acham o registro respondem
+"nao encontrado" com exit 0 — a mesma resposta para chave inexistente e para chave
+de outra fazenda. A recusa da remessa "nao pertence a fazenda" e o mesmo caso. Antes
+de concluir que o local sumiu, confira o `--farm` do comando.
+
 ### Transfer usa endpoint generico
 
 Enquanto entry usa `/stock-logs/manual-entries` e removal usa `/stock-logs/manual-removals`, transfer usa o endpoint raiz `/stock-logs`. Nao confunda os endpoints.

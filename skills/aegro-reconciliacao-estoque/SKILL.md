@@ -58,7 +58,9 @@ Se divergencia != 0, investigar causas.
 
 ### 1. Mapear locais de estoque
 
-Listar armazens/depositos e guardar location_keys.
+Listar armazens/depositos e guardar location_keys. Local que "nao e encontrado"
+pela chave nao existe **nesta fazenda** — pode existir em outra: confira o `--farm`
+antes de tratar como local sumido.
 
 ### 2. Identificar insumo alvo
 

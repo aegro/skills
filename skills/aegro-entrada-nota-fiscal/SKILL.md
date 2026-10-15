@@ -600,6 +600,7 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Conciliacao parcial -> conta **sem baixa de estoque** (tudo-ou-nada). | Concilie **todos** os itens para ter estoque. |
 | Fornecedor recem-criado demora a "aparecer" (consistencia eventual); o CLI contorna buscando por CNPJ. | Se falhar mesmo assim, aguarde ~10s e repita. |
 | Busca por chave de acesso (44 digitos) so olha os 50 documentos mais recentes. | Prefira o **numero** da nota (busca no servidor). |
+| `xml`/`danfe`/`status` que nao acham a nota respondem "nao encontrado" igual para nota de outra fazenda. | Antes de dizer que a nota nao chegou, confira o `--farm`: o grupo pode ter a nota na fazenda do outro CNPJ. |
 | Nota de ENTRADA/RETORNO exige `--revenue`/`--expense` explicito (nao infere). | Siga a secao 3: default e arquivar ou lancar sem pagamento. |
 | Desde a **v0.17.0** o `launch-bill` **bloqueia** NF de nao-compra (59xx/69xx) lancada como **despesa**; em receita nao dispara. | Libere com `--allow-non-purchase` so apos conferir. O guard le so o CFOP — a natureza da operacao continua sendo leitura sua (secao 3). |
 | Nota com item sem quantidade (complementar e afins) cujo dry-run **nao** traz `notaSemQuantidade` no `preview`: o execute devolve `400 Requisicao invalida` so com `correlationId`. | Nao e defeito da nota nem da conciliacao — nao repita variacoes de flags. Lance pela UI (secao 3). |

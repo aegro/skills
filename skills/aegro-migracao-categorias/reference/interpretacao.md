@@ -108,20 +108,20 @@ viraria 422 `financial-category.type` no meio da corrida — e 422 estrutural
 
 ### `revenue-item-apportioned-noop` — o segundo no-op medido
 
-Conta de **receita** com itens **e** rateio de safra: o PATCH publico responde
-**vazio** e nao grava nada. **Nenhuma** dessas grava, e **todas** as combinacoes
-vizinhas gravam: receita com item sem rateio, receita no nivel da conta, despesa
-com item (com ou sem rateio). `recurrence` e nulo nelas, entao **nao
-e o FNC-184**.
+Conta de **receita** com itens **e** rateio de safra: o PATCH publico respondia
+**vazio** e nao gravava nada. **Nenhuma** dessas gravava, e **todas** as
+combinacoes vizinhas gravavam: receita com item sem rateio, receita no nivel da
+conta, despesa com item (com ou sem rateio). `recurrence` e nulo nelas, entao
+**nao e o FNC-184**.
 
-Como a resposta vem vazia, o `apply` nao tem como flagrar — sem este bloqueio
-elas seriam contadas como migradas e so o `verify` descobriria depois. O bloqueio
-existe para que nem cheguem a ser escritas.
+Como a resposta vinha vazia, o `apply` nao tinha como flagrar — sem este
+bloqueio elas seriam contadas como migradas e so o `verify` descobriria depois.
+O bloqueio existe para que nem cheguem a ser escritas.
 
-**O sintoma era 204 sem corpo, e esse 204 sumiu do endpoint** (secao 4.1). Este
-motivo nunca teve causa nomeada, so o sintoma — entao trate-o como nao remedido
-ate alguem remedir. Conversa com a EV igual a do `recurrence`: nao e erro dela, e
-um conjunto que migra depois, sem trabalho novo.
+Este motivo nunca teve causa nomeada, so o sintoma, e o sintoma nao aparece mais
+(secao 4.1): hoje o bloqueio e precaucao, e resposta sem corpo vinda de uma conta
+desta classe e achado novo. Conversa com a EV igual a do `recurrence`: nao e erro
+dela, e um conjunto que migra depois, sem trabalho novo.
 
 ### `stock-location-closed` — CORRIGIDO no servidor; o bloqueio agora e precaucao
 
@@ -131,13 +131,12 @@ responde ao `stock location get` mas **nao aparece** no `stock locations list`.
 **A recusa que causava isso foi corrigida no servidor, e o fix esta em
 producao.** Ela nao era do local de estoque: o PATCH recusava quando o rateio
 apontava para **qualquer cadastro excluido** — patrimonio, safra, fornecedor ou
-local de estoque — e recusava calado, com **204 sem corpo**, que todo cliente le
-como sucesso. (O "200 com o corpo da conta" registrado aqui antes era leitura do
-CLI, que nao imprime o status cru; em HTTP era 204.)
+local de estoque — e recusava calado, com **resposta sem corpo**, que todo
+cliente lia como sucesso.
 
 Hoje o vinculo **ja gravado** e preservado e a conta segue editavel, igual a tela
 do Aegro. So a **criacao** de lancamento exige cadastro ativo, e referencia
-inexistente volta **422 nomeando a chave**. Nao ha mais 204 nesse endpoint.
+inexistente volta **422 nomeando a chave**. Nao ha mais resposta sem corpo nesse endpoint.
 
 **O CLI ainda bloqueia**, e nao ha flag para desligar: essas contas continuam
 chegando como `blocked` com este motivo. Elas **nao estao em risco** — quando o
@@ -184,9 +183,9 @@ pula o que tem `ok: true`.
 | `ok` | Escreveu | — |
 | `structural` | 422 de payload malformado (`financial-category.with-inputs`, `input-order.required`, `cost-apportion`, `financial-category.not-found`, `financial-category.type`) | **O lote aborta no primeiro.** E bug de plano: conserte o de/para e replaneje. Nao suba `--max-failures` |
 | `noop-suspected` | Respondeu 200 com a categoria **antiga** no corpo | Era a assinatura do FNC-184, hoje corrigido; num servidor atualizado isto aponta para a quarta causa, sem causa conhecida (4.1). Rode o `verify` |
-| `ok` com `result` vazio | Resposta **sem corpo** (204) lida como sucesso | Nao ha mais 204 no PATCH de rateio. Se aparecer, e causa nova: **pare** e junte as chaves |
+| `rejected` com "SEM CORPO" na mensagem (CLI anterior a v0.25.0: `ok` com `result` vazio) | Escrita respondida **sem corpo** — nao e confirmacao de que gravou | Nao conte como migrada. E causa nova: **pare**, junte as chaves e confira pelo `verify` |
 | `financial-close` | Fechamento financeiro recusou | Inesperado: o guard so reprova mudanca de saldo, e trocar categoria nao muda saldo. Reporte |
-| `not-found` | 404 | A conta sumiu entre o plano e a escrita. Replaneje |
+| `not-found` | A conta nao foi encontrada **nesta fazenda** | Sumiu entre o plano e a escrita, ou o comando rodou noutra fazenda que a do plano. Confira o `--farm` e replaneje |
 | `server` | 5xx | Ja teve retry com backoff. Se persistir, pare |
 | `rejected` | Outro 4xx | Leia a mensagem; provavelmente dado especifico daquela conta |
 
@@ -223,23 +222,23 @@ Duas estao **corrigidas no servidor**, e a terceira perdeu o sintoma junto; o
 | Causa | Sintoma na API | `blockedReason` |
 |---|---|---|
 | **FNC-184** — bill recorrente (**corrigido no servidor** e em producao; o CLI migra por default, e `--no-allow-recurrent` bloqueia contra servidor antigo) | 200 com a bill antiga | `recurrence` |
-| Receita com itens e rateio de safra | **204 sem corpo** | `revenue-item-apportioned-noop` |
-| Rateio apontando para cadastro excluido (**corrigido no servidor**; era o caso do "local de estoque fechado" e o das contas com rateio de patrimonio) | **204 sem corpo** | `stock-location-closed` |
+| Receita com itens e rateio de safra | **resposta sem corpo** | `revenue-item-apportioned-noop` |
+| Rateio apontando para cadastro excluido (**corrigido no servidor**; era o caso do "local de estoque fechado" e o das contas com rateio de patrimonio) | **resposta sem corpo** | `stock-location-closed` |
 
-**Os dois 204 vinham da mesma recusa**, que hoje nao existe mais nesse endpoint:
-o PATCH nao devolve 204 em nenhum caso de rateio. Cadastro excluido que a conta
+**As duas respostas sem corpo vinham da mesma recusa**, que hoje nao existe mais
+nesse endpoint. Cadastro excluido que a conta
 **ja referenciava** e preservado e a conta segue editavel; referencia inexistente
 volta **422 nomeando a chave**. O `revenue-item-apportioned-noop` nunca teve
-causa nomeada, so o sintoma — e o sintoma era esse 204: **remeca antes de
+causa nomeada, so o sintoma — e o sintoma era essa resposta: **remeca antes de
 tratar como no-op vivo.**
 
 E existe uma **quarta**, sem causa identificada: cerca de 3% das contas
 respondem "200" e nao gravam, sendo estruturalmente identicas as que gravaram.
 Reproduzivel com concorrencia 1. **Nao ha guard para ela** — quem pega e o
 `verify`, e o que fazer esta na SKILL.md 9.1: perguntar a pessoa, e entregar a
-lista com link. Desconfie do "200": na saida do CLI **um 204 e indistinguivel de
-um 200**, e foi exatamente essa confusao que escondeu a causa acima. Um 204 hoje
-vem de outro lugar, e e achado novo.
+lista com link. Desconfie do sucesso que ninguem releu: so o `verify` prova a
+gravacao. Escrita respondida sem corpo o CLI registra como falha; se aparecer, e
+achado novo.
 
 As tres sao bloqueadas **antes** da escrita, entao em CLI atual elas aparecem em
 `blocked` e **nao** em `falhaSilenciosa`. Confira o numero por motivo em

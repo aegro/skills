@@ -219,8 +219,8 @@ aegro crop-glebes list --farm "<fazenda>" crop::68dd6719e90f726622b7f549
 **ATENCAO exclusao (`delete-*`):**
 - `delete-activity <ACTIVITY_KEY>` remove a atividade **e, em cascata, seu plano e todas as realizacoes**, estornando o estoque vinculado.
 - `delete-realization <REALIZATION_KEY>` remove uma realizacao **e estorna o estoque dela**; se restarem plano ou outras realizacoes a atividade e mantida, senao e removida junto.
-- A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado retorna 404, indistinguivel de "nao existe".
-- E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda retorna 404.
+- A chave da realizacao tem prefixo **`activityLog::`** (nao `activityRealization::`) - e o valor que vem no campo `key` de `activities realizations` / `get-realization`. Prefixo errado responde "nao encontrado", igual a chave que nao existe.
+- E **exclusao logica (soft-delete)**: sai das listagens, mas nao ha como desfazer pela API — trate como irreversivel. Chave desconhecida ou de outra fazenda responde "nao encontrado": confira o `--farm` antes de concluir que a atividade nao existe.
 - **`get`/`get-realization` por chave AINDA retornam o registro excluido**, sem nenhum marcador de exclusao. Para confirmar que a exclusao aconteceu, consulte a **listagem** (`activities list` / `activities realizations`) — nunca o get por chave.
 - **Sem `AEGRO_SAFE_MODE=1` nao ha trava: `delete-*` sem flag nenhuma apaga na hora**, sem preview e sem confirmacao. Com `AEGRO_SAFE_MODE=1`, escrever exige `--execute` e `--farm` explicito (senao `SAFE_MODE_BLOCKED` / `IMPLICIT_FARM_BLOCKED`).
 - O `--dry-run` **so imprime a requisicao que seria enviada** - nao chama o servidor, entao nao confirma que a chave existe, que ela e daquela fazenda, nem quanta coisa a cascata vai levar junto. Para prever de verdade **o que sera apagado**, consulte antes: `activities get <ACTIVITY_KEY>` e `activities realizations --activity-key <ACTIVITY_KEY>`.
@@ -363,10 +363,9 @@ aegro activities delete-realization activityLog::68dd6730e90f726622b7f560 --exec
 | `harvest-logs create` | ver parametros abaixo |
 | `harvest-logs update <key>` | posicional, `--body` (PATCH parcial). Mutacao: `--dry-run`/`--execute`, `--farm` |
 
-**`get` prova que o romaneio existe.** Romaneio excluido na tela responde **204**,
-o mesmo terminal de chave inexistente — nao mais 200 com o corpo. Entao 200 no
-`get` e confirmacao de que o registro esta vigente, e `update` sobre excluido
-responde 404 sem tocar no dado.
+**`get` prova que o romaneio existe.** Romaneio excluido na tela responde "nao
+encontrado", igual a chave inexistente ou de outra fazenda. Entao romaneio devolvido
+pelo `get` esta vigente, e `update` sobre excluido falha sem tocar no dado.
 
 **Parametros `create`:** `--crop-key` (obrig.), `--date` (obrig., YYYY-MM-DD), `--crop-glebe` (repetivel),
 `--seed-key` (obrig.), `--calculation-mode` (`AUTOMATIC`/`MANUAL`), `--destination-key`,
@@ -743,7 +742,7 @@ interface web**: corrija o valor que a resposta nomeia.
 3. **Confundir `plan` com `get-plan`:**
    - `activities plan <ACTIVITY_KEY>` → endpoint `/activities/{key}/plan`
    - `activities get-plan <PLAN_KEY>` → endpoint `/activities/plans/{key}`
-   - Chave errada = 404 ou dados incorretos.
+   - Chave errada = "nao encontrado" ou dados de outro registro.
 
 4. **Produtividade pelo peso errado:** use o liquido (depois dos descontos). O
    descontado (`totalDiscountedWeight`) e a soma dos descontos, e o produto ainda
