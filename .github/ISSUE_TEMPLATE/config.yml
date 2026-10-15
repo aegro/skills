@@ -1,0 +1,3 @@
+# Sem este arquivo, este repo herdaria do aegro/.github os forms dos repos de código
+# (Defeito, Historia tecnica, Tarefa) e a Blank issue só para quem tem write.
+blank_issues_enabled: true
