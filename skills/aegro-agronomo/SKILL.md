@@ -614,7 +614,7 @@ aegro weather create --farm "<fazenda>" --weather-station-key asset::<id da esta
 | `elements list` | `--category` (repetivel), `--type` (repetivel), `--page` |
 | `elements create-defensive` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.), `--manufacturer`, `--observations` |
 | `elements create-fertilizer` | `--name` (obrig.), `--unit` (obrig.), `--manufacturer`, `--observations` |
-| `elements create-seed` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.: massa como `kg`, ou contagem: `seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bb3M sem`, `bag5M sem`), `--manufacturer`, `--observations` |
+| `elements create-seed` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.: massa como `kg`, ou contagem: `seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bag3M sem`, `bag5M sem`), `--manufacturer`, `--observations` |
 
 Categorias agro: `SEED`, `DEFENSIVE`, `FERTILIZER`.
 
@@ -668,7 +668,7 @@ conta, nao troque so a unidade. Na realizacao com local, e esse total que sai
 do estoque.
 
 Semente contada (elemento em `seed`, `mil sem`, `sc60k sem`, `sc200k sem`,
-`sc500k sem`, `bb3M sem` ou `bag5M sem`): a dose vem em sementes/ha e o
+`sc500k sem`, `bag3M sem` ou `bag5M sem`): a dose vem em sementes/ha e o
 `amount` e o total numa unidade da familia — 60 mil sementes/ha em 100 ha e
 `{"magnitude": 6000, "unit": "mil sem"}` (= 100 `sc60k sem`). Qualquer
 unidade da familia serve no `amount`, mesmo diferente da do elemento (como `g`

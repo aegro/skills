@@ -51,7 +51,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
-| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. Semente comprada pode ser **pesada** (`kg`, `t`, `sc 60Kg`) ou **contada** (`seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bb3M sem`, `bag5M sem`). `sc60k sem` (60 mil sementes) nao e `sc 60Kg` (60 kg). |
+| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. Semente comprada pode ser **pesada** (`kg`, `t`, `sc 60Kg`) ou **contada** (`seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bag3M sem`, `bag5M sem`). `sc60k sem` (60 mil sementes) nao e `sc 60Kg` (60 kg). |
 | Quantidade                | `quantity`             | Objeto: `{"magnitude": X, "unit": "kg"}`. Magnitude pode ser negativa (divergencia).      |
 | Associacao financeira     | `set-categories`       | Vincula elemento a categorias financeiras de receita e/ou despesa.                         |
 
