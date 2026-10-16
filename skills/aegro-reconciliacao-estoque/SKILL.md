@@ -90,7 +90,10 @@ que nao houve consumo nem entrada.
 **Saldo.** O log **tira** `quantity` do local em `sourceLocationKey` e **poe** no
 local em `destinationLocationKey`; lado ausente e fora do estoque. Some por
 local, convertendo cada log (`quantity.unit`) para a unidade da posicao em
-`stock items`. Destino `company::` e posicao no fornecedor, nao no armazem.
+`stock items`. So converta dentro da mesma grandeza: semente contada (`seed`,
+`mil sem`, `sc 60mil sem`, `sc 200mil sem`, `sc 500mil sem`, `bb 3mi sem`,
+`bag 5mi sem`) converte entre si, **nunca** para `kg` nem para `un`. Saldo de
+semente que mistura massa e contagem e divergencia a explicar, nao soma. Destino `company::` e posicao no fornecedor, nao no armazem.
 `quantity` 0 nao move saldo — e ajuste de valor (juros ou desconto de parcela,
 diferenca de pedido) ou contagem de inventario que bateu: nao conte como compra,
 venda nem devolucao.
