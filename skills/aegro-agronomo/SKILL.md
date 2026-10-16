@@ -614,7 +614,7 @@ aegro weather create --farm "<fazenda>" --weather-station-key asset::<id da esta
 | `elements list` | `--category` (repetivel), `--type` (repetivel), `--page` |
 | `elements create-defensive` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.), `--manufacturer`, `--observations` |
 | `elements create-fertilizer` | `--name` (obrig.), `--unit` (obrig.), `--manufacturer`, `--observations` |
-| `elements create-seed` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.: massa como `kg`, ou contagem: `seed`, `mil sem`, `sc 60mil sem`, `sc 200mil sem`, `sc 500mil sem`, `bb 3mi sem`, `bag 5mi sem`), `--manufacturer`, `--observations` |
+| `elements create-seed` | `--name` (obrig.), `--type` (obrig.), `--unit` (obrig.: massa como `kg`, ou contagem: `seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bb3M sem`, `bag5M sem`), `--manufacturer`, `--observations` |
 
 Categorias agro: `SEED`, `DEFENSIVE`, `FERTILIZER`.
 
@@ -624,7 +624,7 @@ aegro elements list --farm "<fazenda>" --category DEFENSIVE --type HERBICIDE
 aegro elements create-defensive --farm "<fazenda>" --name "Roundup Original" --type HERBICIDE --unit L --manufacturer Monsanto
 aegro elements create-fertilizer --farm "<fazenda>" --name "MAP Granulado" --unit kg --manufacturer Mosaic
 aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY --unit kg --manufacturer TMG
-aegro elements create-seed --farm "<fazenda>" --name "AG 8480 PRO4" --type CORN --unit "sc 60mil sem"
+aegro elements create-seed --farm "<fazenda>" --name "AG 8480 PRO4" --type CORN --unit "sc60k sem"
 ```
 
 **Opcao global:** Todos os comandos aceitam `--output` / `-o` com `json` (padrao), `table` ou `csv`.
@@ -667,11 +667,13 @@ dividindo pela area. Unidade por area (`L/HA`, `KG/HA`) volta 422: refaca a
 conta, nao troque so a unidade. Na realizacao com local, e esse total que sai
 do estoque.
 
-Semente contada (elemento em `seed`, `mil sem`, `sc 60mil sem`, `sc 200mil sem`,
-`sc 500mil sem`, `bb 3mi sem` ou `bag 5mi sem`): a dose vem em sementes/ha e o
+Semente contada (elemento em `seed`, `mil sem`, `sc60k sem`, `sc200k sem`,
+`sc500k sem`, `bb3M sem` ou `bag5M sem`): a dose vem em sementes/ha e o
 `amount` e o total numa unidade da familia — 60 mil sementes/ha em 100 ha e
-`{"magnitude": 6000, "unit": "mil sem"}` (= 100 `sc 60mil sem`). A familia
-converte so entre si; **nunca** mande `kg` nem `un` para semente contada, nem
+`{"magnitude": 6000, "unit": "mil sem"}` (= 100 `sc60k sem`). Qualquer
+unidade da familia serve no `amount`, mesmo diferente da do elemento (como `g`
+ou `t` num insumo em `kg`): o Aegro converte para a unidade do elemento na baixa
+de estoque e no custo. A familia converte so entre si; **nunca** mande `kg` nem `un` para semente contada, nem
 contagem para semente pesada: sem o PMS do lote nao ha fator.
 
 Use `elementKey` + `amount`. Nao use `productKey` (campo de compras) nem

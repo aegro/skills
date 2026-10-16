@@ -51,7 +51,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
-| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. Semente comprada pode ser **pesada** (`kg`, `t`, `sc 60Kg`) ou **contada** (`seed`, `mil sem`, `sc 60mil sem`, `sc 200mil sem`, `sc 500mil sem`, `bb 3mi sem`, `bag 5mi sem`). `sc 60mil sem` (60 mil sementes) nao e `sc 60Kg` (60 kg). |
+| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. Semente comprada pode ser **pesada** (`kg`, `t`, `sc 60Kg`) ou **contada** (`seed`, `mil sem`, `sc60k sem`, `sc200k sem`, `sc500k sem`, `bb3M sem`, `bag5M sem`). `sc60k sem` (60 mil sementes) nao e `sc 60Kg` (60 kg). |
 | Quantidade                | `quantity`             | Objeto: `{"magnitude": X, "unit": "kg"}`. Magnitude pode ser negativa (divergencia).      |
 | Associacao financeira     | `set-categories`       | Vincula elemento a categorias financeiras de receita e/ou despesa.                         |
 
@@ -213,7 +213,7 @@ aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg
 aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY --unit kg
 
 # Criar semente de milho controlada em contagem (sacos de 60 mil sementes)
-aegro elements create-seed --farm "<fazenda>" --name "AG 8480 PRO4" --type CORN --unit "sc 60mil sem"
+aegro elements create-seed --farm "<fazenda>" --name "AG 8480 PRO4" --type CORN --unit "sc60k sem"
 
 # Criar servico
 aegro elements create-service --farm "<fazenda>" --name "Pulverizacao Aerea" --unit ha
@@ -311,7 +311,7 @@ que nao houve consumo nem entrada.
 local em `destinationLocationKey`; lado ausente e fora do estoque. Some por
 local, convertendo cada log (`quantity.unit`) para a unidade da posicao em
 `stock items`. So converta dentro da mesma grandeza: as unidades de contagem de
-semente convertem entre si (1 `bag 5mi sem` = 25 `sc 200mil sem` = 5.000
+semente convertem entre si (1 `bag5M sem` = 25 `sc200k sem` = 5.000
 `mil sem`), mas **nunca** para `kg` nem para `un` — o fator depende do PMS do
 lote. Se o saldo de uma semente misturar massa e contagem, nao some: mostre as
 duas parcelas separadas e sinalize. Destino `company::` e posicao no fornecedor, nao no armazem.
