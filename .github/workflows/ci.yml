@@ -1,0 +1,137 @@
+# Checks da PR: segredo, titulo e o crivo das skills, e um fan-in que o ruleset
+# de `main` exige.
+#
+# Este repositorio e publico e nao consegue chamar reusable de repositorio
+# privado: `uses: aegro/infra-github-actions/...` falha antes de rodar. Por isso
+# `gitleaks` e `check_pr_title` espelham, aqui dentro, o `scan_secrets-git.yml` e
+# o `check_pr-title.yml` de la — mudou la, mude aqui.
+name: CI
+
+on:
+  pull_request:
+    # `edited` e o que faz o titulo ser conferido de novo quando alguem o corrige.
+    types: [opened, reopened, edited, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Historico inteiro, nao so o ultimo commit como no reusable da org: o repo e
+  # publico, e um segredo que entrou e saiu num commit antigo continua exposto.
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Mesma imagem, pelo mesmo digest, que o reusable da org (gitleaks v8.18.0).
+      - name: scan-secrets
+        env:
+          GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:e5f6d1a62786affd1abd882ecc73e9353ce78adea1650711f6e351767723712d
+        run: |
+          docker image pull "$GITLEAKS_IMAGE"
+          docker run -u "$(id -u)" -v "${GITHUB_WORKSPACE}:/path" "$GITLEAKS_IMAGE" detect --source="/path" -v
+
+  check_pr_title:
+    name: check_pr_title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          # Lista da org; `chore` fica de fora de proposito.
+          TYPES: build|ci|docs|feat|fix|perf|refactor|revert|test
+        run: |
+          echo "PR title: $PR_TITLE"
+          pattern="^(${TYPES})(\(.+\))?!?:[[:space:]].+"
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "❌ Invalid PR title format."
+            echo "Expected format: type(optional-scope)[!]: description"
+            echo "Allowed types: ${TYPES//|/, }"
+            exit 1
+          fi
+
+  # Crivo mecanico das skills: so checagens que se resolvem lendo o repositorio.
+  # O que depende da CLI publicada vai no drift agendado.
+  # Por que: docs/decisions/0004-crivo-na-pr-drift-agendado.md
+  #
+  # Sem filtro de `paths` no gatilho: um check obrigatorio filtrado fica
+  # "Expected" para sempre na PR que nao toca os caminhos, e trava o merge. A
+  # decisao de pular mora no passo `escopo`, e o job sai verde.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Na PR o checkout e o merge commit: profundidade 2 traz os dois pais, e
+      # HEAD^1 e a base atual — o diff e exatamente o que a PR muda.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Ha o que checar?
+        id: escopo
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "relevante=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # `--no-renames`: mover uma skill para fora de `skills/` tambem conta.
+          # CLAUDE.md entra porque "mudou uma regra aqui, mude la" — a PR que
+          # muda so o padrao e justamente a que precisa do crivo.
+          tocados="$(git diff --name-only --no-renames HEAD^1 HEAD \
+            | grep -E '^(skills/|scripts/lint_skills\.py$|CLAUDE\.md$|\.github/workflows/ci\.yml$)' || true)"
+          if [ -n "$tocados" ]; then
+            printf '%s\n' "$tocados"
+            echo "relevante=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::A PR nao toca skill, crivo nem CLAUDE.md — crivo pulado."
+            echo "relevante=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.escopo.outputs.relevante == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Crivo das skills
+        if: steps.escopo.outputs.relevante == 'true'
+        run: python scripts/lint_skills.py
+
+  # Unico check que o ruleset precisa conhecer alem de `gitleaks` e
+  # `check_pr_title`. `skipped` e `cancelled` reprovam: dependencia que nao
+  # rodou nao provou nada. Job novo neste workflow precisa entrar no `needs`.
+  all_checks_passed:
+    name: all_checks_passed
+    if: always() && github.event_name == 'pull_request'
+    needs: [gitleaks, check_pr_title, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Falha se alguma dependencia nao terminou em success
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NEEDS_JSON" | jq -r 'to_entries[] | "\(.value.result)\t\(.key)"' | sort
+          not_ok="$(printf '%s' "$NEEDS_JSON" | jq -r 'to_entries[] | select(.value.result != "success") | "\(.key) (\(.value.result))"')"
+          if [ -n "$not_ok" ]; then
+            printf '%s\n' "$not_ok"
+            echo "::error::uma dependencia nao terminou em success - veja os resultados acima"
+            exit 1
+          fi

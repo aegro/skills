@@ -4,7 +4,7 @@ Agosto de 2026.
 
 Sao dois jobs de proposito:
 
-- `lint-skills.yml` roda em toda PR. So checagens que se resolvem lendo o
+- o job `lint` do `ci.yml` roda em toda PR. So checagens que se resolvem lendo o
   repositorio — frontmatter, contrato da description, rastro de investigacao no
   corpo. Sem rede, sem CLI, sem segredo.
 - `drift-cli.yml` roda semanalmente. Instala a `aegro` do PyPI e confere que cada
