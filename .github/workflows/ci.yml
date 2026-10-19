@@ -6,8 +6,9 @@
 # `gitleaks` espelha, aqui dentro, o `scan_secrets-git.yml` de la — mudou la,
 # mude aqui.
 #
-# Sem merge queue. Se ligarem, acrescente `merge_group` aqui e no `pr-title.yml`,
-# senao os checks obrigatorios nunca reportam na fila.
+# Sem merge queue. Se ligarem, acrescente `merge_group` aqui e no `pr-title.yml`
+# (que ja sai verde nesse evento), senao os checks obrigatorios nunca reportam
+# na fila.
 name: CI
 
 on:
@@ -29,6 +30,8 @@ jobs:
   # raso, so ve a arvore atual. O repo e publico: segredo que entrou e saiu num
   # commit antigo continua exposto. So o HEAD, nao `--all`: segredo em outro
   # branch nao pode travar PR alheia.
+  # `-m`: sem ele o `git log -p` nao mostra o diff de merge commit, e segredo
+  # introduzido num merge passa batido.
   # `--redact` porque o log do Actions de repo publico e aberto.
   # Falso positivo: fingerprint no `.gitleaksignore`.
   gitleaks:
@@ -40,6 +43,20 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      # O gitleaks le `.gitleaks.toml` e `.gitleaksignore` da propria arvore
+      # escaneada: a PR pode calar o proprio vazamento. Nao da para reprovar
+      # (ninguem tem bypass e o fingerprint legitimo tambem passa por aqui),
+      # entao o aviso vai para quem revisa.
+      - name: Avisar se a PR mexe na configuracao do gitleaks
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          arquivos="$(git diff --name-only --no-renames HEAD^1 HEAD)"
+          for f in .gitleaks.toml .gitleaksignore; do
+            if printf '%s\n' "$arquivos" | grep -qxF "$f"; then
+              echo "::warning file=$f::A PR altera $f, que muda o que o gitleaks reporta nesta mesma PR. Revise o arquivo antes de aprovar."
+            fi
+          done
       # Mesma imagem, pelo mesmo digest, que o reusable da org (gitleaks v8.18.0).
       - name: scan-secrets
         env:
@@ -47,7 +64,7 @@ jobs:
         run: |
           docker image pull "$GITLEAKS_IMAGE"
           docker run --rm -u "$(id -u)" -v "${GITHUB_WORKSPACE}:/path" "$GITLEAKS_IMAGE" \
-            detect --source="/path" --log-opts="--full-history HEAD" --redact -v
+            detect --source="/path" --log-opts="--full-history -m HEAD" --redact -v
 
   # Crivo mecanico das skills: so checagens que se resolvem lendo o repositorio.
   # O que depende da CLI publicada vai no drift agendado.

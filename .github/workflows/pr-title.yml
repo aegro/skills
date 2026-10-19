@@ -17,7 +17,7 @@ permissions: {}
 
 # Duas edicoes seguidas no mesmo SHA: so o titulo mais novo pode dar o veredito.
 concurrency:
-  group: pr-title-${{ github.event.pull_request.number }}
+  group: pr-title-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -28,10 +28,17 @@ jobs:
     steps:
       - name: Check PR title
         env:
+          EVENT_NAME: ${{ github.event_name }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           # Lista da org; `chore` fica de fora de proposito.
           TYPES: build|ci|docs|feat|fix|perf|refactor|revert|test
         run: |
+          # `merge_group` nao traz PR no payload: o titulo ja foi validado na PR,
+          # e o check obrigatorio precisa reportar na fila mesmo assim.
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            echo "merge_group: no pull request in the payload; the title was validated on the PR."
+            exit 0
+          fi
           echo "PR title: $PR_TITLE"
           pattern="^(${TYPES})(\(.+\))?!?:[[:space:]].+"
           if [[ ! "$PR_TITLE" =~ $pattern ]]; then
