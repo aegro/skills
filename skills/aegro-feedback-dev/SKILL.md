@@ -283,7 +283,7 @@ CLI aegro <X.Y.Z> | <staging|prod> | skill <nome, se houver>
 **Prioridade sugerida:** <...> - <motivo em meia linha>
 **Sugestao:** <a menor melhoria que entrega o esperado pelo caminho certo>
 
-Campos do painel: Produto = CLI aegro | Plataforma = CLI | Squad = <Agentes ou a
+Campos do painel: Produto = CLI | Plataforma = CLI | Squad = <Agentes ou a
 squad do dono> | Prioridade = <sugerida>
 ```
 
