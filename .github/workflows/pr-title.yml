@@ -1,0 +1,37 @@
+# Titulo da PR em Conventional Commits — check `check_pr_title`, exigido pelo
+# ruleset de `main`.
+#
+# Espelha o `check_pr-title.yml` do `aegro/infra-github-actions`: este repo e
+# publico e nao consegue chamar reusable de repositorio privado. Mudou la, mude
+# aqui.
+#
+# Workflow separado do `ci.yml` para que `edited` (que dispara tambem quando so
+# o corpo muda) nao reinicie o gitleaks e o crivo a cada edicao da descricao.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions: {}
+
+jobs:
+  check_pr_title:
+    name: check_pr_title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          # Lista da org; `chore` fica de fora de proposito.
+          TYPES: build|ci|docs|feat|fix|perf|refactor|revert|test
+        run: |
+          echo "PR title: $PR_TITLE"
+          pattern="^(${TYPES})(\(.+\))?!?:[[:space:]].+"
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "❌ Invalid PR title format."
+            echo "Expected format: type(optional-scope)[!]: description"
+            echo "Allowed types: ${TYPES//|/, }"
+            exit 1
+          fi

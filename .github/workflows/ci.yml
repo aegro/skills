@@ -1,16 +1,17 @@
-# Checks da PR: segredo, titulo e o crivo das skills, e um fan-in que o ruleset
-# de `main` exige.
+# Checks da PR: segredo e o crivo das skills, e um fan-in. O ruleset de `main`
+# exige `gitleaks`, `all_checks_passed` e o `check_pr_title` do `pr-title.yml`.
 #
 # Este repositorio e publico e nao consegue chamar reusable de repositorio
 # privado: `uses: aegro/infra-github-actions/...` falha antes de rodar. Por isso
-# `gitleaks` e `check_pr_title` espelham, aqui dentro, o `scan_secrets-git.yml` e
-# o `check_pr-title.yml` de la — mudou la, mude aqui.
+# `gitleaks` espelha, aqui dentro, o `scan_secrets-git.yml` de la — mudou la,
+# mude aqui.
+#
+# Sem merge queue. Se ligarem, acrescente `merge_group` aqui e no `pr-title.yml`,
+# senao os checks obrigatorios nunca reportam na fila.
 name: CI
 
 on:
   pull_request:
-    # `edited` e o que faz o titulo ser conferido de novo quando alguem o corrige.
-    types: [opened, reopened, edited, synchronize]
   push:
     branches: [main]
   workflow_dispatch:
@@ -19,12 +20,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # Push em `main` nao entra na fila: cada merge tem o crivo do proprio commit.
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Historico inteiro, nao so o ultimo commit como no reusable da org: o repo e
-  # publico, e um segredo que entrou e saiu num commit antigo continua exposto.
+  # Historico inteiro alcancavel pelo HEAD — o reusable da org, com checkout
+  # raso, so ve a arvore atual. O repo e publico: segredo que entrou e saiu num
+  # commit antigo continua exposto. So o HEAD, nao `--all`: segredo em outro
+  # branch nao pode travar PR alheia.
+  # `--redact` porque o log do Actions de repo publico e aberto.
+  # Falso positivo: fingerprint no `.gitleaksignore`.
   gitleaks:
     name: gitleaks
     runs-on: ubuntu-latest
@@ -40,29 +46,8 @@ jobs:
           GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:e5f6d1a62786affd1abd882ecc73e9353ce78adea1650711f6e351767723712d
         run: |
           docker image pull "$GITLEAKS_IMAGE"
-          docker run -u "$(id -u)" -v "${GITHUB_WORKSPACE}:/path" "$GITLEAKS_IMAGE" detect --source="/path" -v
-
-  check_pr_title:
-    name: check_pr_title
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Check PR title
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          # Lista da org; `chore` fica de fora de proposito.
-          TYPES: build|ci|docs|feat|fix|perf|refactor|revert|test
-        run: |
-          echo "PR title: $PR_TITLE"
-          pattern="^(${TYPES})(\(.+\))?!?:[[:space:]].+"
-          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
-            echo "❌ Invalid PR title format."
-            echo "Expected format: type(optional-scope)[!]: description"
-            echo "Allowed types: ${TYPES//|/, }"
-            exit 1
-          fi
+          docker run --rm -u "$(id -u)" -v "${GITHUB_WORKSPACE}:/path" "$GITLEAKS_IMAGE" \
+            detect --source="/path" --log-opts="--full-history HEAD" --redact -v
 
   # Crivo mecanico das skills: so checagens que se resolvem lendo o repositorio.
   # O que depende da CLI publicada vai no drift agendado.
@@ -95,7 +80,9 @@ jobs:
           # `--no-renames`: mover uma skill para fora de `skills/` tambem conta.
           # CLAUDE.md entra porque "mudou uma regra aqui, mude la" — a PR que
           # muda so o padrao e justamente a que precisa do crivo.
-          tocados="$(git diff --name-only --no-renames HEAD^1 HEAD \
+          # O diff fora do grep: se ele falhar, o job tem que falhar, nao pular.
+          arquivos="$(git diff --name-only --no-renames HEAD^1 HEAD)"
+          tocados="$(printf '%s\n' "$arquivos" \
             | grep -E '^(skills/|scripts/lint_skills\.py$|CLAUDE\.md$|\.github/workflows/ci\.yml$)' || true)"
           if [ -n "$tocados" ]; then
             printf '%s\n' "$tocados"
@@ -112,13 +99,15 @@ jobs:
         if: steps.escopo.outputs.relevante == 'true'
         run: python scripts/lint_skills.py
 
-  # Unico check que o ruleset precisa conhecer alem de `gitleaks` e
-  # `check_pr_title`. `skipped` e `cancelled` reprovam: dependencia que nao
-  # rodou nao provou nada. Job novo neste workflow precisa entrar no `needs`.
+  # `skipped` e `cancelled` reprovam: dependencia que nao rodou nao provou nada.
+  # Job novo neste workflow precisa entrar no `needs`.
+  # `always()` e nao `!cancelled()`: job pulado conta como aprovado no ruleset, e
+  # um cancelamento manual liberaria o merge sem gitleaks. O custo e um FAILURE
+  # deste job em todo run cancelado, que o run seguinte sobrescreve.
   all_checks_passed:
     name: all_checks_passed
     if: always() && github.event_name == 'pull_request'
-    needs: [gitleaks, check_pr_title, lint]
+    needs: [gitleaks, lint]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
