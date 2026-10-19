@@ -20,7 +20,7 @@ Tres coisas tornam este repo diferente dos repos de codigo:
 
 1. **Todo trabalho nasce de uma issue.** Instrucao errada relatada por usuario e um
    [Ticket de Suporte](https://github.com/aegro/workspace/blob/dev/governance/conventions/ticket-de-suporte.md)
-   no `aegro/workspace` com `Produto = CLI aegro`; a `aegro-feedback-dev` abre ou monta o bloco.
+   no `aegro/workspace` com `Produto = CLI`; a `aegro-feedback-dev` abre ou monta o bloco.
    Skill nova ou secao nova por causa de comando novo e uma `Tarefa` ligada a PR do CLI.
 2. **Confira o estado da CLI publicada** (`pip index versions aegro` ou a pagina do PyPI) antes de
    escrever instrucao que depende de comando recente.
@@ -69,7 +69,7 @@ Tres coisas tornam este repo diferente dos repos de codigo:
 |---|---|
 | Comando novo ou flag nova no CLI | A PR do CLI cita a skill afetada; a PR da skill e aberta junto e **espera a tag** do CLI para subir o `requires-cli`. Enquanto a tag nao sai, a skill pode entrar com a instrucao escrita para valer nas duas versoes. |
 | Comando removido ou renomeado no CLI | A PR do CLI abre a PR par aqui antes do merge. O drift semanal e a rede, nao o processo. |
-| Defeito do CLI ou do endpoint descoberto ao escrever a skill | Ticket de Suporte com `Produto = CLI aegro`. A skill **nao** ganha contorno; no maximo a ressalva que muda o que o agente faz enquanto o defeito existe, removida quando o fix sai. |
+| Defeito do CLI ou do endpoint descoberto ao escrever a skill | Ticket de Suporte com `Produto = CLI`. A skill **nao** ganha contorno; no maximo a ressalva que muda o que o agente faz enquanto o defeito existe, removida quando o fix sai. |
 | Drift semanal acusou divergencia (`issue fixa "Drift: skills x CLI publicada"`) | Corrija a skill, ou o parser do drift quando for falso positivo. Nao feche a issue: o job a reabre. |
 
 ## Publicacao e versao
