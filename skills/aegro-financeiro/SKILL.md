@@ -1279,3 +1279,5 @@ aegro financial realize --farm "<fazenda>" --key installment::aaa --key installm
 10. **Nao confie no totalAmount quando enviar inputs.** Com itens, o total gravado e a soma dos `amount` dos itens — o totalAmount enviado e ignorado.
 
 11. **Nao ignore a categoria dos itens.** Se a conta tem itens com categoria ja cadastrada (ou usada em lancamentos anteriores), categorize por item via `inputs` — jogar tudo numa categoria unica da bill distorce o DRE por categoria.
+
+12. **Nao conclua que conta, parcela ou contrato nao existe por um "nao encontrado".** A leitura por chave responde igual para chave inexistente e para chave de outra fazenda: confira o `--farm` primeiro (regra completa em `/aegro-operacional`).
