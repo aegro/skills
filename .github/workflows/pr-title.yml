@@ -15,6 +15,11 @@ on:
 
 permissions: {}
 
+# Duas edicoes seguidas no mesmo SHA: so o titulo mais novo pode dar o veredito.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check_pr_title:
     name: check_pr_title
