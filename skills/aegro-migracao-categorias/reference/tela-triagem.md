@@ -368,13 +368,13 @@ function itensDe(a){
    ganhar um motivo novo, acrescente a explicacao junto. */
 const MOTIVOS = {
   'recurrence': ['Lancamento recorrente',
-    'O Aegro ja grava esses lancamentos; a ferramenta ainda os segura por precaucao. Migram depois, com o mesmo comando e sem retrabalho.'],
+    'Esta rodada foi gerada para um servidor que ainda nao grava alteracao em lancamento recorrente, entao eles ficaram de fora de proposito. No Aegro atualizado eles migram, com o mesmo comando e sem retrabalho.'],
   'settled-recurrence-inputs': ['Recorrente com parcela ja paga',
     'O Aegro recusa alterar os itens desse lancamento. A categoria da conta inteira ainda poderia ser trocada.'],
   'revenue-item-apportioned-noop': ['Receita com itens e rateio de safra',
-    'Medido: o Aegro responde vazio e nao grava. Bloqueado antes da escrita para nao contar como migrado.'],
+    'Esta rodada foi gerada para um servidor que ainda nao grava essa alteracao, entao eles ficaram de fora de proposito. No Aegro atualizado eles migram, com o mesmo comando e sem retrabalho.'],
   'stock-location-closed': ['Rateio aponta para cadastro excluido',
-    'O rateio aponta para um local de estoque (ou patrimonio, safra, fornecedor) que foi excluido. O Aegro ja aceita esses lancamentos; a ferramenta ainda os segura por precaucao. Migram depois, sem retrabalho.'],
+    'O rateio aponta para um local de estoque que foi excluido, e esta rodada foi gerada para um servidor que ainda nao aceita essa alteracao. No Aegro atualizado eles migram, com o mesmo comando e sem retrabalho.'],
   'apportion-per-item': ['Itens travados pela apropriacao de custo por item',
     'Este lancamento tem custo apropriado item por item, e o Aegro nao deixa alterar os itens por fora. A troca precisa ser feita na tela do Aegro.'],
   'override-multi-source': ['Lancamento com duas categorias antigas',
@@ -516,10 +516,12 @@ function pintaAprovacao(){
   if (meta.recurrentInSweep){
     html += '<div class="banner warn"><b>' + meta.recurrentInSweep +
       '</b> lancamento(s) recorrente(s) neste recorte; <b>' +
-      (meta.recurrentBlocked || 0) + '</b> ficam de fora desta rodada. ' +
+      (meta.recurrentBlocked || 0) + '</b> ficam de fora desta rodada por serem recorrentes. ' +
       'Nao e defeito: o Aegro grava alteracao em lancamento recorrente, e por ' +
-      'padrao eles ENTRAM na migracao. Se algum ficou de fora, foi porque tem ' +
-      'parcela paga e itens — esse tem que ser resolvido na tela do Aegro.</div>';
+      'padrao eles ENTRAM na migracao. So ficam de fora quando a rodada foi ' +
+      'gerada para um servidor que ainda nao grava recorrente. O recorrente com ' +
+      'parcela paga e itens aparece a parte, nos bloqueados abaixo — esse tem que ' +
+      'ser resolvido na tela do Aegro.</div>';
   }
 
   /* Blocos com titulo, e nao uma tabela unica com prefixo em caixa alta no meio
