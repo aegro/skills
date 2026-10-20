@@ -299,8 +299,12 @@ ou `pendente - <motivo>`).
 
 ## Entrega no modo interno (ticket pelo `gh`, senao bloco para a fila)
 
-**Caminho 1 - `gh` autenticado com acesso ao `aegro/workspace`.** Teste antes
-(ver "Referencia de comandos"); sem acesso, va ao Caminho 2 sem tentar de novo.
+**Caminho 1 - `gh` autenticado com permissao de triage no `aegro/workspace`.**
+Teste antes (ver "Referencia de comandos"): a chamada devolve o bloco
+`permissions`, e o que libera este caminho e `triage` ou `push` em `true`. Ver o
+repo nao basta: com leitura apenas, a issue nasce sem issue type e sem os
+campos do painel, e a automacao nao a reconhece como ticket. Sem `triage`, va
+ao Caminho 2 sem tentar de novo.
 
 1. **Procure duplicata**: ticket aberto com o mesmo sintoma. Existindo, a entrega
    e um **comentario** nele com o bloco do item - repeticao sobe a prioridade.
@@ -388,8 +392,13 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
   diga que falta isso.
 - **Usuario recusa o envio** -> guarde o doc, diga o caminho e pare. Nao mande
   mesmo assim.
-- **`gh` autenticado, mas sem acesso ao `aegro/workspace`** -> Caminho 2, sem
-  insistir.
+- **`gh` autenticado, mas sem `triage` no `aegro/workspace`** (so leitura, ou
+  sem acesso) -> Caminho 2, sem insistir. Nao abra issue sem type para "pelo
+  menos registrar": ela nao entra na fila de ninguem.
+- **A `createIssue` recusou o `issueTypeId` ou o campo do painel** -> a
+  permissao mudou no meio ou o type foi renomeado. Nao reenvie sem o type:
+  feche nada, guarde o numero se a issue chegou a nascer, e entregue o bloco
+  pelo Caminho 2 citando esse numero.
 
 ## Referencia de comandos
 
@@ -399,7 +408,7 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
 | Docs de sessoes anteriores nesta maquina | `ls ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
 | Ver se o sintoma ja foi reportado localmente | `grep -il "<sintoma>" ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
 | Diario da sessao (complemento) | `ls ${AEGRO_LEARNING_DIR:-.}/journal-*.md` |
-| Ha `gh` com acesso ao workspace? | `gh auth status && gh api repos/aegro/workspace --jq .full_name` |
+| Ha `gh` com permissao de abrir o ticket? (`true` libera o Caminho 1) | `gh auth status && gh api repos/aegro/workspace --jq '.permissions.triage or .permissions.push'` |
 | Ticket aberto com o mesmo sintoma | `gh issue list --repo aegro/workspace --state open --search "<sintoma> in:title,body type:\"Ticket de Suporte\"" --json number,title,url` |
 | Id do issue type e do repo (para a mutation) | `gh api graphql -f query='{ organization(login:"aegro"){ issueTypes(first:30){ nodes{ id name } } } repository(owner:"aegro", name:"workspace"){ id } }'` |
 | Abrir o ticket | `gh api graphql -f query='mutation($repo:ID!,$tipo:ID!,$titulo:String!,$corpo:String!){ createIssue(input:{repositoryId:$repo, issueTypeId:$tipo, title:$titulo, body:$corpo}){ issue{ number url } } }' -f repo=<id> -f tipo=<id do "Ticket de Suporte"> -f titulo="<titulo>" -f corpo="$(cat <arquivo do corpo>)"` |
