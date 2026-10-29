@@ -149,12 +149,14 @@ endpoint:
 
 | Grupo de comando `aegro ...` | Squad |
 |---|---|
-| `financial`, `bills`, `installments`, `bank-accounts`, `bank-movements`, `bank-reconciliation`, `bank-transfers`, `cash-flow`, `cashbook`, `financial-migration` | Financeiro |
-| `activities`, `crops`, `glebes`, `assets`, `asset-events`, `stock`, `harvest-logs`, `sale-contracts`, `purchase-orders`, `elements`, `livestock`, `weather`, `pest-monitoring` | Agricola |
-| `invoices`, `received-fiscal-documents`, `nfe`, `rural-properties` | Fiscal |
-| `farms`, `users`, `tags`, `files`, `auth`, `skills` | CLI (Agentes) |
+| `financial`, `fin-categories`, `bank-accounts`, `bank-movements`, `bank-reconciliation`, `bank-transfers`, `cash-flow` | Financeiro |
+| `activities`, `crops`, `crop-glebes`, `glebes`, `assets`, `maintenances`, `fuel-supplies`, `stock`, `harvest-logs`, `sale-contracts`, `purchase-orders`, `purchase-requisitions`, `elements`, `livestock`, `weather` | Agricola |
+| `nfes`, `mdfes`, `fiscal-products`, `received-fiscal-documents`, `rural-properties` | Fiscal |
+| `farms`, `tags`, `files`, `auth`, `skills` | CLI (Agentes) |
 
-Grupo fora da tabela: escreva `API/dominio: a confirmar` e deixe o grupo no item.
+O grupo e a primeira palavra depois de `aegro`: `aegro financial settle-installments`
+e do grupo `financial`. Grupo fora da tabela: escreva `API/dominio: a confirmar`
+e deixe o grupo no item.
 O ticket nasce com a squad do CLI e e rerroteado na triagem.
 
 ### 4. Juntar o repetido
@@ -193,9 +195,10 @@ Prefira shape e agregado a dado bruto.
 
 ### 6. Sugerir a prioridade
 
-Use a matriz que o Suporte usa, cruzando duas perguntas - afeta uma
-funcionalidade-chave? existe paliativo? - e anote como **sugestao**: quem decide
-e quem tria.
+Cruze as duas perguntas da matriz do Suporte - afeta uma funcionalidade-chave?
+existe paliativo? - e anote como **sugestao**: quem decide e quem tria. A
+terceira pergunta do Suporte, quantos clientes o problema atinge, a sessao nao
+responde; a triagem completa.
 
 | | Funcionalidade-chave nao afetada | Funcionalidade-chave afetada |
 |---|---|---|
@@ -204,7 +207,8 @@ e quem tria.
 
 Funcionalidade-chave, para o CLI: lancamento de NF-e e de conta, baixa de
 parcela, conciliacao bancaria, atividade e romaneio. Lacuna de instrucao da skill
-e `Baixa`, salvo quando induz a gravar errado.
+e `Baixa`, salvo quando induz a gravar errado. Na duvida entre duas, sugira a
+mais alta: a triagem rebaixa, mas nao sobe sozinha.
 
 ### 7. Escrever o doc da sessao
 
@@ -310,12 +314,16 @@ ao Caminho 2 sem tentar de novo.
    e um **comentario** nele com o bloco do item - repeticao sobe a prioridade.
 2. **Confirme antes de abrir**: mostre o titulo e o corpo exatos e abra so com um
    "sim" explicito. Ticket em nome de alguem nao sai sem confirmacao.
-3. **Abra a issue** no `aegro/workspace` com o issue type `Ticket de Suporte`
-   (mutation `createIssue` - o `gh issue create` nao aceita type). Um ticket por
-   item.
-4. **Preencha os campos do painel** que a sessao alcancar (`Produto`,
-   `Plataforma`, `Squad`, `Prioridade`); os que nao alcancar ficam na linha
-   "Campos do painel" do corpo, e a automacao do ticket cobra o que faltar.
+3. **Abra a issue com os campos do painel na mesma chamada**: mutation
+   `createIssue` no `aegro/workspace`, com o issue type `Ticket de Suporte` e
+   `issueFields` levando `Produto = CLI`, `Plataforma = CLI`, `Squad` (Agentes
+   ou a squad do dono) e a `Prioridade` sugerida. O `gh issue create` nao aceita
+   type nem campo. Campo que vai vazio a automacao preenche por conta propria:
+   `Squad` vira `Harness` (nao classificado) e `Prioridade` vira `Media`,
+   descartando a sugestao. Um ticket por item.
+4. **Case as opcoes pelo id**, lido na query de ids da "Referencia de comandos".
+   O nome da opcao na org tem acento (`Média`, `Agrícola`) e o texto desta skill
+   nao tem.
 5. **Registre o numero** no doc local (`> Entrega: ticket #N`) e diga ao usuario
    o link.
 
@@ -396,8 +404,8 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
   sem acesso) -> Caminho 2, sem insistir. Nao abra issue sem type para "pelo
   menos registrar": ela nao entra na fila de ninguem.
 - **A `createIssue` recusou o `issueTypeId` ou o campo do painel** -> a
-  permissao mudou no meio ou o type foi renomeado. Nao reenvie sem o type:
-  feche nada, guarde o numero se a issue chegou a nascer, e entregue o bloco
+  permissao mudou no meio ou o type foi renomeado. Nao reenvie sem o type,
+  nao feche nada, guarde o numero se a issue chegou a nascer, e entregue o bloco
   pelo Caminho 2 citando esse numero.
 
 ## Referencia de comandos
@@ -410,6 +418,18 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
 | Diario da sessao (complemento) | `ls ${AEGRO_LEARNING_DIR:-.}/journal-*.md` |
 | Ha `gh` com permissao de abrir o ticket? (`true` libera o Caminho 1) | `gh auth status && gh api repos/aegro/workspace --jq '.permissions.triage or .permissions.push'` |
 | Ticket aberto com o mesmo sintoma | `gh issue list --repo aegro/workspace --state open --search "<sintoma> in:title,body type:\"Ticket de Suporte\"" --json number,title,url` |
-| Id do issue type e do repo (para a mutation) | `gh api graphql -f query='{ organization(login:"aegro"){ issueTypes(first:30){ nodes{ id name } } } repository(owner:"aegro", name:"workspace"){ id } }'` |
-| Abrir o ticket | `gh api graphql -f query='mutation($repo:ID!,$tipo:ID!,$titulo:String!,$corpo:String!){ createIssue(input:{repositoryId:$repo, issueTypeId:$tipo, title:$titulo, body:$corpo}){ issue{ number url } } }' -f repo=<id> -f tipo=<id do "Ticket de Suporte"> -f titulo="<titulo>" -f corpo="$(cat <arquivo do corpo>)"` |
+| Ids do repo, do issue type e dos campos do painel com as opcoes (para a mutation) | `gh api graphql -H "GraphQL-Features: issue_types,issue_field_api" -f query='{ organization(login:"aegro"){ issueTypes(first:30){ nodes{ id name } } issueFields(first:30){ nodes{ ... on IssueFieldSingleSelect{ id name options{ id name } } } } } repository(owner:"aegro", name:"workspace"){ id } }'` |
 | Comentar num ticket existente | `gh issue comment <numero> --repo aegro/workspace --body-file <arquivo do bloco>` |
+
+Abrir o ticket. Os campos vao como lista, e o `gh api graphql -f` manda tudo como
+texto: monte o JSON com `jq` e passe por `--input -`. `campos` leva um
+`{"fieldId": ..., "singleSelectOptionId": ...}` por campo do painel.
+
+```bash
+jq -n --arg repo "<id do repo>" --arg tipo "<id do Ticket de Suporte>" \
+  --arg titulo "<titulo>" --rawfile corpo "<arquivo do corpo>" \
+  --argjson campos '[{"fieldId": "<id do campo>", "singleSelectOptionId": "<id da opcao>"}]' \
+  '{query: "mutation($i: CreateIssueInput!){ createIssue(input: $i){ issue{ number url } } }",
+    variables: {i: {repositoryId: $repo, issueTypeId: $tipo, title: $titulo, body: $corpo, issueFields: $campos}}}' \
+  | gh api graphql -H "GraphQL-Features: issue_types,issue_field_api" --input -
+```
