@@ -2,7 +2,7 @@
 """Crivo mecanico das skills publicas do Aegro.
 
 Checa so o que da para checar lendo o repositorio, sem rede e sem o CLI
-instalado. Deriva do padrao escrito em CLAUDE.md — se voce mudar um, mude o
+instalado. Deriva do padrao escrito em AGENTS.md — se voce mudar um, mude o
 outro.
 
 O que NAO esta aqui, de proposito: tudo que exige a CLI instalada — conferir
@@ -287,6 +287,20 @@ def main() -> int:
                 f"[{len(onde)} skills] changelog copiado em "
                 f"{', '.join(sorted(onde))}: “{s[:60]}…”"
             )
+
+    # 5. o README lista toda skill, e so as que existem. A lista e mantida a mao
+    # e e o catalogo que o marketplace mostra; skill fora dela existe no wheel e
+    # ninguem a encontra. Conta so o item de lista (`- `aegro-x``): a mesma
+    # skill citada na prosa do README nao a torna listada.
+    readme = SKILLS_DIR.parent / "README.md"
+    listadas = set(
+        re.findall(r"^- `(aegro-[a-z0-9-]+)`", readme.read_text(encoding="utf-8"), re.M)
+    )
+    existentes = {f.parent.name for f in arquivos}
+    for nome in sorted(existentes - listadas):
+        todas.append(f"{nome}: nao esta listada no README.md")
+    for nome in sorted(listadas - existentes):
+        todas.append(f"{nome}: listada no README.md, mas skills/{nome}/SKILL.md nao existe")
 
     print(f"{len(arquivos)} skills e {len(referencias)} arquivo(s) de referencia conferidos.\n")
     if not todas:

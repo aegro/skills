@@ -128,6 +128,15 @@ Nao use nomes da era MCP (`list_farms`, `select_farm`).
 As regras desta secao valem tambem para os `reference/*.md` da skill, e o crivo
 os le ([0003](docs/decisions/0003-crivo-le-os-reference.md)).
 
+## Grafia
+
+Sem acento, como neste arquivo e nas skills existentes. O crivo nao cobra; a
+regra existe para a busca textual (`grep`, drift) casar sem variante.
+
+Excecao: citacao literal do que o sistema devolve ou espera (mensagem de erro
+do servidor, nome de opcao, valor de campo) fica como e, com acento. Sem ele o
+agente nao reconhece a mensagem nem casa o valor.
+
 ## Antes de abrir a PR
 
 ```bash
@@ -139,4 +148,32 @@ faz?** Se a resposta for "nenhuma", a mudanca provavelmente pertence ao corpo do
 commit.
 
 Peca review, e confira que o pedido saiu: `main` exige uma aprovacao e ninguem
-tem bypass, entao PR sem revisor pedido fica parada. O CODEOWNERS auto-solicita.
+tem bypass, entao PR sem revisor pedido fica parada. O CODEOWNERS auto-solicita
+`@aegro/squad-agentes`. Titulo `type(scope): description` com type aceito pela
+org (`feat` `fix` `build` `docs` `refactor` `ci` `revert` `test` `perf`;
+`chore` reprova); scope e a skill tocada (`fix(aegro-financeiro): ...`), ou
+`skills` quando a PR toca varias. O check de titulo cobra o type, nao o scope.
+
+## Coordenacao com o CLI
+
+A skill descreve o comando; o comando mora no
+[`tool-aegro-cli`](https://github.com/aegro/tool-aegro-cli). Tres regras:
+
+- Comando ou flag que ainda nao saiu no PyPI nao entra na skill como se
+  existisse. A PR da skill espera a tag do CLI, ou escreve a instrucao de forma
+  que valha nas duas versoes e diz a partir de quando o CLI cobra.
+- Quem muda um comando no CLI abre neste repo a PR que acompanha a do CLI e a
+  cita; quem muda uma skill por causa de um comando cita a PR do CLI. O drift
+  semanal pega o que escapar, mas uma semana depois.
+- Defeito do CLI ou do endpoint nao vira contorno na skill. A ressalva so entra
+  quando muda o que o agente faz enquanto o defeito existe, e o conserto vai
+  para o dono, por ticket.
+
+## Como um problema chega aqui
+
+Por **Ticket de Suporte** no `aegro/workspace` com `Produto = CLI`, aberto
+so pelo Suporte, a partir do chamado que a `aegro-feedback-dev` monta. Instrucao
+errada da skill e da squad
+Agentes; comando errado e do CLI; endpoint errado e da squad do dominio. Nao por
+mensagem direta. Como contribuir, quem revisa e como publicar:
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
