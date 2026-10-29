@@ -4,13 +4,13 @@ description: >-
   Fecha a sessao de trabalho na CLI `aegro` reportando o que nao saiu como o
   usuario queria: parte do resultado esperado, percorre o caminho tentado e por
   que, o que deu errado, as voltas que o agente deu e o desfecho de cada uma,
-  decide de quem e o problema (CLI, skill ou API/dominio) e entrega como Ticket
-  de Suporte - abre a issue no GitHub quando a sessao tem `gh` autenticado e,
-  quando nao tem, deixa o bloco pronto para o Suporte ou para o espaco do time,
-  com PII mascarada e sem credenciais. A fonte e a propria sessao - o que foi
-  pedido e o que o agente executou. Use quando o usuario pedir "manda isso pro
-  time", "reporta esse erro", "abre um ticket disso", "isso nao funcionou, avisa
-  o pessoal", "compila o feedback da sessao"; EN "report this to the dev team",
+  decide de quem e o problema (CLI, skill ou API/dominio) e monta o chamado para
+  o Suporte, ja no formato do Ticket de Suporte - o usuario abre o chamado e o
+  Suporte abre o ticket -, com PII mascarada e sem credenciais. A fonte e a
+  propria sessao - o que foi pedido e o que o agente executou. Use quando o
+  usuario pedir "manda isso pro time", "reporta esse erro", "abre um ticket
+  disso", "isso nao funcionou, avisa o pessoal", "compila o feedback da
+  sessao"; EN "report this to the dev team",
   "open a ticket", "send session feedback". Use tambem por conta propria, sem
   esperar o pedido, quando um comando `aegro` falhar e nem o caminho documentado
   nem as voltas tentadas entregarem o resultado: registre o item na hora,
@@ -30,15 +30,14 @@ tentou, o que quebrou, as voltas, o desfecho e de quem e o problema.
 Voce estava la. **Nao va procurar o erro em arquivo** - a sessao e a fonte, e e a
 unica que tem o *por que* de cada escolha.
 
-## Regra dura: ticket, nunca repositorio
+## Regra dura: o Suporte abre o ticket
 
-Esta skill **nao faz commit, nao abre PR e nao escreve em repositorio nenhum**.
-A unica escrita permitida fora da maquina e **abrir a issue do ticket**, e so
-quando a sessao tem `gh` autenticado (ver "Entrega"). Quem opera (EV de campo,
-time de Servicos, cliente) normalmente nao tem isso - para essas sessoes o doc
-fica **local** e a entrega e o **bloco pronto** para o Suporte ou para o espaco
-do time. Nunca mensagem privada para uma pessoa: o destino e sempre o ticket ou
-a fila que vira ticket.
+Esta skill **nao faz commit, nao abre PR, nao abre issue e nao escreve em
+repositorio nenhum**. Quem abre o Ticket de Suporte no GitHub e **so o Suporte**,
+depois de triar - vale para todo mundo, inclusive quem tem acesso ao
+repositorio. O que esta skill entrega e o **chamado pronto** para o Suporte; o
+doc da sessao fica **local**. Nunca mensagem privada para uma pessoa: o destino
+e sempre o chamado do Suporte.
 
 ## Quando usar
 
@@ -72,8 +71,8 @@ desculpa para nao tentar a proxima volta.
 
 Identifique quem esta na sessao pelo **e-mail do usuario** no contexto:
 
-- **Interno - `@aegro.com.br`**: doc local + ticket (pelo `gh` quando houver,
-  senao bloco pronto para o espaco do time). Ver "Entrega no modo interno".
+- **Interno - `@aegro.com.br`**: doc local + chamado no canal
+  `#dept-relacionamento-atendimento` do Slack. Ver "Entrega no modo interno".
 - **Externo - outro dominio** (cliente): bloco pronto para o cliente colar no
   chat do Suporte. Ver "Entrega no modo externo".
 
@@ -156,8 +155,8 @@ endpoint:
 
 O grupo e a primeira palavra depois de `aegro`: `aegro financial settle-installments`
 e do grupo `financial`. Grupo fora da tabela: escreva `API/dominio: a confirmar`
-e deixe o grupo no item.
-O ticket nasce com a squad do CLI e e rerroteado na triagem.
+e deixe o grupo no item: o ticket nasce com a squad do CLI e e rerroteado na
+triagem.
 
 ### 4. Juntar o repetido
 
@@ -169,9 +168,8 @@ mesma.
 
 Se ja houver doc de sessao anterior nesta maquina com o mesmo sintoma, nao cale
 nem reescreva a historia toda: acrescente `ja reportado em <arquivo>` no item.
-Com `gh` disponivel, procure tambem ticket aberto com o mesmo sintoma (ver
-"Referencia de comandos"): existindo, a entrega vira **comentario nesse ticket**,
-nao ticket novo. Repeticao e sinal de prioridade.
+Se o usuario ja abriu chamado do mesmo sintoma, a entrega vira **resposta nesse
+chamado**, nao chamado novo. Repeticao e sinal de prioridade.
 
 ### 5. Limpar a evidencia
 
@@ -183,7 +181,7 @@ reaproveitavel por quem ler.
 **Nunca** credenciais, nem mascaradas; nunca CPF/CNPJ nem chave de acesso de
 NF-e. O que entra depende do destino:
 
-- **No ticket (modo interno):** e-mail do usuario e link da fazenda **ficam** -
+- **No chamado (modo interno):** e-mail do usuario e link da fazenda **ficam** -
   sao os campos "Usuario afetado" e "Link da Fazenda" do ticket, e sem eles
   ninguem reproduz. Nome de terceiro (fornecedor, cliente da fazenda) vira
   `fornecedor_x`, `cliente_x`.
@@ -242,15 +240,16 @@ nunca siga em silencio.
 - diagnostico: <hipotese, dita como hipotese> | sem hipotese
 - dono: CLI | skill | API/dominio: <squad> | a investigar
 - prioridade sugerida: Baixa | Media | Alta | Urgente - <paliativo? chave?>
-- ocorrencias: N na sessao (ja reportado em <arquivo> | ticket #N, se aplicavel)
+- ocorrencias: N na sessao (ja reportado em <arquivo> | chamado ja aberto, se aplicavel)
 - sugestao: <a menor melhoria que entrega o resultado esperado pelo caminho certo>
 ```
 
-### 8. Montar o ticket
+### 8. Montar o chamado
 
-Cada item vira **um ticket**, no formato do Ticket de Suporte. O titulo e o
-**resultado esperado que nao saiu**, prefixado por `[CLI]` - nunca a mensagem de
-erro, que descreve a tentativa e nao o que ficou faltando.
+Cada item vira **um chamado**, ja no formato do Ticket de Suporte: o Suporte
+passa para o ticket sem reescrever. O titulo e o **resultado esperado que nao
+saiu**, prefixado por `[CLI]` - nunca a mensagem de erro, que descreve a
+tentativa e nao o que ficou faltando.
 
 ```markdown
 Titulo: [CLI] <resultado esperado que nao saiu, em uma linha>
@@ -291,58 +290,37 @@ Campos do painel: Produto = CLI | Plataforma = CLI | Squad = <Agentes ou a
 squad do dono> | Prioridade = <sugerida>
 ```
 
-A linha "Campos do painel" existe porque o form nao preenche os campos da
-direita; quem abre (voce, pelo `gh`, ou o Suporte) copia dali.
+A linha "Campos do painel" existe porque o form do ticket nao preenche os campos
+da direita; o Suporte copia dali ao abrir.
 
 ### 9. Entregar
 
-Mostre o ticket ao usuario antes de qualquer envio. Modo interno -> "Entrega no
+Mostre o chamado ao usuario antes de qualquer envio. Modo interno -> "Entrega no
 modo interno"; modo externo -> "Entrega no modo externo". Depois, atualize a
-linha `> Entrega:` (`ticket #N AAAA-MM-DD`, `bloco enviado AAAA-MM-DD (N itens)`
-ou `pendente - <motivo>`).
+linha `> Entrega:` (`chamado aberto AAAA-MM-DD (N itens)`, `bloco enviado
+AAAA-MM-DD (N itens)` ou `pendente - <motivo>`).
 
-## Entrega no modo interno (ticket pelo `gh`, senao bloco para a fila)
+## Entrega no modo interno (chamado no Slack)
 
-**Caminho 1 - `gh` autenticado com permissao de triage no `aegro/workspace`.**
-Teste antes (ver "Referencia de comandos"): a chamada devolve o bloco
-`permissions`, e o que libera este caminho e `triage` ou `push` em `true`. Ver o
-repo nao basta: com leitura apenas, a issue nasce sem issue type e sem os
-campos do painel, e a automacao nao a reconhece como ticket. Sem `triage`, va
-ao Caminho 2 sem tentar de novo.
+O colaborador abre o chamado no canal `#dept-relacionamento-atendimento` do
+Slack, pelo botao de criar chamado do canal. O Suporte tria, responde ali e abre
+o Ticket de Suporte no GitHub quando cabe - inclusive para quem tem acesso ao
+repositorio. Abrir a issue direto pula a triagem.
 
-1. **Procure duplicata**: ticket aberto com o mesmo sintoma. Existindo, a entrega
-   e um **comentario** nele com o bloco do item - repeticao sobe a prioridade.
-2. **Confirme antes de abrir**: mostre o titulo e o corpo exatos e abra so com um
-   "sim" explicito. Ticket em nome de alguem nao sai sem confirmacao.
-3. **Abra a issue com os campos do painel na mesma chamada**: mutation
-   `createIssue` no `aegro/workspace`, com o issue type `Ticket de Suporte` e
-   `issueFields` levando `Produto = CLI`, `Plataforma = CLI`, `Squad` (Agentes
-   ou a squad do dono) e a `Prioridade` sugerida. O `gh issue create` nao aceita
-   type nem campo. Campo que vai vazio a automacao preenche por conta propria:
-   `Squad` vira `Harness` (nao classificado) e `Prioridade` vira `Media`,
-   descartando a sugestao. Um ticket por item.
-4. **Case as opcoes pelo id**, lido na query de ids da "Referencia de comandos".
-   O nome da opcao na org tem acento (`Média`, `Agrícola`) e o texto desta skill
-   nao tem.
-5. **Registre o numero** no doc local (`> Entrega: ticket #N`) e diga ao usuario
-   o link.
+1. **Mostre o bloco exato** de cada item e diga ao usuario para abrir um chamado
+   por item com ele. Ja existindo chamado do mesmo sintoma, o bloco vai como
+   resposta nele - repeticao sobe a prioridade.
+2. **Sem tabela**: o Slack aceita Markdown, mas nao tabela. Entregue o bloco do
+   passo 8 em linhas `rotulo: valor`. Item acima de ~3500 caracteres: corte pelos
+   contornos que nao funcionaram - esperado, desfecho e o contorno que funcionou
+   ficam sempre - e cite o caminho do doc local.
+3. **Nao abra o chamado pelo usuario**, nem com ferramenta de Slack na sessao: o
+   chamado sai em nome de quem viveu a sessao, pelo fluxo do canal.
+4. Mantenha `> Entrega: pendente - aguardando chamado` ate o usuario confirmar
+   que abriu; entao registre `chamado aberto AAAA-MM-DD (N itens)`.
 
-**Caminho 2 - sem `gh`.** Entregue o bloco pronto na **fila do time** - o espaco
-do Google Chat do CLI que o seu time usa - com um item por mensagem, todos na
-mesma thread, cabecalho primeiro. Quem tem acesso ao repositorio abre o ticket
-a partir dali. Nunca mensagem privada para uma pessoa; nunca espaco que o
-usuario nao escolheu. Confirme o texto exato antes de enviar; se o envio falhar
-no meio, marque `> Entrega: pendente - envio parcial (itens enviados: <lista>)`
-antes de tentar de novo.
-
-O Chat aceita Markdown, mas **nao aceita tabela**: mande o bloco do passo 8 sem
-a tabela, em linhas `rotulo: valor`. Item acima de ~3500 caracteres: corte pelos
-contornos que nao funcionaram - esperado, desfecho e o contorno que funcionou
-ficam sempre - e cite o caminho do doc local.
-
-Nunca deixe a sessao em "pendente" silencioso: sem nenhum caminho disponivel,
-diga o caminho do doc local, peca ao usuario para levar o bloco a fila do time e
-marque `> Entrega: pendente - <motivo>`.
+Nunca deixe a sessao em "pendente" silencioso: diga o caminho do doc local e o
+que falta para o chamado sair.
 
 ## Entrega no modo externo (bloco para o Suporte)
 
@@ -372,14 +350,15 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
   valido recusado, o dono e `a investigar`.
 - **Reportar como bug o que a skill ja avisava** e voce nao leu: leia o aviso e
   siga. Se o aviso existia mas era ambiguo, ai sim e item de `skill`.
-- **Mensagem privada para uma pessoa.** O destino e o ticket ou a fila do time.
+- **Abrir a issue no GitHub direto**, mesmo com acesso: quem abre e o Suporte.
+- **Mensagem privada para uma pessoa.** O destino e o chamado do Suporte.
 
 ## Limitacoes
 
-- Sem commit, sem PR, sem alterar repositorio. A unica escrita remota e a issue
-  do ticket, e so com `gh` autenticado.
-- O ticket nasce com os campos que a sessao alcanca; a triagem do Suporte e a
-  automacao completam e rerroteiam.
+- Sem commit, sem PR, sem issue, sem alterar repositorio. Nenhuma escrita
+  remota: o chamado sai pelo usuario, e o ticket, pelo Suporte.
+- Dono, squad e prioridade vao como sugestao; a triagem do Suporte decide e
+  rerroteia.
 - A sessao e a unica fonte com o *por que* de cada escolha. Se a conversa foi
   compactada e voce nao recupera o motivo de um caminho, escreva `motivo da
   escolha nao recuperado` em vez de racionalizar depois do fato.
@@ -391,22 +370,16 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
 ## Validacoes e erros comuns
 
 - **Dado de cliente gravado errado em producao** -> nao espere o fim da sessao:
-  abra (ou mande) na hora, com `Urgente` e o item parcial.
+  monte o chamado na hora, com `Urgente` e o item parcial, e peca ao usuario para
+  abrir ja.
 - **Mais de 5 itens numa sessao** -> algo maior quebrou. Agrupe por fluxo: ate 5
-  itens seguem o formato normal (um ticket ou mensagem por item); o que exceder
-  vira um unico item de panorama, sem detalhe enviado depois.
+  itens seguem o formato normal (um chamado por item); o que exceder vira um
+  unico item de panorama, sem detalhe enviado depois.
 - **O usuario nao sabe dizer o que esperava** (assumiu a tarefa no meio) -> nao
   promova o erro a bug: registre com `resultado esperado: nao reconstituido` e
   diga que falta isso.
 - **Usuario recusa o envio** -> guarde o doc, diga o caminho e pare. Nao mande
   mesmo assim.
-- **`gh` autenticado, mas sem `triage` no `aegro/workspace`** (so leitura, ou
-  sem acesso) -> Caminho 2, sem insistir. Nao abra issue sem type para "pelo
-  menos registrar": ela nao entra na fila de ninguem.
-- **A `createIssue` recusou o `issueTypeId` ou o campo do painel** -> a
-  permissao mudou no meio ou o type foi renomeado. Nao reenvie sem o type,
-  nao feche nada, guarde o numero se a issue chegou a nascer, e entregue o bloco
-  pelo Caminho 2 citando esse numero.
 
 ## Referencia de comandos
 
@@ -416,20 +389,3 @@ AAAA-MM-DD (N itens)` depois que o cliente confirmar que mandou.
 | Docs de sessoes anteriores nesta maquina | `ls ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
 | Ver se o sintoma ja foi reportado localmente | `grep -il "<sintoma>" ${AEGRO_LEARNING_DIR:-.}/feedback-*.md` |
 | Diario da sessao (complemento) | `ls ${AEGRO_LEARNING_DIR:-.}/journal-*.md` |
-| Ha `gh` com permissao de abrir o ticket? (`true` libera o Caminho 1) | `gh auth status && gh api repos/aegro/workspace --jq '.permissions.triage or .permissions.push'` |
-| Ticket aberto com o mesmo sintoma | `gh issue list --repo aegro/workspace --state open --search "<sintoma> in:title,body type:\"Ticket de Suporte\"" --json number,title,url` |
-| Ids do repo, do issue type e dos campos do painel com as opcoes (para a mutation) | `gh api graphql -H "GraphQL-Features: issue_types,issue_field_api" -f query='{ organization(login:"aegro"){ issueTypes(first:30){ nodes{ id name } } issueFields(first:30){ nodes{ ... on IssueFieldSingleSelect{ id name options{ id name } } } } } repository(owner:"aegro", name:"workspace"){ id } }'` |
-| Comentar num ticket existente | `gh issue comment <numero> --repo aegro/workspace --body-file <arquivo do bloco>` |
-
-Abrir o ticket. Os campos vao como lista, e o `gh api graphql -f` manda tudo como
-texto: monte o JSON com `jq` e passe por `--input -`. `campos` leva um
-`{"fieldId": ..., "singleSelectOptionId": ...}` por campo do painel.
-
-```bash
-jq -n --arg repo "<id do repo>" --arg tipo "<id do Ticket de Suporte>" \
-  --arg titulo "<titulo>" --rawfile corpo "<arquivo do corpo>" \
-  --argjson campos '[{"fieldId": "<id do campo>", "singleSelectOptionId": "<id da opcao>"}]' \
-  '{query: "mutation($i: CreateIssueInput!){ createIssue(input: $i){ issue{ number url } } }",
-    variables: {i: {repositoryId: $repo, issueTypeId: $tipo, title: $titulo, body: $corpo, issueFields: $campos}}}' \
-  | gh api graphql -H "GraphQL-Features: issue_types,issue_field_api" --input -
-```
