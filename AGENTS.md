@@ -133,6 +133,10 @@ os le ([0003](docs/decisions/0003-crivo-le-os-reference.md)).
 Sem acento, como neste arquivo e nas skills existentes. O crivo nao cobra; a
 regra existe para a busca textual (`grep`, drift) casar sem variante.
 
+Excecao: citacao literal do que o sistema devolve ou espera (mensagem de erro
+do servidor, nome de opcao, valor de campo) fica como e, com acento. Sem ele o
+agente nao reconhece a mensagem nem casa o valor.
+
 ## Antes de abrir a PR
 
 ```bash
@@ -147,7 +151,8 @@ Peca review, e confira que o pedido saiu: `main` exige uma aprovacao e ninguem
 tem bypass, entao PR sem revisor pedido fica parada. O CODEOWNERS auto-solicita
 `@aegro/squad-agentes`. Titulo `type(scope): description` com type aceito pela
 org (`feat` `fix` `build` `docs` `refactor` `ci` `revert` `test` `perf`;
-`chore` reprova); scope e o nome da skill sem o prefixo (`fix(financeiro): ...`).
+`chore` reprova); scope e a skill tocada (`fix(aegro-financeiro): ...`), ou
+`skills` quando a PR toca varias. O check de titulo cobra o type, nao o scope.
 
 ## Coordenacao com o CLI
 
