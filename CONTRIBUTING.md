@@ -20,8 +20,8 @@ Tres coisas tornam este repo diferente dos repos de codigo:
 
 1. **Todo trabalho nasce de uma issue.** Instrucao errada relatada por usuario e um
    [Ticket de Suporte](https://github.com/aegro/workspace/blob/dev/governance/conventions/ticket-de-suporte.md)
-   no `aegro/workspace` (repo interno da Aegro; quem e de fora reporta pelo Suporte) com
-   `Produto = CLI`; a `aegro-feedback-dev` abre ou monta o bloco.
+   no `aegro/workspace` (repo interno da Aegro) com `Produto = CLI`, aberto so pelo Suporte. Quem
+   tem o problema abre chamado com o Suporte; a `aegro-feedback-dev` monta o chamado.
    Skill nova ou secao nova por causa de comando novo e uma `Tarefa` ligada a PR do CLI.
 2. **Confira o estado da CLI publicada** (`pip index versions aegro` ou a pagina do PyPI) antes de
    escrever instrucao que depende de comando recente.

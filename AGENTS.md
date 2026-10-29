@@ -172,7 +172,8 @@ A skill descreve o comando; o comando mora no
 ## Como um problema chega aqui
 
 Por **Ticket de Suporte** no `aegro/workspace` com `Produto = CLI`, aberto
-pelo Suporte ou pela `aegro-feedback-dev`. Instrucao errada da skill e da squad
+so pelo Suporte, a partir do chamado que a `aegro-feedback-dev` monta. Instrucao
+errada da skill e da squad
 Agentes; comando errado e do CLI; endpoint errado e da squad do dominio. Nao por
 mensagem direta. Como contribuir, quem revisa e como publicar:
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
