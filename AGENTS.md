@@ -162,9 +162,9 @@ A skill descreve o comando; o comando mora no
 - Comando ou flag que ainda nao saiu no PyPI nao entra na skill como se
   existisse. A PR da skill espera a tag do CLI, ou escreve a instrucao de forma
   que valha nas duas versoes e diz a partir de quando o CLI cobra.
-- Quem muda um comando no CLI abre a PR par aqui e a cita; quem muda uma skill
-  por causa de um comando cita a PR do CLI. O drift semanal pega o que escapar,
-  mas uma semana depois.
+- Quem muda um comando no CLI abre neste repo a PR que acompanha a do CLI e a
+  cita; quem muda uma skill por causa de um comando cita a PR do CLI. O drift
+  semanal pega o que escapar, mas uma semana depois.
 - Defeito do CLI ou do endpoint nao vira contorno na skill. A ressalva so entra
   quando muda o que o agente faz enquanto o defeito existe, e o conserto vai
   para o dono, por ticket.

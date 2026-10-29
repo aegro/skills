@@ -71,7 +71,7 @@ Tres coisas tornam este repo diferente dos repos de codigo:
 | Situacao | O que fazer |
 |---|---|
 | Comando novo ou flag nova no CLI | A PR do CLI cita a skill afetada; a PR da skill e aberta junto e **espera a tag** do CLI para subir o `requires-cli`. Enquanto a tag nao sai, a skill pode entrar com a instrucao escrita para valer nas duas versoes. |
-| Comando removido ou renomeado no CLI | A PR do CLI abre a PR par aqui antes do merge. O drift semanal e a rede, nao o processo. |
+| Comando removido ou renomeado no CLI | A PR do CLI abre aqui, antes do merge, a PR que a acompanha. O drift semanal e a rede, nao o processo. |
 | Defeito do CLI ou do endpoint descoberto ao escrever a skill | Ticket de Suporte com `Produto = CLI`. A skill **nao** ganha contorno; no maximo a ressalva que muda o que o agente faz enquanto o defeito existe, removida quando o fix sai. |
 | Drift semanal acusou divergencia (`issue fixa "Drift: skills x CLI publicada"`) | Corrija a skill, ou o parser do drift quando for falso positivo. Nao feche a issue: o job a reabre. |
 
