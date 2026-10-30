@@ -518,7 +518,9 @@ Tres coisas que fazem o comando parar antes de escrever — e o conserto:
 - **Todos os itens conciliados**, e o grao (item de categoria SEED) numa unidade
   **compativel com kg** (`kg`, `t`, `sc60`...). `un`/`L` nao convertem — o
   lancamento para e manda reconciliar com `conciliate --unit` /
-  `--conversion-rate`. O grupo aceita so semente + servico: adubo/defensivo no
+  `--conversion-rate`. Semente **contada** (`mil sem`, `sc60k sem` e o resto
+  da familia de contagem) tambem nao e compativel com kg e nao entra neste
+  grupo. O grupo aceita so semente + servico: adubo/defensivo no
   meio da nota faz o comando reclamar do item, com o codigo dele.
 - **A safra e obrigatoria na pratica** (`--stock-harvest-crop`): sem ela a baixa
   nasce sem origem de producao. Nome de safra resolve normalmente.
@@ -608,6 +610,7 @@ aegro received-fiscal-documents launch-bill <NUMERO> --category "..." --expense 
 | Apos `--execute` com estoque, o envelope pode sair `partial` com `stockUnverified`. | **Nao relance** — a conta foi criada; faltou a *conferencia*. Confira na UI (Estq. Producao -> Movimentacoes). |
 | Conciliacao pode ter `conversionRate` errado persistido (ex. 1000 com nota e elemento na mesma unidade) — estoque sairia x1000; `--stock-location` -> 422 de cost-apportion. | Checagem 3 da conferencia do dry-run (secao 5): confira `inputs[].amount` vs quantidade da nota; distorcido -> lance sem `--stock-location` e reporte. |
 | Unidade da nota nao reconhecida (ex. SC) gravava `measuringUnit: "ENUM_NOT_FOUND"` em silencio. Na **v0.17.0+** o `conciliate` grava a unidade do **elemento** e o `launch-bill` recusa mapeamento com defeito. | Siga o conserto que o proprio comando indica: `conciliate <doc> --unit CODIGO=un` e/ou `--conversion-rate CODIGO=fator`. O de/para e reusado por (fazenda, fornecedor, item) — fator errado contamina a proxima nota. |
+| Semente pode estar cadastrada em **contagem** (`seed`, `mil sem` ou o saco padrao da cultura: milho `sc60k sem`, soja `sc200k sem`, sorgo `sc500k sem`). A unidade da nota (`SC`, `BAG`, `MIL`) nao diz se a embalagem e de kg ou de sementes, e o CLI nunca deduz. `bag3M sem`/`bag5M sem` sao embalagem de **compra**: valem na nota e na conta, nunca como unidade do elemento. | Dentro da contagem o fator e fixo: nota em bag de 5 milhoes e elemento em `sc200k sem` -> `--conversion-rate CODIGO=25` (4 bags = 100 sacos); nota em sacos de 60 mil e elemento em `mil sem` -> `60`. Cultivar nova vinda de nota em bag: cadastre no saco padrao da cultura, nunca em `bag5M sem`. Entre kg e contagem nao ha fator sem o PMS do lote: pergunte ao operador, nunca use 1. |
 | Dry-run serializa localmente e **nao valida nomes no servidor** (categoria/tag/conta com typo passam). | Checagem 1 da conferencia do dry-run (secao 5): resolva cada nome via listagem antes do execute. |
 | `items <numero>` ambiguo pede a key completa mas nao lista os candidatos. | Rode `list` com `--texto <numero>` (ou a janela de datas) para ver os candidatos e escolher a key. |
 | A partir da **v0.24.0** o `launch-bill` e o `launch-purchase-order` anexam a DANFE no proprio create (`--no-attach-danfe` desliga); ate a **v0.23.0** o registro nasce sem anexo e nada avisa. | Na v0.24.0+ **nao anexe de novo** depois de lancar: um `files attach` ali deixa a mesma DANFE duas vezes na conta. Ate a v0.23.0, baixe com `danfe <doc> -o nota.pdf` e anexe com `files attach --entity bill --key bill::<id> --file nota.pdf --execute`. |
