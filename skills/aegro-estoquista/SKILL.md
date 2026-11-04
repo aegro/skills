@@ -374,9 +374,12 @@ mande o usuario para a interface web.
 
 ### Semente contada: CLI, liberacao e troca de unidade
 
-- CLI que ainda nao conhece a familia de contagem recusa `--unit "sc60k sem"`
-  (e as demais) com exit 4, unidade inexistente. Atualize a CLI
-  (`pip install -U aegro`); nao troque por `un` nem por `kg`.
+- A familia de contagem depende da versao do CLI: a que ainda nao a conhece
+  (inclusive a ultima publicada no PyPI enquanto a release nao sai) recusa
+  `--unit "sc60k sem"` (e as demais) com exit 4, unidade inexistente, e
+  atualizar nao resolve. Pare e diga ao operador que o CLI instalado ainda nao
+  cadastra semente contada; nao troque por `un` nem por `kg` e nao crie outra
+  cultivar para contornar.
 - Se o Aegro responder "As unidades de contagem de sementes ainda não estão
   liberadas para esta fazenda", cadastre em massa so com o peso que o operador
   informar; sem ele, pare e peca a liberacao ao suporte. Nunca use `un`.
