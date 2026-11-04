@@ -683,6 +683,11 @@ elemento (o CLI recusa no `create-seed`/`update-seed`; o Aegro responde 422).
 lance a compra em `bag5M sem` na conta a pagar ou na conciliacao da NF-e — o
 Aegro converte para a unidade do item (4 `bag5M sem` = 100 `sc200k sem`).
 
+Cultivar ja cadastrada em massa (ou `un`) nao passa para contagem: o Aegro
+recusa trocar a unidade de grandeza. Siga na unidade dela e nao cadastre outra
+cultivar em contagem para contornar. Recusa de CLI (exit 4) ou de fazenda sem a
+contagem liberada: ver `/aegro-estoquista`.
+
 Use `elementKey` + `amount`. Nao use `productKey` (campo de compras) nem
 `quantity` em atividades. Rode `--dry-run` antes e, apos executar, confira os
 insumos persistidos com `aegro activities plan <ACTIVITY_KEY>` ou

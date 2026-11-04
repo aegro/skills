@@ -372,6 +372,19 @@ sistema. A resposta e **422 e lista os valores aceitos** — e a lista e a fonte
 boa, mais atual que qualquer tabela nesta skill. Corrija o valor e repita; nao
 mande o usuario para a interface web.
 
+### Semente contada: CLI, liberacao e troca de unidade
+
+- CLI que ainda nao conhece a familia de contagem recusa `--unit "sc60k sem"`
+  (e as demais) com exit 4, unidade inexistente. Atualize a CLI
+  (`pip install -U aegro`); nao troque por `un` nem por `kg`.
+- Se o Aegro responder "As unidades de contagem de sementes ainda não estão
+  liberadas para esta fazenda", cadastre em massa so com o peso que o operador
+  informar; sem ele, pare e peca a liberacao ao suporte. Nunca use `un`.
+- Trocar a unidade de uma cultivar ja cadastrada entre massa (ou `un`) e
+  contagem ainda nao e possivel: o Aegro recusa a troca de grandeza. Mantenha a
+  unidade dela e diga isso ao operador; nao cadastre uma segunda cultivar em
+  contagem para contornar, que o estoque e o historico ficam divididos.
+
 ### Ler e atualizar categorias do elemento (merge parcial, NUNCA destrutivo)
 
 - **Ler:** use `aegro elements get-categories <key>` (GET, read-only). **Nunca** use `set-categories` so para "ver" o estado — antes era o unico jeito de inspecionar e podia zerar dados sem querer.
