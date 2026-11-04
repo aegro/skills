@@ -51,7 +51,7 @@ Em sessao de agente, ligue tambem `AEGRO_SAFE_MODE=1`: alem de exigir
 | Tipo de defensivo         | `--type`               | ACARICIDE, ADJUVANT, ANTICIDE, BACTERICIDE, FUNGICIDE, GROWTH_REGULATOR, HERBICIDE, INSECTICIDE, NEMATICIDE, PHEROMONE, OTHER, UNKNOWN. |
 | Tipo de semente           | `--type`               | BEAN, CITRUS, COFFEE, CORN, COTTON, GRAPE, OAT, RICE, RYEGRASS, SORGHUM, SOY, SUGARCANE, WHEAT, MULTI, OTHER. **Soja e `SOY`**, nao `SOYBEAN`. |
 | Tipo de item              | `--type`               | ANIMAL_FOOD, FUEL, MACHINE_INPUTS, VETERINARY_PRODUCT, OTHER. Nao existe `GENERAL`.       |
-| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. |
+| Unidade de medida         | `--unit`               | **Simbolo**, nao nome: `kg`, `L`, `un`, `t`, `g`, `mL`, `ha`, `m²`. Saca tem o peso no simbolo (`sc 60Kg`) — `sc` sozinho nao existe. Semente comprada pode ser **pesada** (`kg`, `t`, `sc 60Kg`) ou **contada** (`seed`, `mil sem` ou o saco padrao da cultura: milho `sc60k sem`, soja `sc200k sem`, sorgo `sc500k sem`). `sc60k sem` (60 mil sementes) nao e `sc 60Kg` (60 kg). `bag3M sem` e `bag5M sem` sao **embalagens de compra**: nunca a unidade do elemento (o CLI recusa, exit 4; o Aegro responde 422), mas valem no lancamento da compra (item da conta a pagar, conciliacao de NF-e), convertidas para a unidade do item — 4 `bag5M sem` num item em `sc200k sem` entram como 100 `sc200k sem`. |
 | Quantidade                | `quantity`             | Objeto: `{"magnitude": X, "unit": "kg"}`. Magnitude pode ser negativa (divergencia).      |
 | Associacao financeira     | `set-categories`       | Vincula elemento a categorias financeiras de receita e/ou despesa.                         |
 
@@ -182,7 +182,7 @@ aegro stock transfer --farm "<fazenda>" --element-key element::abc123 \
 | `list`                    | POST     | (nenhum)                           | `--category` (repetivel), `--type` (repetivel), `--page` |
 | `create-defensive`        | POST     | `--name`, `--type`, `--unit`       | `--manufacturer`, `--observations`         |
 | `create-fertilizer`       | POST     | `--name`, `--unit`                 | `--manufacturer`, `--observations`         |
-| `create-seed`             | POST     | `--name`, `--type`, `--unit`       | `--manufacturer`, `--observations`         |
+| `create-seed`             | POST     | `--name`, `--type`, `--unit` (massa ou contagem de sementes; nunca `bag3M sem`/`bag5M sem`) | `--manufacturer`, `--observations`         |
 | `create-item`             | POST     | `--name`, `--type`, `--unit`       | `--manufacturer`, `--observations`         |
 | `create-service`          | POST     | `--name`, `--unit`                 | (nenhum)                                   |
 | `get-categories <key>`    | GET      | `element_key` (argumento)          | `--output` (leitura segura; NAO altera nada) |
@@ -211,6 +211,9 @@ aegro elements create-fertilizer --farm "<fazenda>" --name "Ureia 46%" --unit kg
 
 # Criar semente de soja
 aegro elements create-seed --farm "<fazenda>" --name "TMG 2381 IPRO" --type SOY --unit kg
+
+# Criar semente de milho controlada em contagem (sacos de 60 mil sementes)
+aegro elements create-seed --farm "<fazenda>" --name "AG 8480 PRO4" --type CORN --unit "sc60k sem"
 
 # Criar servico
 aegro elements create-service --farm "<fazenda>" --name "Pulverizacao Aerea" --unit ha
@@ -307,7 +310,11 @@ que nao houve consumo nem entrada.
 **Saldo.** O log **tira** `quantity` do local em `sourceLocationKey` e **poe** no
 local em `destinationLocationKey`; lado ausente e fora do estoque. Some por
 local, convertendo cada log (`quantity.unit`) para a unidade da posicao em
-`stock items`. Destino `company::` e posicao no fornecedor, nao no armazem.
+`stock items`. So converta dentro da mesma grandeza: as unidades de contagem de
+semente convertem entre si (1 `bag5M sem` de compra = 25 `sc200k sem` =
+5.000 `mil sem`), mas **nunca** para `kg` nem para `un` — o fator depende do PMS do
+lote. Se o saldo de uma semente misturar massa e contagem, nao some: mostre as
+duas parcelas separadas e sinalize. Destino `company::` e posicao no fornecedor, nao no armazem.
 `quantity` 0 nao move saldo — e ajuste de valor (juros ou desconto de parcela,
 diferenca de pedido) ou contagem de inventario que bateu: nao conte como compra,
 venda nem devolucao.
@@ -364,6 +371,22 @@ enumeracao, e qualquer `create-*` recusa `--unit` que nao seja um simbolo do
 sistema. A resposta e **422 e lista os valores aceitos** — e a lista e a fonte
 boa, mais atual que qualquer tabela nesta skill. Corrija o valor e repita; nao
 mande o usuario para a interface web.
+
+### Semente contada: CLI, liberacao e troca de unidade
+
+- A familia de contagem depende da versao do CLI: a que ainda nao a conhece
+  (inclusive a ultima publicada no PyPI enquanto a release nao sai) recusa
+  `--unit "sc60k sem"` (e as demais) com exit 4, unidade inexistente, e
+  atualizar nao resolve. Pare e diga ao operador que o CLI instalado ainda nao
+  cadastra semente contada; nao troque por `un` nem por `kg` e nao crie outra
+  cultivar para contornar.
+- Se o Aegro responder "As unidades de contagem de sementes ainda não estão
+  liberadas para esta fazenda", cadastre em massa so com o peso que o operador
+  informar; sem ele, pare e peca a liberacao ao suporte. Nunca use `un`.
+- Trocar a unidade de uma cultivar ja cadastrada entre massa (ou `un`) e
+  contagem ainda nao e possivel: o Aegro recusa a troca de grandeza. Mantenha a
+  unidade dela e diga isso ao operador; nao cadastre uma segunda cultivar em
+  contagem para contornar, que o estoque e o historico ficam divididos.
 
 ### Ler e atualizar categorias do elemento (merge parcial, NUNCA destrutivo)
 
