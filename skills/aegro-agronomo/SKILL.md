@@ -672,8 +672,8 @@ milho `sc60k sem`, soja `sc200k sem`, sorgo `sc500k sem`): a dose do plantio e
 sempre em sementes/ha e o
 `amount` e o total numa unidade da familia — 60 mil sementes/ha em 100 ha e
 `{"magnitude": 6000, "unit": "mil sem"}` (= 100 `sc60k sem`). Qualquer
-unidade da familia serve no `amount`, mesmo diferente da do elemento (como `g`
-ou `t` num insumo em `kg`): o Aegro converte para a unidade do elemento na baixa
+unidade da familia serve no `amount`, mesmo diferente da do elemento (como
+`mil sem` num elemento em `sc60k sem`): o Aegro converte para a unidade do elemento na baixa
 de estoque e no custo. A familia converte so entre si; **nunca** mande `kg` nem `un` para semente contada, nem
 contagem para semente pesada: sem o PMS do lote nao ha fator.
 
