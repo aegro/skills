@@ -1,8 +1,8 @@
 # Decisoes
 
-Por que as regras do `CLAUDE.md` sao o que sao.
+Por que as regras do `AGENTS.md` sao o que sao.
 
-Existe para o `CLAUDE.md` poder ser so regra. Ele e carregado no contexto de toda
+Existe para o `AGENTS.md` poder ser so regra. Ele e carregado no contexto de toda
 sessao que mexe em skill, entao cada linha dele disputa espaco com a skill que a
 pessoa veio editar — ele paga o mesmo imposto que cobra. Isto aqui nao e
 carregado por ninguem: custa zero ate alguem vir discutir uma regra.

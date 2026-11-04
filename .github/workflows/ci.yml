@@ -95,17 +95,18 @@ jobs:
             exit 0
           fi
           # `--no-renames`: mover uma skill para fora de `skills/` tambem conta.
-          # CLAUDE.md entra porque "mudou uma regra aqui, mude la" — a PR que
-          # muda so o padrao e justamente a que precisa do crivo.
+          # AGENTS.md entra porque "mudou uma regra aqui, mude la" — a PR que
+          # muda so o padrao e justamente a que precisa do crivo. README.md entra
+          # porque o crivo cobra que toda skill esteja listada nele.
           # O diff fora do grep: se ele falhar, o job tem que falhar, nao pular.
           arquivos="$(git diff --name-only --no-renames HEAD^1 HEAD)"
           tocados="$(printf '%s\n' "$arquivos" \
-            | grep -E '^(skills/|scripts/lint_skills\.py$|CLAUDE\.md$|\.github/workflows/ci\.yml$)' || true)"
+            | grep -E '^(skills/|scripts/lint_skills\.py$|AGENTS\.md$|README\.md$|\.github/workflows/ci\.yml$)' || true)"
           if [ -n "$tocados" ]; then
             printf '%s\n' "$tocados"
             echo "relevante=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::A PR nao toca skill, crivo nem CLAUDE.md — crivo pulado."
+            echo "::notice::A PR nao toca skill, crivo, AGENTS.md nem README.md — crivo pulado."
             echo "relevante=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.escopo.outputs.relevante == 'true'

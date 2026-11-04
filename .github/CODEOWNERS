@@ -1,17 +1,13 @@
-# Quem revisa as skills públicas do Aegro.
+# Quem revisa as skills publicas do Aegro.
 #
-# Por que isto existe: em agosto de 2026 cinco PRs ficaram paradas somando
-# 53 dias de espera. Nenhuma tinha conflito real e todas tinham as threads
-# resolvidas — faltava uma aprovação, e quatro delas nunca pediram review a
-# ninguém. A ruleset da organização exige 1 aprovação de outra pessoa em
-# `main`; nada no repositório convocava essa pessoa.
+# A squad Agentes mantem as skills e revisa todo PR; o time tem write no repo
+# (conferido em 2026-10-16), entao o GitHub auto-solicita a review ao time e
+# pula o autor. Antes eram duas pessoas nomeadas: PR de uma caia no colo da
+# outra, e quando as duas estavam fora a PR parava.
 #
-# O GitHub pula o autor ao auto-solicitar review. Com dois donos, a PR de um
-# cai automaticamente no colo do outro, que é o comportamento desejado.
-#
-# Nota: `require_code_owner_review` está desligado na ruleset da org, então
-# este arquivo AUTO-SOLICITA mas não bloqueia. É o suficiente para o problema
-# que ele resolve — PR nascer sem destinatário. Tornar bloqueante depende do
-# time de plataforma.
+# `require_code_owner_review` esta desligado na ruleset da org: este arquivo
+# AUTO-SOLICITA, nao bloqueia. A aprovacao obrigatoria vem da ruleset de main.
+# O repo e publico e o conteudo vai para o PyPI no wheel da CLI: a review e
+# humana, sem auto-merge.
 
-*   @antonioaab @franciscogborja
+*   @aegro/squad-agentes

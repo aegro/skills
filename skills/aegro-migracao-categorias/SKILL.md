@@ -78,8 +78,9 @@ versao. Se o `--help` falhar, **pare e diga isto ao usuario**, sem contornar:
 
 **O comando de upgrade importa.** `uv tool upgrade aegro` **nao atualiza** uma
 instalacao com pin exato: ela roda, atualiza dependencias, sai com sucesso e
-deixa o `aegro` na versao velha (medido em campo — a mensagem diz
-`aegro is pinned to 0.15.0 ... reinstall with uv tool install aegro@latest`).
+deixa o `aegro` na versao velha (a mensagem diz que o `aegro` esta
+`pinned to <versao instalada>` e manda reinstalar com
+`uv tool install aegro@latest`).
 Quem seguisse a instrucao antiga acharia que atualizou e nao teria atualizado.
 
 A versao e **informativa**: com o `--help` funcionando, siga. Por que nao barrar
