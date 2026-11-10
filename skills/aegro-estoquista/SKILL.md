@@ -1,6 +1,6 @@
 ---
 name: aegro-estoquista
-requires-cli: 0.21.0
+requires-cli: 0.35.0
 description: >-
   Dominio de estoque e insumos do Aegro pela CLI — itens de estoque (posicao
   de um insumo em um local), locais de armazenagem, movimentacoes, elementos e
@@ -374,12 +374,11 @@ mande o usuario para a interface web.
 
 ### Semente contada: CLI, liberacao e troca de unidade
 
-- A familia de contagem depende da versao do CLI: a que ainda nao a conhece
-  (inclusive a ultima publicada no PyPI enquanto a release nao sai) recusa
-  `--unit "sc60k sem"` (e as demais) com exit 4, unidade inexistente, e
-  atualizar nao resolve. Pare e diga ao operador que o CLI instalado ainda nao
-  cadastra semente contada; nao troque por `un` nem por `kg` e nao crie outra
-  cultivar para contornar.
+- A familia de contagem existe no CLI a partir da 0.35.0. Versao anterior
+  recusa `--unit "sc60k sem"` (e as demais) com exit 4, unidade inexistente.
+  Confira com `aegro --version`; se for anterior, pare e diga ao operador que
+  o CLI instalado ainda nao cadastra semente contada e que atualizar resolve.
+  Nao troque por `un` nem por `kg` e nao crie outra cultivar para contornar.
 - Se o Aegro responder "As unidades de contagem de sementes ainda não estão
   liberadas para esta fazenda", cadastre em massa so com o peso que o operador
   informar; sem ele, pare e peca a liberacao ao suporte. Nunca use `un`.
