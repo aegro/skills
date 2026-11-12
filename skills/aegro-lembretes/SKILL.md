@@ -49,7 +49,9 @@ nao descobre a carteira sozinha.
 
 1. Para cada fazenda, uma por vez:
    - `aegro guided-setup tasks --farm "<fazenda>"`: tarefas pendentes e o
-     responsavel (`user::...`).
+     responsavel (`user::...`). Se vier o aviso de que a fazenda nao esta na
+     rota do onboarding (status `unknown`), o servidor nao sabe o que esta feito:
+     nao proponha cobranca por tarefa nessa fazenda, diga isso a quem pediu.
    - `aegro reminders recipients --farm "<fazenda>"`: quem pode receber e por
      qual canal; cruze o responsavel com o nome.
    - `aegro reminders list --farm "<fazenda>"`: o que voce ja agendou ali.
@@ -104,14 +106,26 @@ aegro reminders delete <reminderId> --farm "<fazenda>" --execute
 
 ## Validacoes e erros comuns
 
+Recusa do servidor sai como `REMINDER_REFUSED` com o motivo em `reason`; decida
+pelo `reason`, nao pela frase.
+
+- `AEGROZAP_NOT_CONFIGURED` (exit 1): os lembretes nao estao ligados neste
+  ambiente. Nada foi agendado; reporte, nao tente de novo.
+- `CREATOR_NOT_IN_FARM` (exit 2): voce nao e pessoa da fazenda; peca o acesso.
+- `USER_REQUIRED` (exit 2): rode `aegro auth login`.
 - `NO_REACHABLE_RECIPIENT`: ninguem da lista recebe (sem Aegrozap e sem telefone
   no cadastro). Diga quem e por que; o cliente precisa cadastrar o telefone.
 - `TEMPLATE_UNAVAILABLE`: o modelo de mensagem nao esta aprovado no ambiente.
   Nada foi agendado; reporte, nao tente de novo.
 - `FIRST_OCCURRENCE_IN_PAST`, `TOO_MANY_RECIPIENTS`, `INVALID_MESSAGE`: corrija o
   dado e rode o `--dry-run` de novo.
-- `NOT_CREATOR` ao excluir: o lembrete nao e seu.
-- Nome ambiguo em `--to`: a CLI lista os candidatos; pergunte qual.
+- `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
+  foi excluido ou nao e um lembrete que voce cria ou recebe.
+- Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (503, queda de
+  conexao): confira com `reminders list` e, se nao estiver la, repita com a
+  mesma `--idempotency-key`.
+- Nome ambiguo em `--to`: a CLI lista os candidatos; pergunte qual. `--to`
+  aceita nome ou `user::...`, nao e-mail.
 
 ## Limitacoes
 
