@@ -205,7 +205,9 @@ Recusas do servidor, pelo `reason`:
 - `IDEMPOTENCY_KEY_REUSED` (exit 4): a chave ja foi usada com outro pedido, ou
   o lembrete dela foi excluido. Nada foi agendado. Rode sem
   `--idempotency-key` (a CLI gera uma nova) ou repita a chave so com
-  exatamente os mesmos `--to`, `--message`, `--date`, `--time` e `--repeat`.
+  exatamente o mesmo pedido: a mesma `--farm` e os mesmos `--to`, `--message`,
+  `--date`, `--time`, `--repeat`, `--weekday`, `--day-of-month` e `--until`
+  (o servidor compara a fazenda, as pessoas, o recado e a agenda inteira).
   Depois de excluir um lembrete, a chave dele nunca mais serve.
 - `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
   foi excluido ou nao e um lembrete que voce cria ou recebe.
