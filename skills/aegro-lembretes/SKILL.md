@@ -209,9 +209,14 @@ A CLI tambem recusa uma resposta que nao prova o que foi pedido:
   (`reminders delete <reminderId> --farm "<fazenda>" --execute`). Se voce o
   excluiu, ou ele nao esta la, crie com `--execute` SEM `--idempotency-key`: a
   chave de lembrete excluido e recusada (`IDEMPOTENCY_KEY_REUSED`).
-- `NOT_CONFIRMED` (exit 1) no `--execute`: a resposta veio sem `reminderId`.
-  Confira com `reminders list` antes de qualquer coisa; se nao estiver la,
-  repita so com a mesma `--idempotency-key`.
+- `NOT_CONFIRMED` (exit 1) no `--execute`: a resposta veio sem `reminderId`, e
+  o lembrete PODE ter sido gravado. A chave sai em `error.idempotencyKey`. Olhe
+  `reminders list --farm "<fazenda>" --scope created-by-me` para mostrar a quem
+  pediu o que existe, mas nao decida pela lista se repete (ela nao mostra a
+  chave e nao distingue lembretes iguais): repita o MESMO comando, com
+  exatamente os mesmos argumentos, acrescentando `--idempotency-key <chave>`.
+  Se ele ja existe, volta `created: false` e nada se duplica. Se o
+  `NOT_CONFIRMED` voltar, pare e reporte.
 
 ## Limitacoes
 
