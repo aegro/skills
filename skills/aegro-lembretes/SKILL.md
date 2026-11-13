@@ -193,7 +193,12 @@ Recusas do servidor, pelo `reason`:
   mostre a `message` a quem pediu e pare. Nao adivinhe a correcao.
 - `AEGROZAP_UNAVAILABLE` (exit 1), e qualquer outro `reason` que venha num
   503: o Aegrozap esta fora agora. Nao repita em laco; reporte e tente mais
-  tarde. Em `list`, `recipients`, `delete` e no `--dry-run` nada foi gravado.
+  tarde. Em `list`, `recipients` e no `--dry-run` nada foi gravado. No
+  `delete`, o 503 pode vir depois de a exclusao ter sido aplicada (o Aegrozap
+  demorou a responder): confira com
+  `reminders list --farm "<fazenda>" --scope created-by-me` antes de repetir;
+  se o lembrete sumiu, ja foi excluido. Ao repetir, `ITEM_NOT_FOUND` (exit 3)
+  tambem quer dizer que ja saiu.
   No `create --execute` o lembrete PODE ter sido gravado: o envelope traz a
   `idempotencyKey`; quando o Aegrozap voltar, repita o MESMO comando com ela,
   pela regra do 5xx acima, nunca sem ela.
