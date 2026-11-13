@@ -112,7 +112,20 @@ aegro reminders delete <reminderId> --farm "<fazenda>" --execute
 ## Validacoes e erros comuns
 
 Recusa do servidor sai como `REMINDER_REFUSED` com o motivo em `reason`; decida
-pelo `reason`, nao pela frase.
+pelo `reason`, nao pela frase. O que a propria CLI recusa antes de enviar sai sem
+`reason`, pelo `code`:
+
+- `INVALID_INPUTS` (exit 4): recado vazio, com quebra de linha ou acima de 60
+  caracteres, ou data e hora fora do formato. Nada foi enviado; corrija e rode o
+  `--dry-run` de novo.
+- `RECIPIENT_NOT_FOUND` (exit 4): `--to` nao e pessoa da fazenda; os nomes
+  proximos saem em `candidates`. Confira em `reminders recipients`; quem nao
+  esta la precisa ser convidado para a fazenda antes.
+- `AMBIGUOUS_RECIPIENT` (exit 4): mais de uma pessoa casa com `--to`; os
+  candidatos saem em `candidates`. Pergunte qual. `--to` aceita nome ou
+  `user::...`, nao e-mail.
+
+Recusas do servidor, pelo `reason`:
 
 - `AEGROZAP_NOT_CONFIGURED` (exit 1): os lembretes nao estao ligados neste
   ambiente. Nada foi agendado; reporte, nao tente de novo.
@@ -129,8 +142,6 @@ pelo `reason`, nao pela frase.
 - Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (503, queda de
   conexao): confira com `reminders list` e, se nao estiver la, repita com a
   mesma `--idempotency-key`.
-- Nome ambiguo em `--to`: a CLI lista os candidatos; pergunte qual. `--to`
-  aceita nome ou `user::...`, nao e-mail.
 
 ## Limitacoes
 
