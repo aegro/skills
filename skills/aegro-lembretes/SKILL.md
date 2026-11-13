@@ -156,6 +156,12 @@ Recusas do servidor, pelo `reason`:
   Nada foi agendado; reporte, nao tente de novo.
 - `FIRST_OCCURRENCE_IN_PAST`, `TOO_MANY_RECIPIENTS`, `INVALID_MESSAGE`: corrija o
   dado e rode o `--dry-run` de novo.
+- `AEGROZAP_UNAVAILABLE` (exit 1, em `list`, `recipients` e `delete`): o
+  Aegrozap esta fora agora. Nao repita em laco; reporte e tente mais tarde. No
+  `create` a mesma queda sai sem `reason`, pela regra do 503 abaixo.
+- `IDEMPOTENCY_KEY_REUSED` (exit 4): a chave ja foi usada com outro recado, data
+  ou pessoa. A `--idempotency-key` so serve para repetir o MESMO comando; se
+  mudou alguma coisa, rode sem ela (a CLI gera uma nova).
 - `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
   foi excluido ou nao e um lembrete que voce cria ou recebe.
 - Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (503, queda de
