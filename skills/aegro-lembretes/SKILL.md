@@ -108,7 +108,10 @@ aegro reminders delete <reminderId> --farm "<fazenda>" --execute
 - No maximo **um lembrete novo por fazenda por dia**, e nenhum novo para a mesma
   tarefa se ja ha um seu agendado ou criado nos ultimos 7 dias. Confira pelo
   `createdAt` no JSON de `reminders list --scope created-by-me`: o scope padrao
-  (`active`) esconde o lembrete de uma vez que ja disparou.
+  (`active`) esconde o lembrete de uma vez que ja disparou. O
+  `created-by-me` tambem traz o que voce excluiu (`isActive: false`): lembrete
+  excluido para trocar recado ou horario nao conta nas duas regras, porque a
+  recriacao o substitui.
 - O lembrete nao guarda a tarefa; o unico vinculo e o recado. Escreva o recado
   nomeando a tarefa e compare pelo recado ao procurar o que ja foi criado.
 - Ate 5 pessoas por lembrete.
