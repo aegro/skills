@@ -102,7 +102,8 @@ CLI recusa com exit 4.
 A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (5xx,
 timeout), o lembrete PODE ter sido gravado: repita o MESMO comando, com
 exatamente os mesmos argumentos, acrescentando `--idempotency-key <chave>` (a
-chave sai no envelope de erro ou na frase). Se ele foi gravado, o servidor
+chave sai em `error.idempotencyKey` no envelope de erro, em todo 5xx do
+`--execute`, com ou sem `reason`). Se ele foi gravado, o servidor
 devolve o existente (`created: false`) e nao cria outro. Nunca repita sem a
 chave: sem ela a CLI gera outra e o lembrete pode sair duplicado. Nao confira
 pela `reminders list`: ela nao mostra a chave, e dois lembretes iguais nao se
@@ -192,8 +193,9 @@ Recusas do servidor, pelo `reason`:
   foi excluido ou nao e um lembrete que voce cria ou recebe.
 - Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (5xx ou queda
   de conexao no `--execute`, `API_ERROR` exit 1): repita o MESMO comando com a
-  mesma `--idempotency-key`, que vem na frase; nunca sem ela. No `--dry-run` a
-  mesma falha diz que a previa nao grava: pode repetir o `--dry-run`.
+  mesma `--idempotency-key`, que vem em `error.idempotencyKey` no envelope;
+  nunca sem ela. No `--dry-run` a chave nao vem: a mesma falha diz que a previa
+  nao grava, e pode repetir o `--dry-run`.
 
 A CLI tambem recusa uma resposta que nao prova o que foi pedido:
 
