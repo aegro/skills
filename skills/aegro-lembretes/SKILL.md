@@ -94,6 +94,11 @@ aegro reminders create --farm "<fazenda>" --to "<nome>" \
   --message "Cadastrar os talhoes da safra" --date 14-11-2026 --time 08:00 --execute
 ```
 
+Para repetir, `--repeat daily|weekdays|weekly|monthly` (padrao `once`), com
+`--weekday` so em `weekly`, `--day-of-month` so em `monthly` e `--until dd-MM-yyyy`
+para o ultimo dia. `--until` so vale com recorrencia: com `once` (o padrao) a
+CLI recusa com exit 4.
+
 A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (503,
 timeout), repita com a mesma chave (`--idempotency-key <chave>`): o servidor nao
 cria um segundo lembrete.
@@ -141,8 +146,10 @@ pelo `reason`, nao pela frase. O que a propria CLI recusa antes de enviar sai se
 `reason`, pelo `code`:
 
 - `INVALID_INPUTS` (exit 4): recado vazio, com quebra de linha ou acima de 60
-  caracteres, data e hora fora do formato, ou `--to` vazio. Nada foi enviado;
-  corrija e rode o `--dry-run` de novo.
+  caracteres, data e hora fora do formato, `--to` vazio, `--until` sem
+  recorrencia (`--repeat once`), `--weekday` fora de `weekly` ou
+  `--day-of-month` fora de `monthly`. Nada foi enviado; corrija e rode o
+  `--dry-run` de novo.
 - `RECIPIENT_NOT_FOUND` (exit 4): `--to` nao e pessoa da fazenda; os nomes
   proximos saem em `candidates`. Confira em `reminders recipients`; quem nao
   esta la precisa ser convidado para a fazenda antes.
