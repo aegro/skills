@@ -112,17 +112,29 @@ Para repetir, `--repeat daily|weekdays|weekly|monthly` (padrao `once`), com
 para o ultimo dia. `--until` so vale com recorrencia: com `once` (o padrao) a
 CLI recusa com exit 4.
 
-A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (5xx,
-timeout), o lembrete PODE ter sido gravado: repita o MESMO comando, com
-exatamente os mesmos argumentos, acrescentando `--idempotency-key <chave>` (a
-chave sai em `error.idempotencyKey` no envelope de erro, em todo 5xx do
-`--execute`, com ou sem `reason`). Se ele foi gravado, o servidor
-devolve o existente (`created: false`) e nao cria outro. Nunca repita sem a
-chave: sem ela a CLI gera outra e o lembrete pode sair duplicado. Nao confira
-pela `reminders list`: ela nao mostra a chave, e dois lembretes iguais nao se
+Sem `--idempotency-key`, a chave e derivada do pedido (fazenda, pessoas,
+recado e agenda; comeca com `cli-`): o mesmo pedido gera sempre a mesma chave, e
+repetir o mesmo comando nao duplica o lembrete. A saida traz `idempotencyKey`, e
+no `--execute` ela sai tambem no stderr (`aegro: idempotencyKey ...`) antes do
+envio. Se a criacao falhar sem resposta clara (5xx, timeout), o lembrete PODE ter
+sido gravado: repita o MESMO comando, com exatamente os mesmos argumentos (a
+chave sai igual), ou acrescente `--idempotency-key <chave>` com a chave de
+`error.idempotencyKey` (vem no envelope de erro em todo 5xx do `--execute`, com
+ou sem `reason`). Se ele foi gravado, o servidor devolve o existente
+(`created: false`) e nao cria outro. Nao mude nada no pedido ao repetir: outro
+recado, pessoa ou horario gera outra chave e pode duplicar. Nao confira pela
+`reminders list`: ela nao mostra a chave, e dois lembretes iguais nao se
 distinguem ali.
 
-Leia o stderr nos dois passos. Quem fica de fora (sem canal) sai em
+O mesmo vale ao contrario: para criar de novo um lembrete identico a um que foi
+excluido, rodar o mesmo comando e recusado (`IDEMPOTENCY_KEY_REUSED`), porque a
+chave derivada e a do excluido. Passe `--idempotency-key` com um texto novo.
+
+Leia o stderr nos dois passos. `--to <nome>` casa parcial so pelo inicio do
+nome ou de uma palavra dele ("Ana" nao casa com "Mariana"); quando casa assim, o
+stderr diz a quem resolveu (`aegro: --to 'Mari' -> Mariana Souza (user::...)`).
+Confira esse nome no `--dry-run` e mostre-o na proposta; se nao for a pessoa
+certa, use o nome completo ou `--to user::<chave>`. Quem fica de fora (sem canal) sai em
 `aegro: aviso:` com o motivo; mostre isso na proposta. Se o aviso disser que
 NINGUEM recebe, no `--dry-run` nao rode o `--execute`: resolva o canal em
 `reminders recipients` primeiro. No `--execute` o lembrete ja foi gravado (exit
@@ -217,21 +229,23 @@ Recusas do servidor, pelo `reason`:
   se o lembrete sumiu, ja foi excluido. Ao repetir, `ITEM_NOT_FOUND` (exit 3)
   tambem quer dizer que ja saiu.
   No `create --execute` o lembrete PODE ter sido gravado: o envelope traz a
-  `idempotencyKey`; quando o Aegrozap voltar, repita o MESMO comando com ela,
-  pela regra do 5xx acima, nunca sem ela.
+  `idempotencyKey`; quando o Aegrozap voltar, repita o MESMO comando, pela
+  regra do 5xx acima: a chave sai igual, ou passe a do envelope.
 - `IDEMPOTENCY_KEY_REUSED` (exit 4): a chave ja foi usada com outro pedido, ou
-  o lembrete dela foi excluido. Nada foi agendado. Rode sem
-  `--idempotency-key` (a CLI gera uma nova) ou repita a chave so com
-  exatamente o mesmo pedido: a mesma `--farm` e os mesmos `--to`, `--message`,
+  o lembrete dela foi excluido. Nada foi agendado. Rodar sem
+  `--idempotency-key` nao resolve: sem a flag, o mesmo pedido gera a mesma
+  chave e e recusado de novo. Passe `--idempotency-key` com um texto novo, ou
+  repita a chave so com exatamente o mesmo pedido: a mesma `--farm` e os mesmos `--to`, `--message`,
   `--date`, `--time`, `--repeat`, `--weekday`, `--day-of-month` e `--until`
   (o servidor compara a fazenda, as pessoas, o recado e a agenda inteira).
   Depois de excluir um lembrete, a chave dele nunca mais serve.
 - `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
   foi excluido ou nao e um lembrete que voce cria ou recebe.
 - Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (5xx ou queda
-  de conexao no `--execute`, `API_ERROR` exit 1): repita o MESMO comando com a
-  mesma `--idempotency-key`, que vem em `error.idempotencyKey` no envelope;
-  nunca sem ela. No `--dry-run` a chave nao vem: a mesma falha diz que a previa
+  de conexao no `--execute`, `API_ERROR` exit 1): repita o MESMO comando, com
+  os mesmos argumentos (a chave sai igual), ou com a `--idempotency-key` de
+  `error.idempotencyKey` no envelope; nunca com outra chave nem com o pedido
+  mudado. No `--dry-run` a chave nao vem: a mesma falha diz que a previa
   nao grava, e pode repetir o `--dry-run`.
 
 A CLI tambem recusa uma resposta que nao prova o que foi pedido:
@@ -243,8 +257,9 @@ A CLI tambem recusa uma resposta que nao prova o que foi pedido:
   pediu. Se o lembrete esta la e e para mante-lo, nao rode mais nada: repetir
   com a mesma chave so devolve o mesmo. Se nao era para existir, exclua
   (`reminders delete <reminderId> --farm "<fazenda>" --execute`). Se voce o
-  excluiu, ou ele nao esta la, crie com `--execute` SEM `--idempotency-key`: a
-  chave de lembrete excluido e recusada (`IDEMPOTENCY_KEY_REUSED`).
+  excluiu, ou ele nao esta la, crie com `--execute` e `--idempotency-key` com
+  um texto novo: sem a flag a chave sai a mesma da previa, e a chave de
+  lembrete excluido e recusada (`IDEMPOTENCY_KEY_REUSED`).
 - `NOT_CONFIRMED` (exit 1) no `--execute`: a resposta veio sem `reminderId`, e
   o lembrete PODE ter sido gravado. A chave sai em `error.idempotencyKey`. Olhe
   `reminders list --farm "<fazenda>" --scope created-by-me` para mostrar a quem
