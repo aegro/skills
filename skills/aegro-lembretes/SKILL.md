@@ -31,6 +31,18 @@ no Aegrozap na <fazenda>".
   esta no login OAuth.
 - Voce precisa estar entre as pessoas da fazenda do cliente. Se nao estiver, a
   criacao e recusada; nao contorne, peca o acesso a fazenda.
+- Voce precisa poder ver a equipe da fazenda (permissao `PERM_USERS_VIEW`, a
+  mesma da tela de equipe). `aegro reminders recipients` exige essa permissao,
+  e `reminders create --to <nome>` tambem, porque resolve o nome por essa
+  lista. Sem ela os dois saem com exit 2, `REMINDER_REFUSED` e
+  `reason: USERS_VIEW_REQUIRED`, e nada e enviado. Nao tente de novo nem troque
+  de credencial: repasse a frase do servidor (pedir a quem administra a fazenda
+  que libere no perfil de acesso). O lembrete ainda pode ser agendado com
+  `--to user::<chave>`, que nao consulta a lista, se a chave vier de fonte
+  confiavel (o responsavel `user::...` de `aegro guided-setup tasks`, por
+  exemplo). Sem a lista nao ha como conferir nome nem canal: diga isso a quem
+  pediu e rode o `--dry-run` antes do `--execute` para ver quem fica em
+  `notScheduled`.
 - `--farm` explicito em todo comando, uma fazenda por vez.
 - Versao: `reminders` e `guided-setup` sao comandos novos da CLI. Se
   `aegro reminders --help` disser que o comando nao existe, a CLI instalada
@@ -68,7 +80,8 @@ nao descobre a carteira sozinha.
      reconheceu a resposta e nao leu tarefa nenhuma; nao trate como "nada
      pendente".
    - `aegro reminders recipients --farm "<fazenda>"`: quem pode receber e por
-     qual canal; cruze o responsavel com o nome.
+     qual canal; cruze o responsavel com o nome. Se sair
+     `USERS_VIEW_REQUIRED`, siga os pre-requisitos (`--to user::<chave>`).
    - `aegro reminders list --farm "<fazenda>" --scope created-by-me` (saida
      JSON, a padrao): o que voce ja criou ali, inclusive o que ja disparou. O
      `createdAt` de cada lembrete so vem no JSON; a tabela e o CSV nao o trazem.
@@ -173,6 +186,10 @@ Recusas do servidor, pelo `reason`:
   ambiente. Nada foi agendado; reporte, nao tente de novo.
 - `CREATOR_NOT_IN_FARM` (exit 2): voce nao e pessoa da fazenda; peca o acesso.
 - `USER_REQUIRED` (exit 2): rode `aegro auth login`.
+- `USERS_VIEW_REQUIRED` (exit 2), em `recipients` e em `create --to <nome>`:
+  voce nao tem a permissao de ver a equipe da fazenda. Nada foi enviado. Nao
+  repita nem troque de credencial; repasse a frase do servidor e siga o
+  caminho do `--to user::<chave>` dos pre-requisitos.
 - `NO_REACHABLE_RECIPIENT`: ninguem da lista recebe (sem Aegrozap e sem telefone
   no cadastro). Diga quem e por que; o cliente precisa cadastrar o telefone.
 - `TEMPLATE_UNAVAILABLE`: o modelo de mensagem nao esta aprovado no ambiente.
