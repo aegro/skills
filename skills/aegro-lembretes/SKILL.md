@@ -31,9 +31,13 @@ no Aegrozap na <fazenda>".
 - `--farm` explicito em todo comando, uma fazenda por vez.
 - Versao: `reminders` e `guided-setup` sao comandos novos da CLI. Se
   `aegro reminders --help` disser que o comando nao existe, a CLI instalada
-  ainda nao agenda lembretes: rode `pip install -U aegro` e confira de novo; se
-  continuar sem o comando, a release ainda nao saiu. Pare e diga isso a quem
-  pediu; nao agende por outro caminho.
+  ainda nao agenda lembretes. **Pare e diga isso a quem pediu**, sem instalar
+  nada por conta propria, e peca a atualizacao pelo gerenciador que instalou o
+  `aegro`: `uv tool install aegro@latest --force` (o `uv tool upgrade` nao sobe
+  instalacao com pin), `pipx upgrade aegro`, `brew upgrade aegro` ou
+  `pip install -U aegro`. Depois confira `aegro --version` e
+  `aegro reminders --help`. Se o comando continuar faltando com a CLI
+  atualizada, a release ainda nao saiu: nao agende por outro caminho.
 
 ## Vocabulario
 
