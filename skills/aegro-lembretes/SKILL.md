@@ -25,7 +25,10 @@ no Aegrozap na <fazenda>".
 ## Pre-requisitos
 
 - Login OAuth: `aegro auth login`. Os comandos `reminders` e `guided-setup` usam
-  rota interna e recusam API key (exit 2).
+  rota interna e recusam API key (exit 2, `OAUTH_REQUIRED`). Se a fazenda estiver
+  tambem em `AEGRO_FARMS`, esses dois comandos usam o login OAuth sozinhos: nao
+  precisa tirar a API key nem relogar. O exit 2 so aparece quando a fazenda nao
+  esta no login OAuth.
 - Voce precisa estar entre as pessoas da fazenda do cliente. Se nao estiver, a
   criacao e recusada; nao contorne, peca o acesso a fazenda.
 - `--farm` explicito em todo comando, uma fazenda por vez.
