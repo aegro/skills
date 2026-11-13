@@ -60,7 +60,10 @@ nao descobre a carteira sozinha.
    - `aegro guided-setup tasks --farm "<fazenda>"`: tarefas pendentes e o
      responsavel (`user::...`). Se vier o aviso de que a fazenda nao esta na
      rota do onboarding (status `unknown`), o servidor nao sabe o que esta feito:
-     nao proponha cobranca por tarefa nessa fazenda, diga isso a quem pediu.
+     nao proponha cobranca por tarefa nessa fazenda, diga isso a quem pediu. A
+     mesma regra vale para o erro `UNKNOWN_SETUP_TREE_SHAPE` (exit 1): a CLI nao
+     reconheceu a resposta e nao leu tarefa nenhuma; nao trate como "nada
+     pendente".
    - `aegro reminders recipients --farm "<fazenda>"`: quem pode receber e por
      qual canal; cruze o responsavel com o nome.
    - `aegro reminders list --farm "<fazenda>" --scope created-by-me` (saida
