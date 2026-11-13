@@ -92,6 +92,13 @@ A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (503,
 timeout), repita com a mesma chave (`--idempotency-key <chave>`): o servidor nao
 cria um segundo lembrete.
 
+Leia o stderr nos dois passos. Quem fica de fora (sem canal) sai em
+`aegro: aviso:` com o motivo; mostre isso na proposta. Se o aviso disser que
+NINGUEM recebe, no `--dry-run` nao rode o `--execute`: resolva o canal em
+`reminders recipients` primeiro. No `--execute` o lembrete ja foi gravado (exit
+0, de proposito, para nao ser repetido): o aviso traz o comando `delete` pronto;
+diga a quem pediu e exclua, salvo se for para mante-lo.
+
 ### Excluir
 
 So quem criou exclui.
@@ -128,8 +135,8 @@ pelo `reason`, nao pela frase. O que a propria CLI recusa antes de enviar sai se
 `reason`, pelo `code`:
 
 - `INVALID_INPUTS` (exit 4): recado vazio, com quebra de linha ou acima de 60
-  caracteres, ou data e hora fora do formato. Nada foi enviado; corrija e rode o
-  `--dry-run` de novo.
+  caracteres, data e hora fora do formato, ou `--to` vazio. Nada foi enviado;
+  corrija e rode o `--dry-run` de novo.
 - `RECIPIENT_NOT_FOUND` (exit 4): `--to` nao e pessoa da fazenda; os nomes
   proximos saem em `candidates`. Confira em `reminders recipients`; quem nao
   esta la precisa ser convidado para a fazenda antes.
@@ -152,8 +159,21 @@ Recusas do servidor, pelo `reason`:
 - `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
   foi excluido ou nao e um lembrete que voce cria ou recebe.
 - Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (503, queda de
-  conexao): confira com `reminders list` e, se nao estiver la, repita com a
-  mesma `--idempotency-key`.
+  conexao no `--execute`): confira com `reminders list` e, se nao estiver la,
+  repita com a mesma `--idempotency-key`. No `--dry-run` a mesma falha diz que a
+  previa nao grava: pode repetir o `--dry-run`.
+
+A CLI tambem recusa uma resposta que nao prova o que foi pedido:
+
+- `NOT_CONFIRMED` (exit 1) no `--dry-run`: o servidor nao confirmou que tratou
+  como previa, entao o lembrete PODE ter sido criado de verdade, sem aprovacao.
+  Nunca rode o `--execute` antes de conferir
+  `reminders list --farm "<fazenda>" --scope created-by-me`; se o lembrete
+  estiver la, mostre a quem pediu e exclua
+  (`reminders delete <reminderId> --farm "<fazenda>" --execute`).
+- `NOT_CONFIRMED` (exit 1) no `--execute`: a resposta veio sem `reminderId`.
+  Confira com `reminders list` antes de qualquer coisa; se nao estiver la,
+  repita so com a mesma `--idempotency-key`.
 
 ## Limitacoes
 
