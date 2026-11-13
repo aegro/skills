@@ -54,7 +54,9 @@ nao descobre a carteira sozinha.
      nao proponha cobranca por tarefa nessa fazenda, diga isso a quem pediu.
    - `aegro reminders recipients --farm "<fazenda>"`: quem pode receber e por
      qual canal; cruze o responsavel com o nome.
-   - `aegro reminders list --farm "<fazenda>"`: o que voce ja agendou ali.
+   - `aegro reminders list --farm "<fazenda>" --scope created-by-me` (saida
+     JSON, a padrao): o que voce ja criou ali, inclusive o que ja disparou. O
+     `createdAt` de cada lembrete so vem no JSON; a tabela e o CSV nao o trazem.
 2. Monte a proposta: fazenda, tarefa, pessoa, data e hora, recado. Gere o texto
    exato de cada aviso com `--dry-run` (passo abaixo).
 3. Mostre **tudo numa lista so** para quem pediu e espere a aprovacao. Nada e
@@ -95,8 +97,11 @@ aegro reminders delete <reminderId> --farm "<fazenda>" --execute
 - Recado sempre ligado a uma tarefa ou a algo combinado com o cliente. Nada de
   propaganda nem texto generico: o template e de utilidade.
 - No maximo **um lembrete novo por fazenda por dia**, e nenhum novo para a mesma
-  tarefa se ja ha um seu agendado ou criado nos ultimos 7 dias
-  (`reminders list --scope created-by-me`).
+  tarefa se ja ha um seu agendado ou criado nos ultimos 7 dias. Confira pelo
+  `createdAt` no JSON de `reminders list --scope created-by-me`: o scope padrao
+  (`active`) esconde o lembrete de uma vez que ja disparou.
+- O lembrete nao guarda a tarefa; o unico vinculo e o recado. Escreva o recado
+  nomeando a tarefa e compare pelo recado ao procurar o que ja foi criado.
 - Ate 5 pessoas por lembrete.
 - Prefira mandar para o responsavel da tarefa. Sem responsavel, pergunte a quem
   pediu para quem vai.
