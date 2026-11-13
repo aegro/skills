@@ -99,16 +99,24 @@ Para repetir, `--repeat daily|weekdays|weekly|monthly` (padrao `once`), com
 para o ultimo dia. `--until` so vale com recorrencia: com `once` (o padrao) a
 CLI recusa com exit 4.
 
-A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (503,
-timeout), repita com a mesma chave (`--idempotency-key <chave>`): o servidor nao
-cria um segundo lembrete.
+A saida traz `idempotencyKey`. Se a criacao falhar sem resposta clara (5xx,
+timeout), o lembrete PODE ter sido gravado: repita o MESMO comando, com
+exatamente os mesmos argumentos, acrescentando `--idempotency-key <chave>` (a
+chave sai no envelope de erro ou na frase). Se ele foi gravado, o servidor
+devolve o existente (`created: false`) e nao cria outro. Nunca repita sem a
+chave: sem ela a CLI gera outra e o lembrete pode sair duplicado. Nao confira
+pela `reminders list`: ela nao mostra a chave, e dois lembretes iguais nao se
+distinguem ali.
 
 Leia o stderr nos dois passos. Quem fica de fora (sem canal) sai em
 `aegro: aviso:` com o motivo; mostre isso na proposta. Se o aviso disser que
 NINGUEM recebe, no `--dry-run` nao rode o `--execute`: resolva o canal em
 `reminders recipients` primeiro. No `--execute` o lembrete ja foi gravado (exit
 0, de proposito, para nao ser repetido): o aviso traz o comando `delete` pronto;
-diga a quem pediu e exclua, salvo se for para mante-lo.
+diga a quem pediu e exclua, salvo se for para mante-lo. Se o aviso disser
+`nao conferido` (o servidor nao disse quem recebe), nao trate como "ninguem
+recebe" nem como "todos recebem": confira os destinatarios em
+`reminders list --farm "<fazenda>" --scope created-by-me` antes de dar por feito.
 
 ### Excluir
 
@@ -169,27 +177,35 @@ Recusas do servidor, pelo `reason`:
   Nada foi agendado; reporte, nao tente de novo.
 - `FIRST_OCCURRENCE_IN_PAST`, `TOO_MANY_RECIPIENTS`, `INVALID_MESSAGE`: corrija o
   dado e rode o `--dry-run` de novo.
-- `AEGROZAP_UNAVAILABLE` (exit 1, em `list`, `recipients` e `delete`): o
-  Aegrozap esta fora agora. Nao repita em laco; reporte e tente mais tarde. No
-  `create` a mesma queda sai sem `reason`, pela regra do 503 abaixo.
-- `IDEMPOTENCY_KEY_REUSED` (exit 4): a chave ja foi usada com outro recado, data
-  ou pessoa. A `--idempotency-key` so serve para repetir o MESMO comando; se
-  mudou alguma coisa, rode sem ela (a CLI gera uma nova).
+- `AEGROZAP_UNAVAILABLE` (exit 1), e qualquer outro `reason` que venha num
+  503: o Aegrozap esta fora agora. Nao repita em laco; reporte e tente mais
+  tarde. Em `list`, `recipients`, `delete` e no `--dry-run` nada foi gravado.
+  No `create --execute` o lembrete PODE ter sido gravado: o envelope traz a
+  `idempotencyKey`; quando o Aegrozap voltar, repita o MESMO comando com ela,
+  pela regra do 5xx acima, nunca sem ela.
+- `IDEMPOTENCY_KEY_REUSED` (exit 4): a chave ja foi usada com outro pedido, ou
+  o lembrete dela foi excluido. Nada foi agendado. Rode sem
+  `--idempotency-key` (a CLI gera uma nova) ou repita a chave so com
+  exatamente os mesmos `--to`, `--message`, `--date`, `--time` e `--repeat`.
+  Depois de excluir um lembrete, a chave dele nunca mais serve.
 - `NOT_CREATOR` ao excluir: o lembrete nao e seu. `ITEM_NOT_FOUND` (exit 3): ja
   foi excluido ou nao e um lembrete que voce cria ou recebe.
-- Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (503, queda de
-  conexao no `--execute`): confira com `reminders list` e, se nao estiver la,
-  repita com a mesma `--idempotency-key`. No `--dry-run` a mesma falha diz que a
-  previa nao grava: pode repetir o `--dry-run`.
+- Erro sem `reason` dizendo que o lembrete PODE ter sido gravado (5xx ou queda
+  de conexao no `--execute`, `API_ERROR` exit 1): repita o MESMO comando com a
+  mesma `--idempotency-key`, que vem na frase; nunca sem ela. No `--dry-run` a
+  mesma falha diz que a previa nao grava: pode repetir o `--dry-run`.
 
 A CLI tambem recusa uma resposta que nao prova o que foi pedido:
 
 - `NOT_CONFIRMED` (exit 1) no `--dry-run`: o servidor nao confirmou que tratou
   como previa, entao o lembrete PODE ter sido criado de verdade, sem aprovacao.
   Nunca rode o `--execute` antes de conferir
-  `reminders list --farm "<fazenda>" --scope created-by-me`; se o lembrete
-  estiver la, mostre a quem pediu e exclua
-  (`reminders delete <reminderId> --farm "<fazenda>" --execute`).
+  `reminders list --farm "<fazenda>" --scope created-by-me` e mostrar a quem
+  pediu. Se o lembrete esta la e e para mante-lo, nao rode mais nada: repetir
+  com a mesma chave so devolve o mesmo. Se nao era para existir, exclua
+  (`reminders delete <reminderId> --farm "<fazenda>" --execute`). Se voce o
+  excluiu, ou ele nao esta la, crie com `--execute` SEM `--idempotency-key`: a
+  chave de lembrete excluido e recusada (`IDEMPOTENCY_KEY_REUSED`).
 - `NOT_CONFIRMED` (exit 1) no `--execute`: a resposta veio sem `reminderId`.
   Confira com `reminders list` antes de qualquer coisa; se nao estiver la,
   repita so com a mesma `--idempotency-key`.
