@@ -29,6 +29,11 @@ no Aegrozap na <fazenda>".
 - Voce precisa estar entre as pessoas da fazenda do cliente. Se nao estiver, a
   criacao e recusada; nao contorne, peca o acesso a fazenda.
 - `--farm` explicito em todo comando, uma fazenda por vez.
+- Versao: `reminders` e `guided-setup` sao comandos novos da CLI. Se
+  `aegro reminders --help` disser que o comando nao existe, a CLI instalada
+  ainda nao agenda lembretes: rode `pip install -U aegro` e confira de novo; se
+  continuar sem o comando, a release ainda nao saiu. Pare e diga isso a quem
+  pediu; nao agende por outro caminho.
 
 ## Vocabulario
 
