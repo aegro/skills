@@ -177,8 +177,20 @@ Recusas do servidor, pelo `reason`:
   no cadastro). Diga quem e por que; o cliente precisa cadastrar o telefone.
 - `TEMPLATE_UNAVAILABLE`: o modelo de mensagem nao esta aprovado no ambiente.
   Nada foi agendado; reporte, nao tente de novo.
+- `RECIPIENT_NOT_IN_FARM` (exit 4): alguem em `--to` nao e pessoa da fazenda.
+  Aparece com `--to user::...` (por exemplo, o responsavel vindo do
+  `guided-setup`), que pula a conferencia local. Nada foi agendado. Confira em
+  `reminders recipients`; quem nao esta la precisa ser convidado para a
+  fazenda antes.
 - `FIRST_OCCURRENCE_IN_PAST`, `TOO_MANY_RECIPIENTS`, `INVALID_MESSAGE`: corrija o
   dado e rode o `--dry-run` de novo.
+- `NO_UPCOMING_OCCURRENCE` (exit 4): a repeticao nao tem nenhum aviso entre
+  agora e o `--until`. `INVALID_SCHEDULE` (exit 4): a agenda nao fecha (data,
+  hora ou combinacao de `--repeat`, `--weekday`, `--day-of-month` e
+  `--until`). Nada foi agendado; ajuste a agenda com quem pediu e rode o
+  `--dry-run` de novo.
+- Qualquer outro `reason` que nao esteja nesta lista (fora do 503 abaixo):
+  mostre a `message` a quem pediu e pare. Nao adivinhe a correcao.
 - `AEGROZAP_UNAVAILABLE` (exit 1), e qualquer outro `reason` que venha num
   503: o Aegrozap esta fora agora. Nao repita em laco; reporte e tente mais
   tarde. Em `list`, `recipients`, `delete` e no `--dry-run` nada foi gravado.
