@@ -50,6 +50,7 @@ aegro skills install
 - `aegro-importacao-fornecedores`
 - `aegro-importacao-patrimonio`
 - `aegro-lancamento-financeiro`
+- `aegro-lembretes`
 - `aegro-migracao-categorias`
 - `aegro-monitoramento-pragas`
 - `aegro-operacional`
