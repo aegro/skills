@@ -1,5 +1,6 @@
 ---
 name: aegro-lembretes
+requires-cli: 0.35.0
 description: >-
   Agenda lembretes do Aegrozap no WhatsApp das pessoas da fazenda pela CLI
   aegro, para quem acompanha a implantacao do cliente: revisa a carteira,
@@ -44,15 +45,13 @@ no Aegrozap na <fazenda>".
   pediu e rode o `--dry-run` antes do `--execute` para ver quem fica em
   `notScheduled`.
 - `--farm` explicito em todo comando, uma fazenda por vez.
-- Versao: `reminders` e `guided-setup` sao comandos novos da CLI. Se
-  `aegro reminders --help` disser que o comando nao existe, a CLI instalada
-  ainda nao agenda lembretes. **Pare e diga isso a quem pediu**, sem instalar
-  nada por conta propria, e peca a atualizacao pelo gerenciador que instalou o
-  `aegro`: `uv tool install aegro@latest --force` (o `uv tool upgrade` nao sobe
+- Versao: `reminders` e `guided-setup` existem a partir da CLI 0.35.0. Se
+  `aegro --version` for menor, ou `aegro reminders --help` disser que o comando
+  nao existe, **pare e diga isso a quem pediu**, sem instalar nada por conta
+  propria, e peca a atualizacao pelo gerenciador que instalou o `aegro`:
+  `uv tool install aegro@latest --force` (o `uv tool upgrade` nao sobe
   instalacao com pin), `pipx upgrade aegro`, `brew upgrade aegro` ou
-  `pip install -U aegro`. Depois confira `aegro --version` e
-  `aegro reminders --help`. Se o comando continuar faltando com a CLI
-  atualizada, a release ainda nao saiu: nao agende por outro caminho.
+  `pip install -U aegro`. Depois confira de novo; nao agende por outro caminho.
 
 ## Vocabulario
 
