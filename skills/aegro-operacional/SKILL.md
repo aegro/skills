@@ -1,6 +1,6 @@
 ---
 name: aegro-operacional
-requires-cli: 0.28.0
+requires-cli: 0.34.0
 description: >-
   Dominio operacional do Aegro pela CLI — fazendas, autenticacao, agrupadores
   (tags), empresas, pedidos de compra, anexos de arquivo e os links diretos
@@ -551,6 +551,9 @@ aegro companies list --farm "Fazenda Aegro" --search-text "Bayer"
 | `aegro purchase-orders get <key>` | Busca ordem de compra por chave | `--output` |
 | `aegro purchase-orders list` | Lista ordens de compra | `--company-key`, `--start-date`, `--end-date`, `--search-text`, `--delivery-status`, `--page`, `--env`, `--farm`, `--output` |
 | `aegro purchase-orders create` | Cria ordem de compra | `--order-date` (obrig.), `--currency` (obrig.), `--gross-amount` (obrig.), `--items` (obrig. JSON), `--company-key`, `--description`, `--expected-delivery-date`, `--tag` |
+| `aegro purchase-orders get-internal <key>` | Pedido pela API interna: saldo entregue por item e as remessas (`shippings`) com suas chaves | `--output` |
+| `aegro purchase-orders create-shipment` | Remessa (entrega) vinculada ao pedido, num local de estoque | `--purchase-order-key` (obrig.), `--destination-key` (obrig.), `--items` (JSON, remessa parcial), `--date`, `--destination-type`, `--source-key`, `--dry-run`/`--execute`, `--skip-verify` |
+| `aegro purchase-orders delete-shipment` | Apaga a remessa e os lancamentos de estoque dela | `--shipping-key` (obrig.), `--purchase-order-key` (obrig.), `--dry-run`/`--execute` |
 
 ```bash
 # Criar ordem de compra de defensivos
@@ -565,6 +568,61 @@ aegro purchase-orders create --farm "Fazenda Aegro" \
 # Listar compras de um fornecedor
 aegro purchase-orders list --farm "Fazenda Aegro" --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
 ```
+
+**Entrega de pedido e remessa, nao entrada avulsa.** `create-shipment` lanca a
+entrada no local de estoque **e** conta para o `deliveryProgress` do pedido;
+`stock entry` solto nao vincula ao pedido, que fica aberto como se nada tivesse
+chegado. Usa a API interna (`POST /app/rest/shippings`) — exige `aegro auth login`.
+
+- **Remessa integral** (sem `--items`): entrega **todos** os itens do pedido na
+  quantidade pedida, num unico `--destination-key`.
+- **Remessa parcial** (`--items`): so os itens listados, nas quantidades
+  informadas. Cada item e `{"elementKey": "element::<id>", "quantity": N}` ou
+  `{"product": "<nome como esta no pedido>", "quantity": N}`. O nome e resolvido
+  contra os itens **do pedido**, nao contra o catalogo. `quantity` vai ate o
+  saldo pendente do item (`quantity - quantityDelivered`, lido do pedido).
+- **O destino e UM por chamada.** Para dividir uma entrega entre locais, repita o
+  comando com outro `--destination-key`, cada um com a sua parte.
+- `--date` e a data da remessa; omitida, e hoje.
+
+```bash
+# Saldo pendente por item antes de lancar (quantity x quantityDelivered)
+aegro purchase-orders get-internal --farm "<fazenda>" <chave-do-pedido>
+
+# Remessa integral: tudo o que o pedido tem, num local
+aegro purchase-orders create-shipment --farm "<fazenda>" \
+  --purchase-order-key <chave-do-pedido> \
+  --destination-key "stockLocation::<posto>" --dry-run
+aegro purchase-orders create-shipment --farm "<fazenda>" \
+  --purchase-order-key <chave-do-pedido> \
+  --destination-key "stockLocation::<posto>" --execute
+
+# Remessa parcial: 10.000 L de diesel do pedido divididos em 2 remessas de
+# 5.000 L, uma por local de estoque (posto e comboio). Uma chamada por destino.
+aegro purchase-orders create-shipment --farm "<fazenda>" \
+  --purchase-order-key <chave-do-pedido> \
+  --destination-key "stockLocation::<posto>" \
+  --items '[{"product": "Diesel S10", "quantity": 5000}]' --execute
+aegro purchase-orders create-shipment --farm "<fazenda>" \
+  --purchase-order-key <chave-do-pedido> \
+  --destination-key "stockLocation::<comboio>" \
+  --items '[{"elementKey": "element::<id-do-diesel>", "quantity": 5000}]' --execute
+```
+
+O CLI recusa **antes do POST**, com exit 4 e a lista do que corrigir: item que
+nao esta no pedido, `product` que casa com mais de um item (use `elementKey`),
+produto repetido no mesmo `--items` (some numa entrada so), `quantity` zero,
+negativa ou acima do saldo pendente. Depois de gravar, o pedido e relido e as
+quantidades gravadas sao comparadas com as **enviadas**: divergencia e
+`NOT_PERSISTED` com exit 1 — a saida do comando so e sucesso quando a remessa
+existe com as quantidades pedidas. Com exit 1, procure a remessa no
+`get-internal` antes de repetir: a API pode ter gravado e falhado depois, e a
+segunda chamada duplicaria a entrega.
+
+A partir da **v0.34.0** o `--items` existe e a releitura compara as quantidades.
+Em CLI anterior o comando recusa a opcao (`--items` desconhecido): la toda
+remessa e integral, e a entrega dividida entre locais se faz pela tela do app ou
+atualizando o CLI (`pip install -U aegro`).
 
 **Remessa lancada por engano: apague, nao compense.** `delete-shipment` apaga a
 remessa **e** os lancamentos de estoque que ela gerou, no mesmo caminho. Lancar
@@ -608,7 +666,9 @@ aegro purchase-orders create --farm "Fazenda Aegro" \
   --gross-amount 45000.00 \
   --items '[{"elementKey": "element::5a9c2d3e4f5b6a78", "quantity": 500, "unitPrice": 90.00}]'
 
-# 3. Registrar entrada no estoque
+# 3. Registrar entrada no estoque. Compra que veio de pedido entra como remessa
+#    (`purchase-orders create-shipment`, secao purchase-orders): vincula ao
+#    pedido e atualiza o deliveryProgress. `stock entry` e para entrada SEM pedido.
 aegro stock entry --farm "Fazenda Aegro" \
   --element-key "element::5a9c2d3e4f5b6a78" \
   --location-key "stockLocation::abc123" \
