@@ -550,10 +550,11 @@ aegro companies list --farm "Fazenda Aegro" --search-text "Bayer"
 |---------|-----------|-------|
 | `aegro purchase-orders get <key>` | Busca ordem de compra por chave | `--output` |
 | `aegro purchase-orders list` | Lista ordens de compra | `--company-key`, `--start-date`, `--end-date`, `--search-text`, `--delivery-status`, `--page`, `--env`, `--farm`, `--output` |
-| `aegro purchase-orders create` | Cria ordem de compra | `--order-date` (obrig.), `--currency` (obrig.), `--gross-amount` (obrig.), `--items` (obrig. JSON), `--company-key`, `--description`, `--expected-delivery-date`, `--tag` |
+| `aegro purchase-orders create` | Cria ordem de compra | `--order-date` (obrig.), `--currency` (obrig.), `--gross-amount` (obrig.), `--items` (obrig. JSON), `--company-key`, `--description`, `--expected-delivery-date`, `--tag`, `--requisition-key` (repetivel), `--cost-destination STOCK\|CROP`, `--apportion-crop` (repetivel), `--crop-prorate-group`, `--apportion-asset`, `--stock-location-key`, `--skip-verify` |
 | `aegro purchase-orders get-internal <key>` | Pedido pela API interna: saldo entregue por item e as remessas (`shippings`) com suas chaves | `--output` |
 | `aegro purchase-orders create-shipment` | Remessa (entrega) vinculada ao pedido, num local de estoque | `--purchase-order-key` (obrig.), `--destination-key` (obrig.), `--items` (JSON, remessa parcial), `--date`, `--destination-type`, `--source-key`, `--dry-run`/`--execute`, `--skip-verify` |
 | `aegro purchase-orders delete-shipment` | Apaga a remessa e os lancamentos de estoque dela | `--shipping-key` (obrig.), `--purchase-order-key` (obrig.), `--dry-run`/`--execute` |
+| `aegro purchase-orders create-bill` | Lancamento (conta) vinculado ao pedido, com pagamento e parcelas | `--purchase-order-key` (obrig.), `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"` (repetivel), `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--bank-account`, `--forecast`, `--entry-date`, `--description`, `--dry-run`/`--execute`, `--skip-verify` |
 
 ```bash
 # Criar ordem de compra de defensivos
@@ -568,6 +569,45 @@ aegro purchase-orders create --farm "Fazenda Aegro" \
 # Listar compras de um fornecedor
 aegro purchase-orders list --farm "Fazenda Aegro" --company-key "company::67f2b3c4d5e6a7b8" --start-date 2026-01-01
 ```
+
+**O pedido nasce "Sem pagamento".** A API publica do pedido nao recebe forma de
+pagamento, conta bancaria nem parcelas, e o `create` avisa isso no stderr. Nao
+prometa a quem opera um pedido "a prazo" criado pela CLI: o pagamento entra no
+**lancamento vinculado** (`purchase-orders create-bill`, abaixo) ou na tela.
+
+**Solicitacao de origem e destino do custo.** Pedido que nasce de uma solicitacao
+leva `--requisition-key purchaseRequisition::<id>` (repetivel): a solicitacao
+passa a listar o pedido e atualiza o saldo a pedir, como o "Gerar pedido de
+compra" da tela. Sem isso o pedido fica solto da solicitacao. O destino do custo
+e `--cost-destination`:
+
+- `STOCK` (padrao quando omitido): os itens entram no estoque por remessas
+  (`create-shipment`). `--stock-location-key stockLocation::<id>` define o local
+  esperado das remessas.
+- `CROP`: o custo e rateado entre safras e o pedido **nao tem remessas**. Exige
+  `--apportion-crop` (nome ou `crop::`, repetivel; varias safras = rateio por
+  area) **ou** `--crop-prorate-group cropProrateGroup::<id>` (rateio salvo, que
+  fica vinculado), mais `--apportion-asset` opcional (uma maquina).
+
+O CLI recusa antes do POST (exit 4) o que a API recusa: `CROP` sem rateio, rateio
+sem `--cost-destination CROP`, rateio salvo junto com safras, local de estoque em
+`CROP`, chave com prefixo errado. Depois de criar, o pedido e relido e esses
+campos sao comparados com o enviado: divergencia e `NOT_PERSISTED` (exit 1) — o
+pedido existe, **nao repita** o comando; confira com `purchase-orders get`. O
+`create-batch` aceita os mesmos campos no JSON de cada pedido
+(`purchaseRequisitionKeys`, `costDestination`, `cropApportion`,
+`stockLocationKey`).
+
+```bash
+# Pedido gerado de uma solicitacao, com o custo rateado entre duas safras
+aegro purchase-orders create --farm "<fazenda>" --company "<fornecedor>" \
+  --order-date 2026-11-23 --gross-amount 750 --items '[...]' \
+  --requisition-key "purchaseRequisition::<id>" \
+  --cost-destination CROP --apportion-crop "Soja 26/27" --apportion-crop "Milho 27" --dry-run
+```
+
+Essas flags existem a partir da release do CLI posterior a **0.35.0**; em CLI
+anterior a opcao e recusada como desconhecida (atualize com `pip install -U aegro`).
 
 **Entrega de pedido e remessa, nao entrada avulsa.** `create-shipment` lanca a
 entrada no local de estoque **e** conta para o `deliveryProgress` do pedido;
@@ -640,6 +680,46 @@ aegro purchase-orders delete-shipment --farm "<fazenda>" \
 
 Usa a API interna (`DELETE /app/rest/shippings/{id}`) — exige `aegro auth login`.
 
+**Lancamento vinculado ao pedido: pagamento e categoria.** `purchase-orders
+create-bill` cria a conta **ligada ao pedido** (a tela mostra o lancamento no
+pedido), com os itens do pedido. Conta avulsa com `financial create-bill` perde
+esse vinculo. A forma de pagamento decide se ela vira conta a pagar:
+
+- `NO_PAYMENT` (padrao): so custo/DRE, **sem vencimento** e fora do fluxo de
+  caixa. Nao serve para "conta a pagar".
+- `INSTALLMENT`: uma parcela por `--due-date` (em ordem; valores iguais,
+  centavos na ultima), com `--bank-account` obrigatoria.
+- `PROMPT`: uma parcela **ja paga** na data do lancamento (`--entry-date`). A
+  baixa so se desfaz pela tela — confirme com quem opera antes. O comando rele
+  a parcela e so diz "foi baixada" quando ela voltou paga.
+
+A conta nasce **oficial**; `--forecast` a cria como previsao (nao vale com
+`PROMPT`). Em pedido de safra (`CROP`) a conta leva o rateio do pedido — as
+safras dele, ou o rateio salvo a que ele esta amarrado — sem criar rateio novo.
+Pedido em moeda diferente de BRL e recusado: lance pela tela.
+
+Categoria: `--financial-category-key` vale para todos os itens;
+`--item-category "<produto>=<categoria>"` (repetivel, produto pelo nome como esta
+no pedido) da a categoria de um produto. Pedido que mistura subtipos (Herbicida,
+Fungicida, Inseticida) precisa de uma por produto: categoria "predominante"
+distorce o DRE. Produto sem categoria falha antes do POST. A conta e relida
+(vinculo, forma de pagamento, conta, parcelas e vencimentos, categoria por item):
+divergencia e `NOT_PERSISTED` — a conta existe, nao repita o comando. Usa a API
+interna para gravar — exige `aegro auth login`.
+
+```bash
+# Conta a prazo vinculada ao pedido: 2 parcelas (30/60 dias), categoria por produto
+aegro purchase-orders create-bill --farm "<fazenda>" \
+  --purchase-order-key "purchaseOrder::<id>" \
+  --item-category "Fox Xpro=Fungicida" --item-category "Engeo Pleno=Inseticida" \
+  --payment-method INSTALLMENT --due-date 2026-12-23 --due-date 2027-01-22 \
+  --bank-account "<conta>" --dry-run
+```
+
+Ate a **0.35.0** o `create-bill` so aceitava `NO_PAYMENT` e uma categoria para
+todos os itens; `PROMPT`/`INSTALLMENT`, `--due-date`, `--bank-account` e
+`--item-category` chegam na release seguinte.
+
 ## Orquestracao Entre Dominios
 
 Fluxos operacionais que cruzam multiplos dominios do Aegro. A sequencia correta evita inconsistencias.
@@ -648,10 +728,12 @@ Fluxos operacionais que cruzam multiplos dominios do Aegro. A sequencia correta 
 
 ```
 companies create (ou usar existente)
-    → purchase-orders create (vincula empresa + itens)
-        → stock entry (registra entrada no deposito)
-            → financial create-bill (lancamento + parcelas a pagar)
+    → purchase-orders create (vincula empresa + itens; nasce "Sem pagamento")
+        → purchase-orders create-shipment (entrada no estoque vinculada ao pedido)
+            → purchase-orders create-bill (lancamento vinculado + parcelas a pagar)
 ```
+
+Compra **sem pedido** segue o caminho avulso: `stock entry` e `financial create-bill`.
 
 ```bash
 # 1. Garantir fornecedor cadastrado
@@ -675,21 +757,19 @@ aegro stock entry --farm "Fazenda Aegro" \
   --quantity 500 \
   --date "2026-03-15"
 
-# 4. Criar o lancamento financeiro com as parcelas
-# A API publica NAO expoe create/update/delete de parcela avulsa: as parcelas
-# vao no campo `installments` do proprio create-bill.
+# 4. Lancamento financeiro VINCULADO ao pedido, com as parcelas a pagar.
+# `financial create-bill` aqui criaria uma conta solta, sem o vinculo com o
+# pedido. Sem --payment-method a conta nasce NO_PAYMENT (sem vencimento).
 # SEMPRE --dry-run primeiro: apresente o plano (valor, categoria, parcelas)
 # a quem opera e so troque para --execute depois da confirmacao explicita.
-aegro financial create-bill \
-  --description "Compra de fertilizante - safra 25/26" \
-  --total-amount 45000.00 \
-  --cash-flow EXPENSE \
-  --payment-method INSTALLMENT \
-  --category "Insumos" \
-  --bank-account-key "bankAccount::def456" \
-  --installments '[{"number": 1, "dueDate": "2026-04-15", "amount": {"currencyCode": "BRL", "amount": 45000}}]' \
-  --farm "Fazenda Aegro" --dry-run
+aegro purchase-orders create-bill --farm "Fazenda Aegro" \
+  --purchase-order-key "purchaseOrder::<chave-do-pedido>" \
+  --financial-category-key "financialCategory::<insumos>" \
+  --payment-method INSTALLMENT --due-date 2026-04-15 \
+  --bank-account "bankAccount::def456" --dry-run
 # Usuario conferiu e aprovou o plano? Repita o MESMO comando com --execute.
+# CLI ate a 0.35.0: o create-bill so faz NO_PAYMENT; para conta a prazo nessa
+# versao, lance o pagamento na tela do pedido.
 ```
 
 ### Fluxo 2: Aplicacao de Defensivo (Agronomico → Estoque)

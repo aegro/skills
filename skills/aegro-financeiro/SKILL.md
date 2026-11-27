@@ -577,12 +577,36 @@ aegro companies create --farm "<fazenda>" --name "CoopAgri" --type PROVIDER --ty
 |--------------------|----------|------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | `get <key>`        | GET      | `key` (argumento)                                          | `--output`                                                                        |
 | `list`             | POST     | (nenhum)                                                   | `--company-key`, `--search-text`, `--start-date`, `--end-date`, `--delivery-status`, `--page` |
-| `create`           | POST     | `--company` (nome) ou `--company-key`, `--order-date`, `--gross-amount`, `--items` | `--currency` (default BRL), `--currency-exchange-rate`, `--tag` (repetivel), `--category`, `--expected-delivery-date`, `--description`, `--discount-amount`, `--company-order-code`, `--env`, `--complete` |
-| `create-batch`     | POST     | `--from-file <arquivo.json>`                               | `--throttle`, `--env`, `--complete`                                               |
+| `create`           | POST     | `--company` (nome) ou `--company-key`, `--order-date`, `--gross-amount`, `--items` | `--currency` (default BRL), `--currency-exchange-rate`, `--tag` (repetivel), `--category`, `--expected-delivery-date`, `--description`, `--discount-amount`, `--company-order-code`, `--requisition-key` (repetivel), `--cost-destination STOCK\|CROP`, `--apportion-crop` (repetivel), `--crop-prorate-group`, `--apportion-asset`, `--stock-location-key`, `--skip-verify`, `--env`, `--complete` |
+| `create-batch`     | POST     | `--from-file <arquivo.json>`                               | `--throttle`, `--skip-verify`, `--env`, `--complete`                              |
+| `create-bill`      | POST (interna) | `--purchase-order-key`, `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"` | `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--bank-account` (obrig. em PROMPT/INSTALLMENT), `--forecast`, `--entry-date`, `--description`, `--skip-verify` |
 
 O item de `--items` usa **`elementKey`** (exato) ou **`product`** (nome, o CLI
 resolve) — `productKey` NAO existe e e rejeitado. Campos obrigatorios do item:
 `quantity`, `quantityDelivered`, `measuringUnit`, `unitAmount`, `totalAmount`.
+
+**Pagamento do pedido.** O pedido criado pela CLI nasce **"Sem pagamento"**: a
+API publica do pedido nao tem forma de pagamento, conta nem parcelas. O
+pagamento vai no **lancamento vinculado** (`purchase-orders create-bill`), que
+fica ligado ao pedido — `financial create-bill` criaria uma conta solta. No
+`create-bill`, `NO_PAYMENT` (padrao) e so custo/DRE, sem vencimento e fora do
+fluxo de caixa; `INSTALLMENT` gera uma parcela por `--due-date` (valores iguais,
+centavos na ultima) e exige `--bank-account`; `PROMPT` gera a parcela **ja paga**
+na data do lancamento. A conta nasce **oficial** (`--forecast` cria previsao; nao
+vale com `PROMPT`), e em pedido `CROP` leva o rateio do pedido. Pedido fora de BRL
+e recusado. A categoria pode ser por produto
+(`--item-category "Fox Xpro=Fungicida"`), que vence a `--financial-category-key`:
+pedido com subtipos de defensivo diferentes precisa de uma por produto. A conta
+e relida (vinculo, pagamento, parcelas e vencimentos, categoria por item) e
+divergencia e `NOT_PERSISTED`. Disponivel a partir da release posterior a
+**0.35.0**; ate la o `create-bill` so faz `NO_PAYMENT` com uma categoria.
+
+**Rateio por safra no pedido.** `--cost-destination CROP` com `--apportion-crop`
+ou `--crop-prorate-group` (mais `--apportion-asset` opcional) rateia o custo do
+pedido entre safras, e as contas vinculadas herdam esse rateio; `STOCK` (padrao)
+entra no estoque por remessas, com `--stock-location-key`. `--requisition-key`
+liga o pedido a solicitacao de origem. Combinacao que a API recusa sai com exit
+4 antes do POST (release posterior a 0.35.0).
 
 **CRITICO — moeda estrangeira (USD):** a API armazena os valores como recebidos
 e o app **divide pela cotacao** na exibicao. Envie
