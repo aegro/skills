@@ -579,7 +579,7 @@ aegro companies create --farm "<fazenda>" --name "CoopAgri" --type PROVIDER --ty
 | `list`             | POST     | (nenhum)                                                   | `--company-key`, `--search-text`, `--start-date`, `--end-date`, `--delivery-status`, `--page` |
 | `create`           | POST     | `--company` (nome) ou `--company-key`, `--order-date`, `--gross-amount`, `--items` | `--currency` (default BRL), `--currency-exchange-rate`, `--tag` (repetivel), `--category`, `--expected-delivery-date`, `--description`, `--discount-amount`, `--company-order-code`, `--requisition-key` (repetivel), `--cost-destination STOCK\|CROP`, `--apportion-crop` (repetivel), `--crop-prorate-group`, `--apportion-asset`, `--stock-location-key`, `--skip-verify`, `--env`, `--complete` |
 | `create-batch`     | POST     | `--from-file <arquivo.json>`                               | `--throttle`, `--skip-verify`, `--env`, `--complete`                              |
-| `create-bill`      | POST     | `--purchase-order-key`, `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"`, `--bank-account` | `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--entry-date`, `--description`, `--skip-verify` |
+| `create-bill`      | POST (interna) | `--purchase-order-key`, `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"` | `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--bank-account` (obrig. em PROMPT/INSTALLMENT), `--forecast`, `--entry-date`, `--description`, `--skip-verify` |
 
 O item de `--items` usa **`elementKey`** (exato) ou **`product`** (nome, o CLI
 resolve) — `productKey` NAO existe e e rejeitado. Campos obrigatorios do item:
@@ -591,10 +591,10 @@ pagamento vai no **lancamento vinculado** (`purchase-orders create-bill`), que
 fica ligado ao pedido — `financial create-bill` criaria uma conta solta. No
 `create-bill`, `NO_PAYMENT` (padrao) e so custo/DRE, sem vencimento e fora do
 fluxo de caixa; `INSTALLMENT` gera uma parcela por `--due-date` (valores iguais,
-centavos na ultima); `PROMPT` gera a parcela **ja paga** na data do lancamento.
-`--bank-account` e obrigatoria nas tres formas (em `NO_PAYMENT` a API a exige e
-o servidor a descarta). A conta nasce **oficial**, pela API publica (API key ou
-OAuth), e herda a apropriacao do pedido: em pedido `CROP`, o rateio por safra. A categoria pode ser por produto
+centavos na ultima) e exige `--bank-account`; `PROMPT` gera a parcela **ja paga**
+na data do lancamento. A conta nasce **oficial** (`--forecast` cria previsao; nao
+vale com `PROMPT`), e em pedido `CROP` leva o rateio do pedido. Pedido fora de BRL
+e recusado. A categoria pode ser por produto
 (`--item-category "Fox Xpro=Fungicida"`), que vence a `--financial-category-key`:
 pedido com subtipos de defensivo diferentes precisa de uma por produto. A conta
 e relida (vinculo, pagamento, parcelas e vencimentos, categoria por item) e

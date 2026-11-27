@@ -554,7 +554,7 @@ aegro companies list --farm "Fazenda Aegro" --search-text "Bayer"
 | `aegro purchase-orders get-internal <key>` | Pedido pela API interna: saldo entregue por item e as remessas (`shippings`) com suas chaves | `--output` |
 | `aegro purchase-orders create-shipment` | Remessa (entrega) vinculada ao pedido, num local de estoque | `--purchase-order-key` (obrig.), `--destination-key` (obrig.), `--items` (JSON, remessa parcial), `--date`, `--destination-type`, `--source-key`, `--dry-run`/`--execute`, `--skip-verify` |
 | `aegro purchase-orders delete-shipment` | Apaga a remessa e os lancamentos de estoque dela | `--shipping-key` (obrig.), `--purchase-order-key` (obrig.), `--dry-run`/`--execute` |
-| `aegro purchase-orders create-bill` | Lancamento (conta) vinculado ao pedido, com pagamento e parcelas | `--purchase-order-key` (obrig.), `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"` (repetivel), `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--bank-account` (obrig. nas tres formas), `--entry-date`, `--description`, `--dry-run`/`--execute`, `--skip-verify` |
+| `aegro purchase-orders create-bill` | Lancamento (conta) vinculado ao pedido, com pagamento e parcelas | `--purchase-order-key` (obrig.), `--financial-category-key` e/ou `--item-category "<produto>=<categoria>"` (repetivel), `--payment-method NO_PAYMENT\|PROMPT\|INSTALLMENT`, `--due-date` (repetivel, uma por parcela), `--bank-account`, `--forecast`, `--entry-date`, `--description`, `--dry-run`/`--execute`, `--skip-verify` |
 
 ```bash
 # Criar ordem de compra de defensivos
@@ -688,13 +688,15 @@ esse vinculo. A forma de pagamento decide se ela vira conta a pagar:
 - `NO_PAYMENT` (padrao): so custo/DRE, **sem vencimento** e fora do fluxo de
   caixa. Nao serve para "conta a pagar".
 - `INSTALLMENT`: uma parcela por `--due-date` (em ordem; valores iguais,
-  centavos na ultima).
+  centavos na ultima), com `--bank-account` obrigatoria.
 - `PROMPT`: uma parcela **ja paga** na data do lancamento (`--entry-date`). A
-  baixa so se desfaz pela tela — confirme com quem opera antes. O comando relê
+  baixa so se desfaz pela tela — confirme com quem opera antes. O comando rele
   a parcela e so diz "foi baixada" quando ela voltou paga.
 
-`--bank-account` e obrigatoria nas tres formas: em `NO_PAYMENT` a API exige a
-conta e o servidor a descarta, entao qualquer conta da fazenda serve.
+A conta nasce **oficial**; `--forecast` a cria como previsao (nao vale com
+`PROMPT`). Em pedido de safra (`CROP`) a conta leva o rateio do pedido — as
+safras dele, ou o rateio salvo a que ele esta amarrado — sem criar rateio novo.
+Pedido em moeda diferente de BRL e recusado: lance pela tela.
 
 Categoria: `--financial-category-key` vale para todos os itens;
 `--item-category "<produto>=<categoria>"` (repetivel, produto pelo nome como esta
@@ -702,11 +704,8 @@ no pedido) da a categoria de um produto. Pedido que mistura subtipos (Herbicida,
 Fungicida, Inseticida) precisa de uma por produto: categoria "predominante"
 distorce o DRE. Produto sem categoria falha antes do POST. A conta e relida
 (vinculo, forma de pagamento, conta, parcelas e vencimentos, categoria por item):
-divergencia e `NOT_PERSISTED` — a conta existe, nao repita o comando. Grava pela
-API publica (API key ou login OAuth): a conta nasce **oficial** e herda a
-apropriacao do pedido — pedido `CROP` rateia pelas safras do pedido; pedido
-`STOCK` fica em estoque no fornecedor, sem movimentar estoque (a entrada e da
-remessa). Pedido em moeda diferente de BRL e recusado: lance pela tela.
+divergencia e `NOT_PERSISTED` — a conta existe, nao repita o comando. Usa a API
+interna para gravar — exige `aegro auth login`.
 
 ```bash
 # Conta a prazo vinculada ao pedido: 2 parcelas (30/60 dias), categoria por produto
@@ -714,7 +713,7 @@ aegro purchase-orders create-bill --farm "<fazenda>" \
   --purchase-order-key "purchaseOrder::<id>" \
   --item-category "Fox Xpro=Fungicida" --item-category "Engeo Pleno=Inseticida" \
   --payment-method INSTALLMENT --due-date 2026-12-23 --due-date 2027-01-22 \
-  --bank-account "bankAccount::<id>" --dry-run
+  --bank-account "<conta>" --dry-run
 ```
 
 Ate a **0.35.0** o `create-bill` so aceitava `NO_PAYMENT` e uma categoria para
